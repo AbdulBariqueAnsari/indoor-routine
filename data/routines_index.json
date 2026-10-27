@@ -1,16 +1,5 @@
 [
   {
-    "id": "routine-day-3",
-    "dayNumber": 3,
-    "date": "2026-10-29",
-    "status": "published",
-    "isLocked": false,
-    "filePath": "routines/routine_routine-day-3.json",
-    "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - 0 instructors on leave, 1 subjects excluded",
-    "totalSlots": 75,
-    "updatedAt": "2026-10-27T09:23:50.178Z"
-  },
-  {
     "id": "routine-day-2",
     "dayNumber": 2,
     "date": "2026-10-28",
@@ -19,7 +8,7 @@
     "filePath": "routines/routine_routine-day-2.json",
     "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - 0 instructors on leave, 1 subjects excluded",
     "totalSlots": 75,
-    "updatedAt": "2026-10-27T08:42:15.197Z"
+    "updatedAt": "2026-10-27T17:55:59.821Z"
   },
   {
     "id": "routine-day-1",
@@ -31,5 +20,82 @@
     "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
     "totalSlots": 75,
     "updatedAt": "2026-10-27T04:21:32.147Z"
+  },
+  {
+    "id": "routine-day-3",
+    "dayNumber": 3,
+    "date": "2026-10-29",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-3.json",
+    "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.719Z"
+  },
+  {
+    "id": "routine-day-4",
+    "dayNumber": 4,
+    "date": "2026-10-30",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-4.json",
+    "notes": "STC, SAP 4th Bn Day 4 Routine (2026-10-30) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.720Z"
+  },
+  {
+    "id": "routine-day-5",
+    "dayNumber": 5,
+    "date": "2026-10-31",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-5.json",
+    "notes": "STC, SAP 4th Bn Day 5 Routine (2026-10-31) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.722Z"
+  },
+  {
+    "id": "routine-day-6",
+    "dayNumber": 6,
+    "date": "2026-11-01",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-6.json",
+    "notes": "STC, SAP 4th Bn Day 6 Routine (2026-11-01) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.724Z"
+  },
+  {
+    "id": "routine-day-7",
+    "dayNumber": 7,
+    "date": "2026-11-02",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-7.json",
+    "notes": "STC, SAP 4th Bn Day 7 Routine (2026-11-02) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.725Z"
+  },
+  {
+    "id": "routine-day-8",
+    "dayNumber": 8,
+    "date": "2026-11-03",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-8.json",
+    "notes": "STC, SAP 4th Bn Day 8 Routine (2026-11-03) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.726Z"
+  },
+  {
+    "id": "routine-day-9",
+    "dayNumber": 9,
+    "date": "2026-11-04",
+    "status": "published",
+    "isLocked": false,
+    "filePath": "routines/routine_routine-day-9.json",
+    "notes": "STC, SAP 4th Bn Day 9 Routine (2026-11-04) - Batch generated (7 days)",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T18:03:21.728Z"
   }
 ]

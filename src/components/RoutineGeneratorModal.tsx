@@ -1022,54 +1022,80 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             </button>
 
             {isRulesExpanded && (
-              <div className="p-3.5 pt-0 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <div className="p-3.5 pt-0 border-t border-slate-200/80 space-y-3 mt-2">
                 {[
-                  { key: 'enableWorkloadEqualization', label: 'Workload & Session Equalization' },
-                  { key: 'enablePaperRotationalFlow', label: 'Subject / Paper Rotational Caravan Flow' },
-                  { key: 'enableCaravanFlow', label: 'Instructor Caravan Flow (Default: OFF)' },
-                  { key: 'enableBuildingChangeGap', label: '1-Period Gap on Building Shift' },
-                  { key: 'enableDayToDayProgression', label: 'Day-to-Day Room Carryover' },
-                  { key: 'enableZeroDoubleBooking', label: 'Strict Zero Double-Booking' },
-                  { key: 'enableStrictAbsenteeExclusion', label: 'Strict Absentee Exclusion' },
-                  { key: 'enableDesignatedBackup', label: 'Designated Backup Substitution' },
-                  { key: 'enableCrossMutualBackup', label: 'Cross-Subject Mutual Backup' },
-                  { key: 'enableSubjectPriorityTiers', label: 'Percentage-Based Priority Scaling (High: +50%, Low: -50%)' },
-                  { key: 'enableProportionalRemainingRatio', label: 'Proportional Remaining Quota Fill-Up (75 Sessions)' },
-                  { key: 'enableGuaranteedPriorityPeriods', label: 'Guaranteed Priority Minimum Periods Delivery' },
-                  { key: 'enableClassroomSubjectEqualization', label: 'Classroom Subject Quota % Equalization' },
-                  { key: 'enableRoomQuotaCompletionLock', label: 'Classroom 100% Quota Completion Lock' },
-                  { key: 'enableMaxRoomDailyLimit', label: 'Max 2 Periods/Subject in Room' },
-                  { key: 'enableDailyWorkloadSoftCap', label: 'Daily Load Soft-Cap (<= 3 Periods)' },
-                  { key: 'enablePracticalFlexible', label: 'Flexible Practical Staffing' },
-                  { key: 'enableSingleSubjectPerClassDaily', label: 'Single Subject Per Classroom Daily (Max 1 Subject/Class/Day)' },
-                  { key: 'enableNoSubstituteAllotment', label: 'No Substitute Allotment (Strict Primary Teacher Only - Blank)' },
-                  { key: 'replaceWithAvailableSubjectIfNoPrimary', label: 'Replace with Alternate Available Subject (Sub-Rule)' },
-                ].map((rule) => {
-                  const isChecked = Boolean(localRules[rule.key as keyof RoutineRuleConfig]);
-                  return (
-                    <label
-                      key={rule.key}
-                      className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
-                        isChecked
-                          ? 'bg-white border-blue-200 text-slate-900 font-medium shadow-2xs'
-                          : 'bg-slate-100 border-slate-200 text-slate-400'
-                      }`}
-                    >
-                      <span>{rule.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() =>
-                          setLocalRules((prev) => ({
-                            ...prev,
-                            [rule.key]: !prev[rule.key as keyof RoutineRuleConfig],
-                          }))
-                        }
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </label>
-                  );
-                })}
+                  {
+                    tier: 'Tier 1: Inviolable Operational Constraints (Hard Rules)',
+                    rules: [
+                      { key: 'enableZeroDoubleBooking', label: '1. Strict Zero Double-Booking Guarantee' },
+                      { key: 'enableStrictAbsenteeExclusion', label: '2. Faculty Absentee & Leave Exclusion' },
+                      { key: 'enableStrictBuildingBinding', label: '3. Strict Building Detailment (Old in OB, New in NB)' },
+                      { key: 'enableBuildingChangeGap', label: '4. 1-Period Gap on Floating Campus Transit' },
+                      { key: 'enableRoomQuotaCompletionLock', label: '5. Classroom 100% Syllabus Quota Lockout' },
+                      { key: 'enableMaxOnePeriodPerSubjectPerRoomDaily', label: '6. Single Period/Subject/Room Daily (Moto II)' },
+                      { key: 'enableNonConsecutiveGapForSameSubject', label: '7. Mandatory Non-Consecutive Gap (Moto II)' },
+                      { key: 'enableMaxRoomDailyLimit', label: '8. Max 2 Periods/Subject in Room Daily' },
+                    ]
+                  },
+                  {
+                    tier: 'Tier 2: Curriculum Progression & Subject Detailment (Moto I & IV)',
+                    rules: [
+                      { key: 'enableClassroomSubjectEqualization', label: '9. Room Quota % Equalization (Moto I)' },
+                      { key: 'enablePaperRotationalFlow', label: '10. Sequential Subject Rotational Flow (Moto IV)' },
+                      { key: 'enableProportionalRemainingRatio', label: '11. Proportional Remaining Quota Fill-Up' },
+                      { key: 'enableSubjectPriorityTiers', label: '12. Priority Scaling (+50% High / -50% Low)' },
+                      { key: 'enableGuaranteedPriorityPeriods', label: '13. Guaranteed Priority Minimum Periods' },
+                      { key: 'enableDayToDayProgression', label: '14. Day-to-Day Room Carryover' },
+                    ]
+                  },
+                  {
+                    tier: 'Tier 3: Faculty Staffing & Workload Management (Moto III)',
+                    rules: [
+                      { key: 'enableWorkloadEqualization', label: '15. Faculty Workload & Session Equalization' },
+                      { key: 'enableDailyWorkloadSoftCap', label: '16. Daily Load Soft-Cap (<= 3 Periods)' },
+                      { key: 'enableNoSubstituteAllotment', label: '17. Strict Main Teacher Only (No Substitute - Blank)' },
+                      { key: 'replaceWithAvailableSubjectIfNoPrimary', label: '18. Replace with Alternate Available Subject' },
+                      { key: 'enableDesignatedBackup', label: '19. Designated Backup Substitution' },
+                      { key: 'enableCrossMutualBackup', label: '20. Cross-Subject Mutual Backup' },
+                      { key: 'enablePracticalFlexible', label: '21. Flexible Practical (P-13) Staffing' },
+                      { key: 'enableCaravanFlow', label: '22. Instructor Caravan Flow (Default: OFF)' },
+                    ]
+                  }
+                ].map((tierGroup, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100/70 px-2 py-0.5 rounded">
+                      {tierGroup.tier}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {tierGroup.rules.map((rule) => {
+                        const isChecked = Boolean(localRules[rule.key as keyof RoutineRuleConfig]);
+                        return (
+                          <label
+                            key={rule.key}
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
+                              isChecked
+                                ? 'bg-white border-blue-200 text-slate-900 font-medium shadow-2xs'
+                                : 'bg-slate-100 border-slate-200 text-slate-400'
+                            }`}
+                          >
+                            <span className="truncate pr-2">{rule.label}</span>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() =>
+                                setLocalRules((prev) => ({
+                                  ...prev,
+                                  [rule.key]: !prev[rule.key as keyof RoutineRuleConfig],
+                                }))
+                              }
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

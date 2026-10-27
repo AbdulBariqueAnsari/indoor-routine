@@ -2,7 +2,10 @@
   "id": "routine-day-2",
   "dayNumber": 2,
   "date": "2026-10-28",
-  "absentTeacherIds": [],
+  "absentTeacherIds": [
+    "T2",
+    "T17"
+  ],
   "priorityPaperIds": [
     "P01",
     "P02",
@@ -231,7 +234,7 @@
       "paperId": "P01",
       "teacherId": "T1",
       "isSubstitute": false,
-      "isPriority": true
+      "isPriority": false
     },
     {
       "id": "slot-2-OB-2-P1",
@@ -291,8 +294,8 @@
       "id": "slot-2-OB-8-P1",
       "roomId": "OB-8",
       "period": 1,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P02",
+      "teacherId": "T5",
       "isSubstitute": false,
       "isPriority": true
     },
@@ -301,9 +304,11 @@
       "roomId": "NB-1",
       "period": 1,
       "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T3",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Co-primary instructor [T3] ASI(UB) Surojit Kr. Das"
     },
     {
       "id": "slot-2-NB-2-P1",
@@ -363,8 +368,8 @@
       "id": "slot-2-OB-1-P2",
       "roomId": "OB-1",
       "period": 2,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P10",
+      "teacherId": "T20",
       "isSubstitute": false,
       "isPriority": true
     },
@@ -445,9 +450,11 @@
       "roomId": "NB-2",
       "period": 2,
       "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T3",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Co-primary instructor [T3] ASI(UB) Surojit Kr. Das"
     },
     {
       "id": "slot-2-NB-3-P2",
@@ -507,8 +514,8 @@
       "id": "slot-2-OB-2-P3",
       "roomId": "OB-2",
       "period": 3,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P11",
+      "teacherId": "T22",
       "isSubstitute": false,
       "isPriority": true
     },
@@ -589,9 +596,11 @@
       "roomId": "NB-3",
       "period": 3,
       "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T3",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Co-primary instructor [T3] ASI(UB) Surojit Kr. Das"
     },
     {
       "id": "slot-2-CR-NB-12-1793034850769-P3",
@@ -901,8 +910,22 @@
     }
   ],
   "createdAt": "2026-10-27T07:44:58.065Z",
-  "updatedAt": "2026-10-27T08:42:15.197Z",
+  "updatedAt": "2026-10-27T17:55:59.821Z",
   "isLocked": true,
   "status": "published",
-  "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - 0 instructors on leave, 1 subjects excluded"
+  "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - 0 instructors on leave, 1 subjects excluded",
+  "unavailableTeachers": [
+    {
+      "teacherId": "T2",
+      "type": "DUTY",
+      "remark": "Special / Law & Order / Campus Duty",
+      "date": "2026-10-28"
+    },
+    {
+      "teacherId": "T17",
+      "type": "DUTY",
+      "remark": "Special / Law & Order / Campus Duty",
+      "date": "2026-10-28"
+    }
+  ]
 }

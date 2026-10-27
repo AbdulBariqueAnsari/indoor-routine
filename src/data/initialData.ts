@@ -23,26 +23,36 @@ export const INITIAL_BUILDINGS: BuildingInfo[] = [
 ];
 
 export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
-  enableWorkloadEqualization: true,
-  enableCaravanFlow: false, // Teacher caravan flow kept OFF by default per user specification
-  enablePaperRotationalFlow: true, // Sequential Classroom Subject Rotation (Paper in Room K in Period P moves to Room K+1 in Period P+1)
-  enableBuildingChangeGap: true,
-  enableDayToDayProgression: true,
+  // Tier 1: Inviolable Constraints
   enableZeroDoubleBooking: true,
   enableStrictAbsenteeExclusion: true,
-  enableDesignatedBackup: true,
-  enableCrossMutualBackup: true,
-  enableSubjectPriorityTiers: true,
+  enableStrictBuildingBinding: true, // Moto III: Old-building teachers in OB only, New in NB only
+  enableBuildingChangeGap: true, // Moto III: Floating teachers require 1-period transit gap
+  enableRoomQuotaCompletionLock: true, // 100% room syllabus lockout
+  enableMaxOnePeriodPerSubjectPerRoomDaily: true, // Moto II: Strict max 1 period per subject per room daily
+  enableNonConsecutiveGapForSameSubject: true, // Moto II: Mandatory >= 1 period gap (never consecutive)
+  enableMaxRoomDailyLimit: true, // Max 2 periods of same subject per room daily
+
+  // Tier 2: Curriculum Progression (Moto I & IV)
+  enableClassroomSubjectEqualization: true, // Moto I: Equalize completion % across rooms
+  enablePaperRotationalFlow: true, // Moto IV: Sequential Subject Rotation across Classrooms
   enableProportionalRemainingRatio: true,
+  enableSubjectPriorityTiers: true,
   enableGuaranteedPriorityPeriods: true,
-  enableClassroomSubjectEqualization: true, // Equalize subject sessions per individual classroom
-  enableRoomQuotaCompletionLock: true, // Lock and exclude subjects from being allocated to a classroom once reaching 100% quota in that room
-  enableMaxRoomDailyLimit: true,
+  enableDayToDayProgression: true,
+
+  // Tier 3: Staffing & Workload (Moto III)
+  enableWorkloadEqualization: true,
   enableDailyWorkloadSoftCap: true,
   enablePracticalFlexible: true,
-  enableSingleSubjectPerClassDaily: false, // Ek class me ek din me maximum 1 hi subject
-  enableNoSubstituteAllotment: false, // No substitute allotment - slot khali rahega
-  replaceWithAvailableSubjectIfNoPrimary: false, // Dusra available subject se replace karne ka rule
+  enableCaravanFlow: false, // Teacher caravan kept OFF in favor of Subject Rotation
+  enableNoSubstituteAllotment: false, // Default false, customizable
+  replaceWithAvailableSubjectIfNoPrimary: false,
+  enableDesignatedBackup: true,
+  enableCrossMutualBackup: true,
+
+  // Compatibility
+  enableSingleSubjectPerClassDaily: false,
 };
 
 export const INITIAL_CLASSROOMS: Classroom[] = [
@@ -233,7 +243,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T1',
     name: 'Insp. R. K. Sharma',
     designation: 'Senior Law Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P01'],
     backupPaperIds: ['P02', 'P03'],
     secondaryPaperIds: ['P02', 'P03'],
@@ -245,7 +255,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T2',
     name: 'Insp. Ajay Dev',
     designation: 'Procedural Law Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P01'],
     backupPaperIds: ['P02', 'P04'],
     secondaryPaperIds: ['P02', 'P04'],
@@ -271,7 +281,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T4',
     name: 'SI Meenakshi Singh',
     designation: 'Substantive Law Specialist',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P02'],
     backupPaperIds: ['P01', 'P04'],
     secondaryPaperIds: ['P01', 'P04'],
@@ -283,7 +293,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T5',
     name: 'SI Rajesh Prasad',
     designation: 'Substantive Law Master',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P02'],
     backupPaperIds: ['P01', 'P04'],
     secondaryPaperIds: ['P01', 'P04'],
@@ -295,7 +305,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T6',
     name: 'Insp. Harinder Singh',
     designation: 'BNS Senior Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P02'],
     backupPaperIds: ['P01', 'P03'],
     secondaryPaperIds: ['P01', 'P03'],
@@ -307,7 +317,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T7',
     name: 'Insp. Santosh Mishra',
     designation: 'BNS Instructor Specialist',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P02'],
     backupPaperIds: ['P01', 'P03'],
     secondaryPaperIds: ['P01', 'P03'],
@@ -321,7 +331,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T8',
     name: 'SI Vikash Chandra',
     designation: 'Central & Local Laws Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P03'],
     backupPaperIds: ['P01', 'P02'],
     secondaryPaperIds: ['P01', 'P02'],
@@ -333,7 +343,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T9',
     name: 'Insp. B. P. Tiwari',
     designation: 'Special Acts Specialist',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P03'],
     backupPaperIds: ['P01', 'P02'],
     secondaryPaperIds: ['P01', 'P02'],
@@ -373,7 +383,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T12',
     name: 'Dr. Suresh Joshi',
     designation: 'Forensics Director',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P05'],
     backupPaperIds: ['P06', 'P04'],
     secondaryPaperIds: ['P06', 'P04'],
@@ -385,7 +395,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T13',
     name: 'SI Poonam Pathak',
     designation: 'Ballistics & Forensics Expert',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P05'],
     backupPaperIds: ['P06', 'P07'],
     secondaryPaperIds: ['P06', 'P07'],
@@ -399,7 +409,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T14',
     name: 'SI Rohit Malhotra',
     designation: 'Cyber Investigation Master',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P06'],
     backupPaperIds: ['P05', 'P09'],
     secondaryPaperIds: ['P05', 'P09'],
@@ -411,7 +421,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T15',
     name: 'SI Ankit Kumar',
     designation: 'Cyber Investigation Trainer',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P06'],
     backupPaperIds: ['P05', 'P09'],
     secondaryPaperIds: ['P05', 'P09'],
@@ -453,7 +463,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T18',
     name: 'SI Manoj K. Yadav',
     designation: 'Station Administration Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P09'],
     backupPaperIds: ['P07', 'P08'],
     secondaryPaperIds: ['P07', 'P08'],
@@ -465,7 +475,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T19',
     name: 'SI Preeti Mathur',
     designation: 'Station Records & Investigation Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P09'],
     backupPaperIds: ['P07', 'P08'],
     secondaryPaperIds: ['P07', 'P08'],
@@ -479,7 +489,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T20',
     name: 'SI Geeta Rawat',
     designation: 'Personal Development Counselor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P10'],
     backupPaperIds: ['P11', 'P12'],
     secondaryPaperIds: ['P11', 'P12'],
@@ -491,7 +501,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T21',
     name: 'SI Kavita Rathore',
     designation: 'Behavioral Skills & Leadership Counselor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P10'],
     backupPaperIds: ['P11', 'P12'],
     secondaryPaperIds: ['P11', 'P12'],
@@ -505,7 +515,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T22',
     name: 'Insp. Ashok Kumar',
     designation: 'Internal Security & Public Order Master',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P11'],
     backupPaperIds: ['P09', 'P10'],
     secondaryPaperIds: ['P09', 'P10'],
@@ -517,7 +527,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T23',
     name: 'Insp. Gaurav Saxena',
     designation: 'Internal Security & Tactical Head',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P11'],
     backupPaperIds: ['P09', 'P10'],
     secondaryPaperIds: ['P09', 'P10'],
@@ -531,7 +541,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T24',
     name: 'SI Pradeep Kumar',
     designation: 'Ethics & Police Accountability Instructor',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'NEW',
     primaryPaperIds: ['P12'],
     backupPaperIds: ['P10', 'P08'],
     secondaryPaperIds: ['P10', 'P08'],
@@ -543,7 +553,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     code: 'T25',
     name: 'Insp. K. K. Pandey',
     designation: 'Ethics, Integrity & Values Trainer',
-    assignedBuilding: 'FLOATING',
+    assignedBuilding: 'OLD',
     primaryPaperIds: ['P12'],
     backupPaperIds: ['P10', 'P08'],
     secondaryPaperIds: ['P10', 'P08'],

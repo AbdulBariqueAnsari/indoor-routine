@@ -25,26 +25,36 @@ export interface UnavailableInstructor {
 }
 
 export interface RoutineRuleConfig {
-  enableWorkloadEqualization: boolean; // Balance instructor cumulative sessions gradually
-  enableCaravanFlow: boolean; // Same-building room progression carrying ongoing subject (K -> K+1) [teacher caravan]
-  enablePaperRotationalFlow: boolean; // Sequential Classroom Subject Rotation (Paper in Room K in Period P moves to Room K+1 in Period P+1)
-  enableBuildingChangeGap: boolean; // Mandatory 1-period gap on building shifts
-  enableDayToDayProgression: boolean; // Room progression carry-over from previous day's last slot
-  enableZeroDoubleBooking: boolean; // Guarantee no instructor double-booked in same period
-  enableStrictAbsenteeExclusion: boolean; // Strictly exclude absent / on-leave instructors
-  enableDesignatedBackup: boolean; // Appoint backup slot 1 & 2 instructors when primary unavailable
-  enableCrossMutualBackup: boolean; // Cross-subject mutual backup (Forensics <-> ICT, Police Admin <-> Criminology)
-  enableSubjectPriorityTiers: boolean; // Enforce High (+50%), Low (-50%) Priority Scaling (capped at classroom count)
-  enableProportionalRemainingRatio: boolean; // Fill 75 daily sessions in proportion to remaining session percentage per subject
-  enableGuaranteedPriorityPeriods: boolean; // Strictly deliver minimum required periods for priority subjects
-  enableClassroomSubjectEqualization: boolean; // Equalize cumulative sessions per subject within each individual classroom
-  enableRoomQuotaCompletionLock: boolean; // Lock and exclude subjects from being allocated to a classroom once reaching 100% quota in that room
-  enableMaxRoomDailyLimit: boolean; // Maximum 2 periods of same subject per room per day
-  enableDailyWorkloadSoftCap: boolean; // Instructor daily load soft-cap (target <= 3 periods)
-  enablePracticalFlexible: boolean; // Flexible staffing for Practical (Paper-13) across campus
-  enableSingleSubjectPerClassDaily: boolean; // Ek class me ek din me maximum ek hi subject apply hoga
+  // === TIER 1: Inviolable Operational Constraints (Hard Constraints) ===
+  enableZeroDoubleBooking: boolean; // Zero Double-Booking: Instructor cannot teach in 2 rooms at the same time
+  enableStrictAbsenteeExclusion: boolean; // Strict Absentee/Leave Exclusion: Absent/Leave/Duty/Sick teachers strictly excluded
+  enableStrictBuildingBinding: boolean; // Moto III: Strict Building Binding (Old strictly in OB, New strictly in NB; only Floating can cross)
+  enableBuildingChangeGap: boolean; // Moto III: Mandatory 1-Period Transit Gap on Floating Building Transition
+  enableRoomQuotaCompletionLock: boolean; // 100% Quota Lockout: Room cannot receive paper once reaching 100% target quota
+  enableMaxOnePeriodPerSubjectPerRoomDaily: boolean; // Moto II: Max 1 period of a subject per room per day (5 different subjects/day)
+  enableNonConsecutiveGapForSameSubject: boolean; // Moto II: Non-consecutive subject gap (mandatory >= 1 period gap if 2 periods occur)
+  enableMaxRoomDailyLimit: boolean; // Daily Max Cap: Maximum 2 periods of any subject per room per day
+
+  // === TIER 2: Curriculum Progression & Subject Placement (Moto I & IV) ===
+  enableClassroomSubjectEqualization: boolean; // Moto I: Equalize subject completion % across all rooms (lowest % first)
+  enablePaperRotationalFlow: boolean; // Moto IV: Sequential Subject Rotation across Classrooms (Room K in P -> Room K+1 in P+1)
+  enableProportionalRemainingRatio: boolean; // Proportional session ratio based on remaining syllabus quota
+  enableSubjectPriorityTiers: boolean; // Priority scaling (High: +50%, Low: -50%)
+  enableGuaranteedPriorityPeriods: boolean; // Strictly deliver minimum required periods for prioritized subjects
+  enableDayToDayProgression: boolean; // Day-to-day progression carry-over from previous day
+
+  // === TIER 3: Instructor Staffing & Workload Balancing (Moto III) ===
+  enableWorkloadEqualization: boolean; // Cumulative instructor session balancing across the academy
+  enableDailyWorkloadSoftCap: boolean; // Daily workload soft-cap (target <= 3 periods/day)
+  enablePracticalFlexible: boolean; // Practical (Paper-13) flexible staffing across campus
+  enableCaravanFlow: boolean; // Teacher caravan (instructor travels with paper; default OFF)
   enableNoSubstituteAllotment: boolean; // Strict main teacher only: no substitute allotted, slot left blank if primary unavailable
-  replaceWithAvailableSubjectIfNoPrimary: boolean; // Sub-rule under no substitute: replace with alternate available subject if primary unavailable
+  replaceWithAvailableSubjectIfNoPrimary: boolean; // Sub-rule of No Substitute: replace with alternate available subject if primary unavailable
+  enableDesignatedBackup: boolean; // Designated backup instructors (when substitution is permitted)
+  enableCrossMutualBackup: boolean; // Cross-subject mutual backup (Forensics <-> ICT, Police Admin <-> Criminology)
+
+  // Backward-compatibility alias
+  enableSingleSubjectPerClassDaily?: boolean;
 }
 
 export interface Classroom {

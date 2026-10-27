@@ -18,171 +18,221 @@ interface RoutineRulesModalProps {
 interface RuleItem {
   key: keyof RoutineRuleConfig;
   title: string;
-  category: 'Workload & Balancing' | 'Movement & Building' | 'Attendance & Substitution' | 'Curriculum & Room Limits';
+  category: 'Tier 1: Inviolable Constraints' | 'Tier 2: Curriculum & Progression (Moto I & IV)' | 'Tier 3: Staffing & Substitution (Moto III)';
   description: string;
   badge: string;
+  tierNumber: 1 | 2 | 3;
 }
 
 const RULES_LIST: RuleItem[] = [
-  {
-    key: 'enableWorkloadEqualization',
-    title: 'Workload & Session Equalization',
-    category: 'Workload & Balancing',
-    badge: 'Fair Workload',
-    description:
-      'Dynamically prioritizes lagging instructors in Practical and Backup slots so all 26 instructors gradually converge to approximately equal total sessions.',
-  },
-  {
-    key: 'enableDailyWorkloadSoftCap',
-    title: 'Daily Workload Soft-Cap (Max 3 Periods/Day)',
-    category: 'Workload & Balancing',
-    badge: 'Quota Control',
-    description:
-      'Prioritizes instructors with fewer than 3 periods today before assigning a 4th period, keeping daily teaching load balanced across campus.',
-  },
-  {
-    key: 'enablePracticalFlexible',
-    title: 'Flexible Practical (Paper-13) Staffing',
-    category: 'Workload & Balancing',
-    badge: 'Staffing Equalizer',
-    description:
-      'Practical does not have dedicated instructors; permits any qualified available instructor to conduct Practical sessions to balance workloads.',
-  },
-  {
-    key: 'enablePaperRotationalFlow',
-    title: 'Subject / Paper Rotational Caravan Flow',
-    category: 'Movement & Building',
-    badge: 'Rotational Mode',
-    description:
-      'Rotational curriculum mode: If Paper X is in Room 2 in Period 1, it automatically advances to Room 3 in Period 2, Room 4 in Period 3, and so on across classrooms. Qualified instructors are assigned dynamically.',
-  },
-  {
-    key: 'enableCaravanFlow',
-    title: 'Instructor-Bound Caravan Flow (Default: OFF)',
-    category: 'Movement & Building',
-    badge: 'Teacher Caravan',
-    description:
-      'Forces the specific instructor to physically travel with their subject consecutively from Room K to Room K+1. Kept OFF by default in favor of Subject Rotational Flow.',
-  },
-  {
-    key: 'enableBuildingChangeGap',
-    title: 'Mandatory 1-Period Gap on Building Transition',
-    category: 'Movement & Building',
-    badge: 'Campus Transit',
-    description:
-      'Requires at least a 1-period buffer when shifting between Old School Building and New School Building to accommodate transit time.',
-  },
-  {
-    key: 'enableDayToDayProgression',
-    title: 'Day-to-Day Room Progression Carryover',
-    category: 'Movement & Building',
-    badge: 'Daily Stepper',
-    description:
-      'Seeds Period 1 starting rooms based on where each instructor finished on the previous day (e.g., Room 1 on Day 1 advances to Room 2 on Day 2).',
-  },
+  // ==========================================
+  // TIER 1: INVIOLABLE CONSTRAINTS (HARD RULES)
+  // ==========================================
   {
     key: 'enableZeroDoubleBooking',
-    title: 'Strict Zero Double-Booking Guarantee',
-    category: 'Attendance & Substitution',
-    badge: 'Conflict Prevention',
+    title: '1. Strict Zero Double-Booking Guarantee',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Hard Rule 1',
+    tierNumber: 1,
     description:
       'Strictly prohibits any instructor from being scheduled in multiple classrooms simultaneously during the exact same period.',
   },
   {
     key: 'enableStrictAbsenteeExclusion',
-    title: 'Strict Absentee & Leave Exclusion',
-    category: 'Attendance & Substitution',
-    badge: 'Leave Enforcement',
+    title: '2. Faculty Unavailability & Leave Exclusion',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Hard Rule 2',
+    tierNumber: 1,
     description:
-      'Completely excludes instructors on medical or casual leave from routine generation and triggers substitute staffing protocols.',
+      'Instructors marked Absent, On Leave, Duty, or Sick in the Unavailability Register are strictly excluded from routine creation.',
   },
   {
-    key: 'enableDesignatedBackup',
-    title: 'Designated Backup Instructor Substitution',
-    category: 'Attendance & Substitution',
-    badge: 'Backup Slots 1 & 2',
+    key: 'enableStrictBuildingBinding',
+    title: '3. Strict Building-Bound Faculty Detailment (Moto III)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Moto III: Hard Rule',
+    tierNumber: 1,
     description:
-      'Automatically appoints designated Backup Slot 1 and Backup Slot 2 instructors (acting 100% Floating across campus) when primary instructor is absent.',
+      'Old Building (OB) teachers are strictly bound to Old Building classrooms (OB-1 to OB-8). New Building (NB) teachers are strictly bound to New Building (NB-1 to NB-7). Only Floating teachers can cross between buildings.',
   },
   {
-    key: 'enableCrossMutualBackup',
-    title: 'Cross-Subject Mutual Instructor Backup',
-    category: 'Attendance & Substitution',
-    badge: 'Subject Pairings',
+    key: 'enableBuildingChangeGap',
+    title: '4. Mandatory 1-Period Gap on Floating Campus Transit (Moto III)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Transit Gap',
+    tierNumber: 1,
     description:
-      'Enforces mutual cross-backup pairs: Forensics (Paper-5) <-> ICT Cyber (Paper-6) and Police Admin (Paper-8/9) <-> Criminology (Paper-7).',
-  },
-  {
-    key: 'enableSubjectPriorityTiers',
-    title: 'Percentage-Based Priority Scaling (High: +50%, Low: -50%)',
-    category: 'Curriculum & Room Limits',
-    badge: 'Priority % Scale',
-    description:
-      'Prioritizes subjects on a percentage scale: High priority awards +50% more subject allocation over its standard remaining ratio, Low priority reduces allocation by -50%, strictly capped at the maximum classroom count (15 classrooms).',
-  },
-  {
-    key: 'enableProportionalRemainingRatio',
-    title: 'Proportional Remaining Quota Fill-Up (75 Daily Sessions)',
-    category: 'Curriculum & Room Limits',
-    badge: 'Remaining % Ratio',
-    description:
-      'Fills daily classroom sessions (5 periods × 15 classrooms = 75 total sessions) in exact proportion to each subject\'s remaining session percentage across classrooms, ensuring subjects with large remaining quotas get proportionally more time while small-quota subjects complete at a measured pace.',
-  },
-  {
-    key: 'enableGuaranteedPriorityPeriods',
-    title: 'Guaranteed Priority Minimum Periods Delivery',
-    category: 'Curriculum & Room Limits',
-    badge: 'Strict Priority Quota',
-    description:
-      'Guarantees that subjects prioritized during routine generation strictly receive their minimum required periods (at least 1 period per prioritized classroom or designated quota), using substitute staffing and slot balancing while fully adhering to all other operational rules (zero double-booking, building change gap, instructor caps).',
-  },
-  {
-    key: 'enableClassroomSubjectEqualization',
-    title: 'Individual Classroom Subject Equalization (Quota %)',
-    category: 'Curriculum & Room Limits',
-    badge: 'Class % Balance',
-    description:
-      'Dynamically prioritizes subjects with the lowest completion percentage (sessions delivered / room target quota %) in each specific classroom, ensuring curriculum progress advances equally across all subjects inside every individual class.',
+      'When a Floating instructor crosses between Old School Building and New School Building, a mandatory 1-period buffer is enforced to allow physical movement across campus.',
   },
   {
     key: 'enableRoomQuotaCompletionLock',
-    title: 'Classroom 100% Syllabus Completion Lockout',
-    category: 'Curriculum & Room Limits',
+    title: '5. Classroom 100% Syllabus Quota Lockout',
+    category: 'Tier 1: Inviolable Constraints',
     badge: '100% Quota Lock',
+    tierNumber: 1,
     description:
-      'Strictly locks and excludes any subject paper from being allocated to a classroom once that classroom has reached 100% of its target sessions for that subject, preventing surplus over-teaching and preserving class periods for incomplete subjects.',
+      'Strictly locks and excludes any subject paper from being allocated to a classroom once that classroom has reached 100% of its target sessions for that subject, preserving class periods for lagging subjects.',
+  },
+  {
+    key: 'enableMaxOnePeriodPerSubjectPerRoomDaily',
+    title: '6. Single Period per Subject per Room Daily (Moto II)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Moto II: Daily Variety',
+    tierNumber: 1,
+    description:
+      'Ek room me ek hi din same subject ka 2 period nahi hoga. Har class me din ke 5 periods me 5 alag-alag subjects deliver honge.',
+  },
+  {
+    key: 'enableNonConsecutiveGapForSameSubject',
+    title: '7. Mandatory Non-Consecutive Gap for Same Subject (Moto II)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Moto II: No Back-to-Back',
+    tierNumber: 1,
+    description:
+      'Agar kisi class me kisi subject ke 2 period allow kiye jayein, toh wo kabhi bhi back-to-back nahi honge. Beech me kam se kam 1 period ka gap lazmi hoga (e.g. Period 1 and Period 3/4).',
   },
   {
     key: 'enableMaxRoomDailyLimit',
-    title: 'Classroom Daily Subject Frequency Cap (Max 2/Day)',
-    category: 'Curriculum & Room Limits',
-    badge: 'Topic Variety',
+    title: '8. Classroom Daily Max Limit (Max 2 Periods/Subject/Day)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Frequency Cap',
+    tierNumber: 1,
     description:
-      'Prevents any subject paper from being scheduled more than twice in the exact same classroom on a single day to maintain curriculum diversity.',
+      'Prevents any subject paper from being scheduled more than twice in the exact same classroom on a single day to preserve curriculum diversity.',
+  },
+
+  // ==========================================
+  // TIER 2: CURRICULUM PROGRESSION (MOTO I & IV)
+  // ==========================================
+  {
+    key: 'enableClassroomSubjectEqualization',
+    title: '9. Room-Wise Syllabus Completion % Equalization (Moto I)',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Moto I: % Equalizer',
+    tierNumber: 2,
+    description:
+      'Subject aise detailment ho har rooms me ki overall sessions completion percentage (completed / target quota %) har room aur subject me lagbhag equal aur balanced rahe.',
   },
   {
-    key: 'enableSingleSubjectPerClassDaily',
-    title: 'Single Subject Per Classroom Daily (Max 1 Subject/Class/Day)',
-    category: 'Curriculum & Room Limits',
-    badge: 'Single Subject Focus',
+    key: 'enablePaperRotationalFlow',
+    title: '10. Sequential Subject Rotational Flow Across Classrooms (Moto IV)',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Moto IV: Wave Flow',
+    tierNumber: 2,
     description:
-      'Ek class me ek din me maximum ek hi subject apply hoga. All periods in each classroom are focused on that single subject paper for the day.',
+      'Subject detailment har next period me next room me detail ho (Room K in Period P -> Room K+1 in Period P+1). Teachers subject ke upar building-wise aur floating aadhar par allot honge.',
+  },
+  {
+    key: 'enableProportionalRemainingRatio',
+    title: '11. Proportional Remaining Quota Fill-Up (75 Daily Sessions)',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Remaining % Ratio',
+    tierNumber: 2,
+    description:
+      'Fills daily classroom sessions (5 periods x 15 classrooms = 75 total sessions) in exact proportion to each subject remaining session percentage across classrooms.',
+  },
+  {
+    key: 'enableSubjectPriorityTiers',
+    title: '12. Percentage-Based Priority Scaling (High: +50%, Low: -50%)',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Priority % Scale',
+    tierNumber: 2,
+    description:
+      'Awards +50% allocation to High Priority subjects and reduces Low Priority by -50%, capped at classroom count.',
+  },
+  {
+    key: 'enableGuaranteedPriorityPeriods',
+    title: '13. Guaranteed Priority Minimum Periods Delivery',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Strict Priority Delivery',
+    tierNumber: 2,
+    description:
+      'Guarantees that subjects prioritized during routine generation strictly receive their minimum required periods (at least 1 period per prioritized classroom or designated quota).',
+  },
+  {
+    key: 'enableDayToDayProgression',
+    title: '14. Day-to-Day Room Progression Carryover',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: 'Daily Stepper',
+    tierNumber: 2,
+    description:
+      'Seeds Period 1 starting rooms based on where routine ended on the previous day (e.g. Room 1 advances to Room 2 on next day).',
+  },
+
+  // ==========================================
+  // TIER 3: STAFFING & WORKLOAD (MOTO III)
+  // ==========================================
+  {
+    key: 'enableWorkloadEqualization',
+    title: '15. Cumulative Faculty Workload Equalization',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Fair Workload',
+    tierNumber: 3,
+    description:
+      'Dynamically prioritizes lagging instructors in Practical and Backup slots so all 26 instructors gradually converge to approximately equal total sessions.',
+  },
+  {
+    key: 'enableDailyWorkloadSoftCap',
+    title: '16. Daily Workload Soft-Cap (Max 3 Periods/Day)',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Soft-Cap (<=3)',
+    tierNumber: 3,
+    description:
+      'Prioritizes instructors with fewer than 3 periods today before assigning a 4th period, keeping daily teaching load balanced across campus.',
   },
   {
     key: 'enableNoSubstituteAllotment',
-    title: 'No Substitute Allotment (Strict Primary Teacher Only)',
-    category: 'Attendance & Substitution',
+    title: '17. Strict Main Teacher Only (No Substitute Allotment)',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
     badge: 'No Substitute Allotment',
+    tierNumber: 3,
     description:
       'Agar kisi subject ke liye main teacher nahi hai to koi substitute teacher apply nahi hoga. Wo jagah bilkul khali (blank) rahegi.',
   },
   {
     key: 'replaceWithAvailableSubjectIfNoPrimary',
-    title: 'Replace with Alternate Available Subject (Sub-Rule)',
-    category: 'Attendance & Substitution',
+    title: '18. Replace with Alternate Available Subject (Sub-Rule)',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
     badge: 'Alternate Subject Fill',
+    tierNumber: 3,
     description:
       'Sub-rule under No Substitute: Agar main teacher unavailable ho to khali chhodne ke bajaye slot ko dusre available subject aur uske available primary teacher se replace karein.',
+  },
+  {
+    key: 'enableDesignatedBackup',
+    title: '19. Designated Backup Instructor Substitution',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Backup Slots 1 & 2',
+    tierNumber: 3,
+    description:
+      'When substitution is allowed: Automatically appoints designated Backup Slot 1 and Backup Slot 2 instructors (acting 100% Floating across campus) when primary instructor is absent.',
+  },
+  {
+    key: 'enableCrossMutualBackup',
+    title: '20. Cross-Subject Mutual Instructor Backup',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Subject Pairings',
+    tierNumber: 3,
+    description:
+      'Enforces mutual cross-backup pairs: Forensics (Paper-5) <-> ICT Cyber (Paper-6) and Police Admin (Paper-8/9) <-> Criminology (Paper-7).',
+  },
+  {
+    key: 'enablePracticalFlexible',
+    title: '21. Flexible Practical (Paper-13) Staffing',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Staffing Equalizer',
+    tierNumber: 3,
+    description:
+      'Practical does not have dedicated instructors; permits any qualified available instructor to conduct Practical sessions to balance workloads.',
+  },
+  {
+    key: 'enableCaravanFlow',
+    title: '22. Instructor-Bound Caravan Flow (Default: OFF)',
+    category: 'Tier 3: Staffing & Substitution (Moto III)',
+    badge: 'Teacher Caravan',
+    tierNumber: 3,
+    description:
+      'Forces the specific instructor to physically travel with their subject consecutively from Room K to Room K+1. Kept OFF by default in favor of Subject Rotational Flow.',
   },
 ];
 
@@ -238,7 +288,12 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
     }
   };
 
-  const categories = ['ALL', 'Workload & Balancing', 'Movement & Building', 'Attendance & Substitution', 'Curriculum & Room Limits'];
+  const categories = [
+    'ALL',
+    'Tier 1: Inviolable Constraints',
+    'Tier 2: Curriculum & Progression (Moto I & IV)',
+    'Tier 3: Staffing & Substitution (Moto III)',
+  ];
 
   const filteredRules =
     filterCategory === 'ALL'
