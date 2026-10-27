@@ -1,0 +1,6 @@
+{
+  "name": "Indoor Class Routine Automation",
+  "description": "Conflict-free daily indoor class routine automation system for 15 classrooms (8 Old + 7 New Building), 26 teachers, and 13 papers scaled for 5 daily 40-minute periods across 174 training days.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
