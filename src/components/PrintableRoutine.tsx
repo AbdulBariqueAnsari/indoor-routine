@@ -52,6 +52,37 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
     routine.absentTeacherIds.map((id) => id.replace(/^T0*/, 'T'))
   );
 
+  // Instructors on Leave / Duty / Sick / Absent
+  const unavailableMap = new Map<string, { type: 'LEAVE' | 'DUTY' | 'SICK' | 'ABSENT'; remark?: string }>();
+
+  if (routine.unavailableTeachers && routine.unavailableTeachers.length > 0) {
+    for (const u of routine.unavailableTeachers) {
+      const tid = u.teacherId.replace(/^T0*/, 'T');
+      unavailableMap.set(tid, { type: u.type as any, remark: u.remark });
+    }
+  }
+
+  for (const aid of routine.absentTeacherIds) {
+    const tid = aid.replace(/^T0*/, 'T');
+    if (!unavailableMap.has(tid)) {
+      unavailableMap.set(tid, { type: 'ABSENT', remark: undefined });
+    }
+  }
+
+  const unavailableInstructors = Array.from(unavailableMap.entries()).map(([tid, info]) => {
+    const teacher =
+      teacherMap.get(tid) ||
+      teachers.find((t) => t.id.replace(/^T0*/, 'T') === tid);
+    return {
+      teacherId: tid,
+      code: teacher?.code || tid,
+      name: teacher?.name || tid,
+      designation: teacher?.designation || '',
+      type: info.type,
+      remark: info.remark,
+    };
+  });
+
   const periodAvailability = PERIOD_TIMINGS.map((p) => {
     const busyTeacherIdsInPeriod = new Set(
       routine.slots
@@ -211,39 +242,64 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
           ))}
         </div>
 
-        {/* Leave / Absence Note */}
-        {routine.absentTeacherIds.length > 0 && (
-          <div className="mt-1 p-1 border border-black bg-rose-50/50 text-[8px] flex items-center gap-1.5">
-            <span className="font-bold text-rose-900 uppercase">
-              Instructors on Leave / Absent Today ({routine.absentTeacherIds.length}):
-            </span>
-            <span className="text-slate-800 font-medium">
-              {routine.absentTeacherIds
-                .map((id) => {
-                  const t =
-                    teacherMap.get(id) ||
-                    teachers.find((x) => x.id.replace(/^T0*/, 'T') === id.replace(/^T0*/, 'T'));
-                  return `[${t?.code || id}] ${t?.name || id}`;
-                })
-                .join(', ')}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Instructor Legend: T1 to T26 Reference */}
+      {/* Instructors on Leave / Duty / Sick / Absent Section */}
       <div className="mt-2 p-1.5 border border-black bg-slate-50 text-[8px] break-inside-avoid">
-        <div className="font-bold uppercase tracking-wider mb-0.5 text-black">
-          Instructor Master Reference Legend (26 Instructors: T1 through T26)
+        <div className="flex items-center justify-between border-b border-black pb-0.5 mb-1 font-bold uppercase tracking-wider text-black">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9.5px]">Instructors on Leave / Duty / Sick / Absent</span>
+            {unavailableInstructors.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded bg-black text-white text-[7.5px] font-bold font-mono">
+                Total: {unavailableInstructors.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[7.5px] font-mono text-slate-700">Daily Faculty Status</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-2 gap-y-0.5">
-          {teachers.map((t) => (
-            <div key={t.id} className="truncate">
-              <span className="font-mono font-bold mr-1">[{t.code}]</span>
-              <span>{t.name}</span>
-            </div>
-          ))}
-        </div>
+
+        {unavailableInstructors.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+            {unavailableInstructors.map((item) => {
+              const label =
+                item.type === 'LEAVE'
+                  ? 'ON LEAVE'
+                  : item.type === 'DUTY'
+                  ? 'ON DUTY'
+                  : item.type === 'SICK'
+                  ? 'SICK / MEDICAL'
+                  : 'ABSENT';
+
+              return (
+                <div
+                  key={item.teacherId}
+                  className="border border-black/40 bg-white p-1 rounded-xs"
+                >
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className="font-mono font-bold text-black text-[8.5px]">
+                      [{item.code}]
+                    </span>
+                    <span className="text-[7px] font-bold px-1 py-0.2 rounded border border-black uppercase bg-slate-100 text-black">
+                      {label}
+                    </span>
+                  </div>
+                  <div className="font-semibold text-slate-900 text-[8.5px] truncate">
+                    {item.name}
+                  </div>
+                  {item.remark && (
+                    <div className="text-[7.5px] text-slate-600 truncate mt-0.5 italic">
+                      Remark: {item.remark}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-slate-700 font-medium italic py-0.5 text-[8px]">
+            Nil — All instructors available and on active duty today.
+          </div>
+        )}
       </div>
 
       {/* Official Signature: O/C STC (Indoor) only */}
