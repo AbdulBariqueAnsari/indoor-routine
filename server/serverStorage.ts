@@ -12,15 +12,15 @@ import {
   Paper,
   RoutineRuleConfig,
   Teacher,
-} from '../src/types';
+} from '../src/types/index.ts';
 import {
   DEFAULT_ROUTINE_RULES,
   INITIAL_BUILDINGS,
   INITIAL_CLASSROOMS,
   INITIAL_PAPERS,
   INITIAL_TEACHERS,
-} from '../src/data/initialData';
-import { generateDailyRoutine } from '../src/utils/scheduler';
+} from '../src/data/initialData.ts';
+import { generateDailyRoutine } from '../src/utils/scheduler.ts';
 
 export interface ServerSettings {
   institutionName: string;

@@ -14,8 +14,8 @@ import {
   RoutineRuleConfig,
   SubjectPriorityTier,
   Teacher,
-} from '../types';
-import { DEFAULT_ROUTINE_RULES } from '../data/initialData';
+} from '../types/index.ts';
+import { DEFAULT_ROUTINE_RULES } from '../data/initialData.ts';
 
 export interface SchedulerOptions {
   classrooms: Classroom[];

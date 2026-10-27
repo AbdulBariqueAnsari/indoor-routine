@@ -4,7 +4,7 @@
  */
 
 import { Plugin } from 'vite';
-import { serverStorage } from './serverStorage';
+import { serverStorage } from './serverStorage.ts';
 import url from 'url';
 
 export function viteApiPlugin(): Plugin {

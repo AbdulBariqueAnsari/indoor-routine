@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BuildingInfo, Classroom, Paper, RoutineRuleConfig, Teacher } from '../types';
+import { BuildingInfo, Classroom, Paper, RoutineRuleConfig, Teacher } from '../types/index.ts';
 
 export const INITIAL_BUILDINGS: BuildingInfo[] = [
   {
