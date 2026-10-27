@@ -1,0 +1,137 @@
+[
+  {
+    "id": "OB-1",
+    "code": "OB-01",
+    "name": "Room No. 1",
+    "building": "OLD",
+    "roomNumber": 1,
+    "floor": 1,
+    "capacity": 70
+  },
+  {
+    "id": "OB-2",
+    "code": "OB-02",
+    "name": "Room No. 2",
+    "building": "OLD",
+    "roomNumber": 2,
+    "floor": 1,
+    "capacity": 70
+  },
+  {
+    "id": "OB-3",
+    "code": "OB-03",
+    "name": "Room No. 3",
+    "building": "OLD",
+    "roomNumber": 3,
+    "floor": 1,
+    "capacity": 70
+  },
+  {
+    "id": "OB-4",
+    "code": "OB-04",
+    "name": "Room No. 4",
+    "building": "OLD",
+    "roomNumber": 4,
+    "floor": 1,
+    "capacity": 70
+  },
+  {
+    "id": "OB-5",
+    "code": "OB-05",
+    "name": "Room No. 5",
+    "building": "OLD",
+    "roomNumber": 5,
+    "floor": 2,
+    "capacity": 70
+  },
+  {
+    "id": "OB-6",
+    "code": "OB-06",
+    "name": "Room No. 6",
+    "building": "OLD",
+    "roomNumber": 6,
+    "floor": 2,
+    "capacity": 70
+  },
+  {
+    "id": "OB-7",
+    "code": "OB-07",
+    "name": "Room No. 7",
+    "building": "OLD",
+    "roomNumber": 7,
+    "floor": 2,
+    "capacity": 70
+  },
+  {
+    "id": "OB-8",
+    "code": "OB-08",
+    "name": "Room No. 8",
+    "building": "OLD",
+    "roomNumber": 8,
+    "floor": 2,
+    "capacity": 70
+  },
+  {
+    "id": "NB-1",
+    "code": "NB-01",
+    "name": "Room No. 9",
+    "building": "NEW",
+    "roomNumber": 1,
+    "floor": 1,
+    "capacity": 52
+  },
+  {
+    "id": "NB-2",
+    "code": "NB-02",
+    "name": "Room No. 10",
+    "building": "NEW",
+    "roomNumber": 2,
+    "floor": 1,
+    "capacity": 52
+  },
+  {
+    "id": "NB-3",
+    "code": "NB-03",
+    "name": "Room No. 11",
+    "building": "NEW",
+    "roomNumber": 3,
+    "floor": 1,
+    "capacity": 52
+  },
+  {
+    "id": "CR-NB-12-1793034850769",
+    "code": "NB-12",
+    "name": "Room No. 12",
+    "building": "NEW",
+    "roomNumber": 12,
+    "floor": 1,
+    "capacity": 52
+  },
+  {
+    "id": "CR-NB-13-1793034866049",
+    "code": "NB-13",
+    "name": "Room No. 13",
+    "building": "NEW",
+    "roomNumber": 13,
+    "floor": 2,
+    "capacity": 52
+  },
+  {
+    "id": "CR-NB-14-1793034895859",
+    "code": "NB-14",
+    "name": "Room No. 14",
+    "building": "NEW",
+    "roomNumber": 14,
+    "floor": 2,
+    "capacity": 52
+  },
+  {
+    "id": "CR-NB-15-1793034922650",
+    "code": "NB-15",
+    "name": "Room No. 15",
+    "building": "NEW",
+    "roomNumber": 15,
+    "floor": 2,
+    "capacity": 48
+  }
+]

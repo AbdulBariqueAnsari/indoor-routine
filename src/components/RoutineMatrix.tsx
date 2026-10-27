@@ -22,6 +22,7 @@ import {
   Sparkles,
   UserCheck,
   Users,
+  UserX,
   X,
 } from 'lucide-react';
 import { SlotDetailModal } from './SlotDetailModal';
@@ -248,55 +249,74 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             : 'bg-white hover:bg-slate-50'
         }`}
       >
-        <div className="flex flex-col h-full justify-between gap-1.5 min-h-[76px]">
-          {/* Paper / Subject Tag */}
-          <div>
-            <div className="flex items-center justify-between gap-1">
-              <span
-                className="font-bold text-[11px] px-1.5 py-0.5 rounded text-white tracking-wide shrink-0 font-mono shadow-2xs"
-                style={{ backgroundColor: paper?.color || '#4F46E5' }}
-              >
-                {paper?.code || slot.paperId}
-              </span>
-
-              {slot.isPriority && (
-                <span
-                  title="Priority Subject Scheduled"
-                  className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded shrink-0"
-                >
-                  ★ Priority
-                </span>
-              )}
-            </div>
-
-            <p className="font-semibold text-slate-800 text-[11px] mt-1 line-clamp-1" title={paper?.title}>
-              {paper?.title}
-            </p>
+        {!slot.paperId && !slot.teacherId ? (
+          <div className="flex flex-col h-full justify-center items-center gap-1 min-h-[76px] text-center p-1">
+            <span className="text-[11px] font-semibold text-slate-400 italic">-- Blank Slot --</span>
+            {isAdmin && isEditable && (
+              <span className="text-[9px] text-indigo-600 font-medium">Click to assign</span>
+            )}
           </div>
-
-          {/* Teacher Info */}
-          <div className="border-t border-slate-100 pt-1 flex items-end justify-between gap-1">
-            <div className="min-w-0 flex-1">
-              <p
-                className="font-semibold text-slate-900 text-[11px] truncate flex items-center gap-1"
-                title={`${teacher?.code || 'T?'}: ${teacher?.name || ''}`}
-              >
-                <span className="px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] shrink-0">
-                  {teacher?.code || 'T?'}
-                </span>
-                <span className="truncate">{teacher?.name}</span>
-              </p>
-
-              {slot.isSubstitute && (
+        ) : (
+          <div className="flex flex-col h-full justify-between gap-1.5 min-h-[76px]">
+            {/* Paper / Subject Tag */}
+            <div>
+              <div className="flex items-center justify-between gap-1">
                 <span
-                  className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-semibold mt-0.5"
-                  title={slot.substituteReason || 'Substitute Instructor Assigned'}
+                  className="font-bold text-[11px] px-1.5 py-0.5 rounded text-white tracking-wide shrink-0 font-mono shadow-2xs"
+                  style={{ backgroundColor: paper?.color || '#4F46E5' }}
                 >
-                  <UserCheck className="w-2.5 h-2.5 shrink-0" />
-                  <span className="truncate max-w-[120px]">Sub</span>
+                  {paper?.code || slot.paperId || 'N/A'}
                 </span>
-              )}
+
+                {slot.isPriority && (
+                  <span
+                    title="Priority Subject Scheduled"
+                    className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded shrink-0"
+                  >
+                    ★ Priority
+                  </span>
+                )}
+              </div>
+
+              <p className="font-semibold text-slate-800 text-[11px] mt-1 line-clamp-1" title={paper?.title}>
+                {paper?.title || 'Subject Unassigned'}
+              </p>
             </div>
+
+            {/* Teacher Info */}
+            <div className="border-t border-slate-100 pt-1 flex items-end justify-between gap-1">
+              <div className="min-w-0 flex-1">
+                {slot.teacherId ? (
+                  <>
+                    <p
+                      className="font-semibold text-slate-900 text-[11px] truncate flex items-center gap-1"
+                      title={`${teacher?.code || 'T?'}: ${teacher?.name || ''}`}
+                    >
+                      <span className="px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] shrink-0">
+                        {teacher?.code || 'T?'}
+                      </span>
+                      <span className="truncate">{teacher?.name}</span>
+                    </p>
+
+                    {slot.isSubstitute && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-semibold mt-0.5"
+                        title={slot.substituteReason || 'Substitute Instructor Assigned'}
+                      >
+                        <UserCheck className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate max-w-[120px]">Sub</span>
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span
+                    className="px-1.5 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-semibold inline-block truncate"
+                    title={slot.substituteReason || 'No Instructor Assigned (Vacant)'}
+                  >
+                    No Instructor
+                  </span>
+                )}
+              </div>
 
             {/* Action Indicators (Visible Prominently for Admin) */}
             {isAdmin && isEditable ? (
@@ -329,6 +349,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             )}
           </div>
         </div>
+        )}
       </td>
     );
   };
@@ -483,11 +504,11 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             {onOpenLeaveManager && (
               <button
                 onClick={onOpenLeaveManager}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-colors"
-                title="Instructor leaves and substitute assignments"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 text-rose-200 border border-rose-400/30 hover:bg-rose-500/30 transition-colors"
+                title="Faculty Unavailability Register (Absent / Leave / Duty / Sick)"
               >
-                <Users className="w-3.5 h-3.5" />
-                <span>Leave Manager</span>
+                <UserX className="w-3.5 h-3.5 text-rose-300" />
+                <span>Unavailable Register</span>
               </button>
             )}
 

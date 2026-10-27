@@ -1032,8 +1032,10 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5"
                       >
                         <option value="ACTIVE">Active on Duty</option>
-                        <option value="LEAVE">On Leave / Absent</option>
-                        <option value="DEPUTED">Deputed / Camp Duty</option>
+                        <option value="ABSENT">Absent</option>
+                        <option value="LEAVE">On Leave</option>
+                        <option value="DUTY">Special Duty</option>
+                        <option value="SICK">Sick / Medical</option>
                       </select>
                     </div>
                   </div>
@@ -1242,8 +1244,10 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                               className="w-full text-xs border rounded px-1.5 py-1 bg-white"
                             >
                               <option value="ACTIVE">Active on Duty</option>
+                              <option value="ABSENT">Absent</option>
                               <option value="LEAVE">On Leave</option>
-                              <option value="DEPUTED">Deputed / Camp</option>
+                              <option value="DUTY">Special Duty</option>
+                              <option value="SICK">Sick / Medical</option>
                             </select>
                           </div>
                           <div>
@@ -1394,14 +1398,26 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                               </span>
                               <span
                                 className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                  t.status === 'LEAVE'
+                                  t.status === 'ABSENT'
                                     ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                    : t.status === 'DEPUTED'
+                                    : t.status === 'LEAVE'
                                     ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : t.status === 'DUTY'
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    : t.status === 'SICK'
+                                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
                                     : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 }`}
                               >
-                                {t.status === 'LEAVE' ? 'On Leave' : t.status === 'DEPUTED' ? 'Deputed' : 'Active'}
+                                {t.status === 'ABSENT'
+                                  ? 'Absent'
+                                  : t.status === 'LEAVE'
+                                  ? 'On Leave'
+                                  : t.status === 'DUTY'
+                                  ? 'Duty'
+                                  : t.status === 'SICK'
+                                  ? 'Sick'
+                                  : 'Active'}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">

@@ -10,6 +10,7 @@ import {
   Paper,
   RoutineRuleConfig,
   Teacher,
+  UnavailableInstructor,
 } from '../types';
 
 export interface AppSettings {
@@ -26,6 +27,7 @@ export interface FullServerData {
   routines: DailyRoutine[];
   rules: RoutineRuleConfig;
   settings: AppSettings;
+  unavailability?: UnavailableInstructor[];
 }
 
 const API_BASE = '/api';
@@ -268,6 +270,25 @@ export const api = {
       return data.settings;
     } catch (err) {
       console.error('[API] Error saving settings:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Save faculty unavailability register to the server disk
+   */
+  async saveUnavailability(unavailability: UnavailableInstructor[]): Promise<UnavailableInstructor[]> {
+    try {
+      const res = await fetch(`${API_BASE}/unavailability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unavailability }),
+      });
+      if (!res.ok) throw new Error(`Failed to save unavailability: ${res.statusText}`);
+      const data = await res.json();
+      return data.unavailability;
+    } catch (err) {
+      console.error('[API] Error saving unavailability:', err);
       throw err;
     }
   },

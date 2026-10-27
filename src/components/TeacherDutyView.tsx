@@ -30,6 +30,8 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
   // Build schedule per teacher
   const teacherSchedules = teachers.map((teacher) => {
     const isAbsent = routine.absentTeacherIds.includes(teacher.id);
+    const unavail = routine.unavailableTeachers?.find((u) => u.teacherId === teacher.id);
+    const unavailType = unavail ? unavail.type : isAbsent ? 'ABSENT' : null;
     const assignedSlots = routine.slots.filter((s) => s.teacherId === teacher.id);
     const substituteSlots = assignedSlots.filter((s) => s.isSubstitute);
 
@@ -42,6 +44,8 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
     return {
       teacher,
       isAbsent,
+      unavailType,
+      unavailRemark: unavail?.remark,
       assignedSlots,
       substituteSlots,
       periodMap,
@@ -191,12 +195,31 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                     {/* Status */}
                     <td className="p-3 text-center border-r border-slate-200">
                       {isAbsent ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-100 px-2 py-0.5 rounded">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${
+                            item.unavailType === 'ABSENT'
+                              ? 'text-rose-800 bg-rose-100 border-rose-200'
+                              : item.unavailType === 'LEAVE'
+                              ? 'text-amber-800 bg-amber-100 border-amber-200'
+                              : item.unavailType === 'DUTY'
+                              ? 'text-blue-800 bg-blue-100 border-blue-200'
+                              : 'text-purple-800 bg-purple-100 border-purple-200'
+                          }`}
+                          title={item.unavailRemark || (item.unavailType as string)}
+                        >
                           <UserX className="w-3 h-3" />
-                          <span>Leave</span>
+                          <span>
+                            {item.unavailType === 'ABSENT'
+                              ? 'Absent'
+                              : item.unavailType === 'LEAVE'
+                              ? 'Leave'
+                              : item.unavailType === 'DUTY'
+                              ? 'Duty'
+                              : 'Sick'}
+                          </span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Active</span>
                         </span>

@@ -440,7 +440,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   };
 
   // If enableGuaranteedPriorityPeriods is active, ensure priority papers are populated across rooms
-  if (activeRules.enableGuaranteedPriorityPeriods) {
+  if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableGuaranteedPriorityPeriods) {
     for (const p of schedulingPapers) {
       const minTarget = getGuaranteedMinPeriods(p.id);
       if (minTarget <= 0) continue;
@@ -881,7 +881,13 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     period: number,
     busyTeachersInPeriod: Set<string>,
     room: Classroom
-  ): { teacherId: string; isSubstitute: boolean; originalTeacherId?: string; substituteReason?: string } => {
+  ): {
+    teacherId: string;
+    isSubstitute: boolean;
+    originalTeacherId?: string;
+    substituteReason?: string;
+    alternatePaperId?: string;
+  } => {
     const roomIndex = classroomIndexMap.get(room.id) || 1;
     const roomBuilding = room.building as 'OLD' | 'NEW';
 
@@ -923,6 +929,54 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       return {
         teacherId: sorted[0].id,
         isSubstitute: false,
+      };
+    }
+
+    // 1b. Check if any free primary teacher exists (even at soft-cap)
+    if (freePrimaryTeachers.length > 0) {
+      const sorted = sortCandidatesByProgressionAndLoad(freePrimaryTeachers, roomIndex, false);
+      return {
+        teacherId: sorted[0].id,
+        isSubstitute: false,
+      };
+    }
+
+    // USER RULE: "no subsitute attotemnet.. agar kisi subject k liye main techer nhi to.. koi subsitute techer apply nhi hoga.. bass.. wo jagah khali rahega.. iske sub header me ek rule add karo. ki usko dusra availbale subject se replace karne kliye.."
+    if (activeRules.enableNoSubstituteAllotment) {
+      if (activeRules.replaceWithAvailableSubjectIfNoPrimary) {
+        // Sub-rule: Replace slot with another available subject whose primary instructor IS free
+        for (const altPaper of schedulingPapers) {
+          if (altPaper.id === paper.id) continue;
+          if (combinedExcludedSet.has(altPaper.id)) continue;
+          if (isPaperRoomQuotaCompleted(room.id, altPaper.id)) continue;
+
+          const altPrimaryFree = altPaper.primaryTeacherIds
+            .filter(
+              (tid) =>
+                availableTeacherIds.has(tid) &&
+                !busyTeachersInPeriod.has(tid) &&
+                !hasBuildingChangeConflict(tid, period, roomBuilding)
+            )
+            .map((tid) => teacherMap.get(tid)!)
+            .filter(Boolean);
+
+          if (altPrimaryFree.length > 0) {
+            const sorted = sortCandidatesByProgressionAndLoad(altPrimaryFree, roomIndex, false);
+            return {
+              teacherId: sorted[0].id,
+              isSubstitute: false,
+              alternatePaperId: altPaper.id,
+              substituteReason: `Substituted with alternate available subject [${altPaper.code}] ${altPaper.title} because primary instructor of ${paper.code} was unavailable`,
+            };
+          }
+        }
+      }
+
+      // No substitute allotted: Slot left blank / vacant
+      return {
+        teacherId: '',
+        isSubstitute: false,
+        substituteReason: 'No substitute instructor allotted (Strict No-Substitute rule active)',
       };
     }
 
@@ -1113,113 +1167,132 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   };
 
   // 3. User Rule: "har din new routine creation me.. room wise priority ka option ho.. taki priority subject included hone hi chahiye.. aur suffle hone chahiye.. har period.."
-  // Pre-plan 5 target papers for each classroom today, guaranteeing inclusion of all priority papers and shuffling periods!
+  // Pre-plan target papers for each classroom today
   const roomDailyPlans = new Map<string, Paper[]>();
 
-  for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
-    const room = classrooms[rIdx];
-    const prioIds = getRoomPriorityPaperIds(room.id);
-    const prioPapers = prioIds
-      .map((pid) => paperMap.get(pid)!)
-      .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
+  if (activeRules.enableSingleSubjectPerClassDaily) {
+    // USER RULE: "ek class me ek din me.. maximum ek hi subject hi apply hoga routine creation me...."
+    // Each classroom gets exactly 1 single paper assigned for all 5 periods of today!
+    for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
+      const room = classrooms[rIdx];
+      const prioIds = getRoomPriorityPaperIds(room.id);
+      const prioPapers = prioIds
+        .map((pid) => paperMap.get(pid)!)
+        .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
 
-    const roomDeficits = roomDeficitMaps.get(room.id) || globalDeficitMap;
-    const nonPrioPapers = schedulingPapers
-      .filter((p) => !prioIds.includes(p.id) && !isPaperRoomQuotaCompleted(room.id, p.id))
-      .sort((a, b) => {
-        if (activeRules.enableClassroomSubjectEqualization) {
-          // USER RULE: "corection enable classroom subject equalization ka.. isme actuallly raw session count nhi ho.. balki session percent count hoga"
-          // In THIS specific classroom, calculate session completion percentage (completed / room target quota %)
-          const countInThisRoomA = roomPaperCompletedMap.get(room.id)?.get(a.id) || 0;
-          const countInThisRoomB = roomPaperCompletedMap.get(room.id)?.get(b.id) || 0;
-          const targetQuotaA = a.totalTargetSessions > 0 ? a.totalTargetSessions : 30;
-          const targetQuotaB = b.totalTargetSessions > 0 ? b.totalTargetSessions : 30;
-          const percentInThisRoomA = (countInThisRoomA / targetQuotaA) * 100;
-          const percentInThisRoomB = (countInThisRoomB / targetQuotaB) * 100;
-          if (Math.abs(percentInThisRoomA - percentInThisRoomB) >= 0.01) {
-            return percentInThisRoomA - percentInThisRoomB; // Lowest completion percentage in this classroom first!
+      let singlePaper: Paper;
+      if (prioPapers.length > 0) {
+        singlePaper = prioPapers[0];
+      } else {
+        const eligible = schedulingPapers.filter((p) => !isPaperRoomQuotaCompleted(room.id, p.id));
+        if (eligible.length > 0) {
+          singlePaper = eligible[rIdx % eligible.length];
+        } else {
+          singlePaper = schedulingPapers[rIdx % schedulingPapers.length];
+        }
+      }
+      // Set all 5 periods to this exact single subject
+      roomDailyPlans.set(room.id, [singlePaper, singlePaper, singlePaper, singlePaper, singlePaper]);
+    }
+  } else {
+    for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
+      const room = classrooms[rIdx];
+      const prioIds = getRoomPriorityPaperIds(room.id);
+      const prioPapers = prioIds
+        .map((pid) => paperMap.get(pid)!)
+        .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
+
+      const roomDeficits = roomDeficitMaps.get(room.id) || globalDeficitMap;
+      const nonPrioPapers = schedulingPapers
+        .filter((p) => !prioIds.includes(p.id) && !isPaperRoomQuotaCompleted(room.id, p.id))
+        .sort((a, b) => {
+          if (activeRules.enableClassroomSubjectEqualization) {
+            const countInThisRoomA = roomPaperCompletedMap.get(room.id)?.get(a.id) || 0;
+            const countInThisRoomB = roomPaperCompletedMap.get(room.id)?.get(b.id) || 0;
+            const targetQuotaA = a.totalTargetSessions > 0 ? a.totalTargetSessions : 30;
+            const targetQuotaB = b.totalTargetSessions > 0 ? b.totalTargetSessions : 30;
+            const percentInThisRoomA = (countInThisRoomA / targetQuotaA) * 100;
+            const percentInThisRoomB = (countInThisRoomB / targetQuotaB) * 100;
+            if (Math.abs(percentInThisRoomA - percentInThisRoomB) >= 0.01) {
+              return percentInThisRoomA - percentInThisRoomB;
+            }
+          }
+          const defA = roomDeficits.get(a.id) ?? 0;
+          const defB = roomDeficits.get(b.id) ?? 0;
+          return defB - defA;
+        });
+
+      // Take all priority papers (up to 5)
+      const selectedPapers: Paper[] = [...prioPapers.slice(0, 5)];
+
+      if (activeRules.enableClassroomSubjectEqualization) {
+        const getPercent = (p: Paper) => {
+          const count = roomPaperCompletedMap.get(room.id)?.get(p.id) || 0;
+          const target = p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
+          return (count / target) * 100;
+        };
+
+        const minPercent = nonPrioPapers.length > 0 ? getPercent(nonPrioPapers[0]) : 0;
+        const urgentPapers = nonPrioPapers.filter((p) => getPercent(p) <= minPercent + 2);
+        for (const urg of urgentPapers) {
+          if (selectedPapers.length >= 5) break;
+          if (!selectedPapers.some((p) => p.id === urg.id)) {
+            selectedPapers.push(urg);
           }
         }
-        const defA = roomDeficits.get(a.id) ?? 0;
-        const defB = roomDeficits.get(b.id) ?? 0;
-        return defB - defA;
-      });
 
-    // Take all priority papers (up to 5)
-    const selectedPapers: Paper[] = [...prioPapers.slice(0, 5)];
-
-    if (activeRules.enableClassroomSubjectEqualization) {
-      // Step 1: Identify papers that are severely lagging in this classroom (lowest completion percentage tier)
-      const getPercent = (p: Paper) => {
-        const count = roomPaperCompletedMap.get(room.id)?.get(p.id) || 0;
-        const target = p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
-        return (count / target) * 100;
-      };
-
-      const minPercent = nonPrioPapers.length > 0 ? getPercent(nonPrioPapers[0]) : 0;
-      // Urgent papers are those at or very close to the lowest percentage in this room
-      const urgentPapers = nonPrioPapers.filter((p) => getPercent(p) <= minPercent + 2);
-      for (const urg of urgentPapers) {
-        if (selectedPapers.length >= 5) break;
-        if (!selectedPapers.some((p) => p.id === urg.id)) {
-          selectedPapers.push(urg);
+        let candidateIdx = nonPrioPapers.length > 0 ? (rIdx * 2) % nonPrioPapers.length : 0;
+        let attempts = 0;
+        while (selectedPapers.length < 5 && attempts < nonPrioPapers.length) {
+          const candidate = nonPrioPapers[candidateIdx % nonPrioPapers.length];
+          if (!selectedPapers.some((p) => p.id === candidate.id)) {
+            selectedPapers.push(candidate);
+          }
+          candidateIdx++;
+          attempts++;
+        }
+      } else {
+        let candidateIdx = nonPrioPapers.length > 0 ? (rIdx * 2) % nonPrioPapers.length : 0;
+        let attempts = 0;
+        while (selectedPapers.length < 5 && attempts < nonPrioPapers.length) {
+          const paperCandidate = nonPrioPapers[candidateIdx % nonPrioPapers.length];
+          if (!selectedPapers.some((p) => p.id === paperCandidate.id)) {
+            selectedPapers.push(paperCandidate);
+          }
+          candidateIdx++;
+          attempts++;
         }
       }
 
-      // Step 2: Fill remaining slots by staggering across remaining non-priority papers to avoid campus-wide instructor bottleneck
-      let candidateIdx = nonPrioPapers.length > 0 ? (rIdx * 2) % nonPrioPapers.length : 0;
-      let attempts = 0;
-      while (selectedPapers.length < 5 && attempts < nonPrioPapers.length) {
-        const candidate = nonPrioPapers[candidateIdx % nonPrioPapers.length];
-        if (!selectedPapers.some((p) => p.id === candidate.id)) {
-          selectedPapers.push(candidate);
+      const availableNonCompleted = schedulingPapers.filter(
+        (p) => !isPaperRoomQuotaCompleted(room.id, p.id)
+      );
+      if (availableNonCompleted.length > 0) {
+        for (const cand of availableNonCompleted) {
+          if (selectedPapers.length >= 5) break;
+          if (!selectedPapers.some((p) => p.id === cand.id)) {
+            selectedPapers.push(cand);
+          }
         }
-        candidateIdx++;
-        attempts++;
-      }
-    } else {
-      // Stagger selection so across all 15 classrooms, diverse subjects are covered across campus
-      let candidateIdx = nonPrioPapers.length > 0 ? (rIdx * 2) % nonPrioPapers.length : 0;
-      let attempts = 0;
-      while (selectedPapers.length < 5 && attempts < nonPrioPapers.length) {
-        const paperCandidate = nonPrioPapers[candidateIdx % nonPrioPapers.length];
-        if (!selectedPapers.some((p) => p.id === paperCandidate.id)) {
-          selectedPapers.push(paperCandidate);
-        }
-        candidateIdx++;
-        attempts++;
-      }
-    }
-
-    // If still less than 5, try non-completed papers first
-    const availableNonCompleted = schedulingPapers.filter(
-      (p) => !isPaperRoomQuotaCompleted(room.id, p.id)
-    );
-    if (availableNonCompleted.length > 0) {
-      for (const cand of availableNonCompleted) {
-        if (selectedPapers.length >= 5) break;
-        if (!selectedPapers.some((p) => p.id === cand.id)) {
-          selectedPapers.push(cand);
+        let idx = 0;
+        while (selectedPapers.length < 5 && idx < 10) {
+          selectedPapers.push(availableNonCompleted[idx % availableNonCompleted.length]);
+          idx++;
         }
       }
-      let idx = 0;
-      while (selectedPapers.length < 5 && idx < 10) {
-        selectedPapers.push(availableNonCompleted[idx % availableNonCompleted.length]);
-        idx++;
+
+      while (selectedPapers.length < 5) {
+        selectedPapers.push(schedulingPapers[selectedPapers.length % schedulingPapers.length]);
       }
-    }
 
-    while (selectedPapers.length < 5) {
-      selectedPapers.push(schedulingPapers[selectedPapers.length % schedulingPapers.length]);
-    }
+      // Shuffle periods for this room so priority papers and subjects are distributed across periods 1 to 5
+      for (let i = selectedPapers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [selectedPapers[i], selectedPapers[j]] = [selectedPapers[j], selectedPapers[i]];
+      }
 
-    // Shuffle periods for this room so priority papers and subjects are distributed across periods 1 to 5
-    for (let i = selectedPapers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [selectedPapers[i], selectedPapers[j]] = [selectedPapers[j], selectedPapers[i]];
+      roomDailyPlans.set(room.id, selectedPapers);
     }
-
-    roomDailyPlans.set(room.id, selectedPapers);
   }
 
   const generatedSlots: ClassSlot[] = [];
@@ -1251,7 +1324,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       const canRotateConsecutiveSameBuilding =
         (roomIndex >= 2 && roomIndex <= 8) || (roomIndex >= 10 && roomIndex <= 15);
 
-      if (activeRules.enableCaravanFlow && period > 1 && canRotateConsecutiveSameBuilding) {
+      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableCaravanFlow && period > 1 && canRotateConsecutiveSameBuilding) {
         const prevRoomIndex = roomIndex - 1;
         const prevSlot = generatedSlots.find(
           (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRoomIndex
@@ -1286,7 +1359,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       }
 
       // B. Cross-building rotation with mandatory 1-period gap (Room 8 -> Room 9; Room 15 -> Room 1)
-      if (activeRules.enableCaravanFlow && period > 2 && !assignment) {
+      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableCaravanFlow && period > 2 && !assignment) {
         let prevCrossRoomIndex = 0;
         if (roomIndex === 9) prevCrossRoomIndex = 8; // Old Bldg Room 8 -> New Bldg Room 9 after 1-period gap
         if (roomIndex === 1) prevCrossRoomIndex = 15; // New Bldg Room 15 -> Old Bldg Room 1 after 1-period gap
@@ -1331,7 +1404,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
       // 1B. NEW USER RULE: Subject / Paper Rotational Flow across Classrooms
       // "isme.. jo rotationaly mode ka. hoga.. paper 1 avi room 2 me ho to firse paper 1 next period me room 3 me hoga.. ye jwala rule. jo techer wala bananya tha use off hi rakho.. ye rule banao"
-      if (activeRules.enablePaperRotationalFlow && period > 1 && !assignment) {
+      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enablePaperRotationalFlow && period > 1 && !assignment) {
         const prevRotRoomIndex = roomIndex === 1 ? classrooms.length : roomIndex - 1;
         const prevRotSlot = generatedSlots.find(
           (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRotRoomIndex
@@ -1384,7 +1457,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       }
 
       // C. Day-to-Day start in Period 1:
-      if (activeRules.enableDayToDayProgression && period === 1 && !assignment) {
+      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableDayToDayProgression && period === 1 && !assignment) {
         const dayCandidates = availableTeachers.filter((t) => {
           if (busyTeachersInPeriod.has(t.id)) return false;
           const target = teacherTargetRoomIndex.get(t.id) || 1;
@@ -1449,23 +1522,30 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         assignment = assignTeacherForPaperInPeriod(chosenPaper, period, busyTeachersInPeriod, room);
       }
 
-      // Mark teacher busy in this period
-      busyTeachersInPeriod.add(assignment.teacherId);
+      if ((assignment as any)?.alternatePaperId) {
+        const alt = paperMap.get((assignment as any).alternatePaperId);
+        if (alt) chosenPaper = alt;
+      }
 
-      // Increment teacher daily workload
-      const currentLoad = teacherDailyLoad.get(assignment.teacherId) || 0;
-      teacherDailyLoad.set(assignment.teacherId, currentLoad + 1);
+      if (assignment.teacherId) {
+        // Mark teacher busy in this period
+        busyTeachersInPeriod.add(assignment.teacherId);
 
-      // Record room & building for teacher to enforce building gap & room progression
-      teacherLastSlot.set(assignment.teacherId, {
-        period,
-        building: roomBuilding,
-        roomIndex,
-      });
+        // Increment teacher daily workload
+        const currentLoad = teacherDailyLoad.get(assignment.teacherId) || 0;
+        teacherDailyLoad.set(assignment.teacherId, currentLoad + 1);
 
-      // User Rule: "fir next period pe room 3 milega" -> advances (roomIndex % 15) + 1
-      teacherTargetRoomIndex.set(assignment.teacherId, (roomIndex % classrooms.length) + 1);
-      teacherPreferredPaper.set(assignment.teacherId, chosenPaper.id);
+        // Record room & building for teacher to enforce building gap & room progression
+        teacherLastSlot.set(assignment.teacherId, {
+          period,
+          building: roomBuilding,
+          roomIndex,
+        });
+
+        // User Rule: "fir next period pe room 3 milega" -> advances (roomIndex % 15) + 1
+        teacherTargetRoomIndex.set(assignment.teacherId, (roomIndex % classrooms.length) + 1);
+        teacherPreferredPaper.set(assignment.teacherId, chosenPaper.id);
+      }
 
       // Record paper in room
       roomCounts.set(chosenPaper.id, (roomCounts.get(chosenPaper.id) || 0) + 1);
@@ -1475,7 +1555,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         roomId: room.id,
         period,
         paperId: chosenPaper.id,
-        teacherId: assignment.teacherId,
+        teacherId: assignment.teacherId || '',
         isSubstitute: assignment.isSubstitute,
         originalTeacherId: assignment.originalTeacherId,
         substituteReason: assignment.substituteReason,
@@ -1492,7 +1572,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   // priority lagakar create karta hu.. to.. jitne minimum period dene h.. wo dena hoga..
   // utilising.. remaining all rules"
   // -------------------------------------------------------------------------------------
-  if (activeRules.enableGuaranteedPriorityPeriods) {
+  if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableGuaranteedPriorityPeriods) {
     const priorityTargets = new Map<string, number>();
     for (const p of schedulingPapers) {
       const minP = getGuaranteedMinPeriods(p.id);

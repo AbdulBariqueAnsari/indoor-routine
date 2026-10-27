@@ -1,0 +1,522 @@
+[
+  {
+    "id": "T1",
+    "code": "T1",
+    "name": "SI(UB) Md Jalaluddin",
+    "designation": "Senior Law Instructor",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P01"
+    ],
+    "backupPaperIds": [
+      "P02",
+      "P03"
+    ],
+    "secondaryPaperIds": [
+      "P02",
+      "P03"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10001"
+  },
+  {
+    "id": "T2",
+    "code": "T2",
+    "name": "SI(AB) Hazrat Belal",
+    "designation": "Procedural Law Instructor",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P01"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P08"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P08"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10002"
+  },
+  {
+    "id": "T3",
+    "code": "T3",
+    "name": "ASI(UB) Surojit Kr. Das",
+    "designation": "Criminal Law Floating Instructor",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P01"
+    ],
+    "backupPaperIds": [
+      "P02",
+      "P09"
+    ],
+    "secondaryPaperIds": [
+      "P02",
+      "P09"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10003"
+  },
+  {
+    "id": "T4",
+    "code": "T4",
+    "name": "ASI(AB) Prabir Sarkar",
+    "designation": "Substantive Law Specialist",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P02"
+    ],
+    "backupPaperIds": [
+      "P01",
+      "P04"
+    ],
+    "secondaryPaperIds": [
+      "P01",
+      "P04"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10004"
+  },
+  {
+    "id": "T5",
+    "code": "T5",
+    "name": "SI(UB) Kaushik Sarkar",
+    "designation": "Substantive Law Master",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P02"
+    ],
+    "backupPaperIds": [
+      "P01",
+      "P04"
+    ],
+    "secondaryPaperIds": [
+      "P01",
+      "P04"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10005"
+  },
+  {
+    "id": "T6",
+    "code": "T6",
+    "name": "SI(UB) Biswajit Saha",
+    "designation": "BNS Senior Instructor",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P02"
+    ],
+    "backupPaperIds": [
+      "P09",
+      "P08"
+    ],
+    "secondaryPaperIds": [
+      "P09",
+      "P08"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10006"
+  },
+  {
+    "id": "T7",
+    "code": "T7",
+    "name": "SI(UB) Sadhan Kr Roy",
+    "designation": "BNS Instructor Specialist",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P02"
+    ],
+    "backupPaperIds": [
+      "P09",
+      "P01"
+    ],
+    "secondaryPaperIds": [
+      "P09",
+      "P01"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10007"
+  },
+  {
+    "id": "T8",
+    "code": "T8",
+    "name": "SI(UB) Ebadul Ali Hossain",
+    "designation": "Central & Local Laws Instructor",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P03"
+    ],
+    "backupPaperIds": [
+      "P02",
+      "P07"
+    ],
+    "secondaryPaperIds": [
+      "P02",
+      "P07"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10008"
+  },
+  {
+    "id": "T9",
+    "code": "T9",
+    "name": "SI(UB) Tika Kr. Damai",
+    "designation": "Special Acts Specialist",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P03"
+    ],
+    "backupPaperIds": [
+      "P01",
+      "P02"
+    ],
+    "secondaryPaperIds": [
+      "P01",
+      "P02"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10009"
+  },
+  {
+    "id": "T10",
+    "code": "T10",
+    "name": "SI(UB) Bhudeb Ch. Ghosh",
+    "designation": "Minor Acts Floating Master",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P03"
+    ],
+    "backupPaperIds": [
+      "P11",
+      "P02"
+    ],
+    "secondaryPaperIds": [
+      "P11",
+      "P02"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10010"
+  },
+  {
+    "id": "T11",
+    "code": "T11",
+    "name": "SI(UB) Ratan Sarkar",
+    "designation": "Evidence Law & BSA Specialist",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P04"
+    ],
+    "backupPaperIds": [
+      "P03",
+      "P02"
+    ],
+    "secondaryPaperIds": [
+      "P03",
+      "P02"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10011"
+  },
+  {
+    "id": "T12",
+    "code": "T12",
+    "name": "SI(UB) Abdul Samad",
+    "designation": "Sub Inspector",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P05"
+    ],
+    "backupPaperIds": [
+      "P06",
+      "P12"
+    ],
+    "secondaryPaperIds": [
+      "P06",
+      "P12"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10012"
+  },
+  {
+    "id": "T13",
+    "code": "T13",
+    "name": "SI(UB) Rassel Hossain",
+    "designation": "Ballistics & Forensics Expert",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P05"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P07"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P07"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10013"
+  },
+  {
+    "id": "T14",
+    "code": "T14",
+    "name": "ASI(W) Noor Alam",
+    "designation": "Cyber Investigation Master",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P06"
+    ],
+    "backupPaperIds": [
+      "P05",
+      "P10"
+    ],
+    "secondaryPaperIds": [
+      "P05",
+      "P10"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10014"
+  },
+  {
+    "id": "T15",
+    "code": "T15",
+    "name": "ASI(UB) Nripen Ch Roy",
+    "designation": "Cyber Investigation Trainer",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P06"
+    ],
+    "backupPaperIds": [
+      "P05",
+      "P09"
+    ],
+    "secondaryPaperIds": [
+      "P05",
+      "P09"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10015"
+  },
+  {
+    "id": "T16",
+    "code": "T16",
+    "name": "SI(UB) Ghanashyam Mahato",
+    "designation": "Criminology & Crime Prevention Expert",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P07"
+    ],
+    "backupPaperIds": [
+      "P03",
+      "P09"
+    ],
+    "secondaryPaperIds": [
+      "P03",
+      "P09"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10016"
+  },
+  {
+    "id": "T17",
+    "code": "T17",
+    "name": "SI(AB) Avijit Bala",
+    "designation": "Police Organization & Admin Master",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P08"
+    ],
+    "backupPaperIds": [
+      "P07",
+      "P12"
+    ],
+    "secondaryPaperIds": [
+      "P07",
+      "P12"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10017"
+  },
+  {
+    "id": "T18",
+    "code": "T18",
+    "name": "SI(UB) Parimal Saha",
+    "designation": "Station Administration Instructor",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P09"
+    ],
+    "backupPaperIds": [
+      "P09",
+      "P03"
+    ],
+    "secondaryPaperIds": [
+      "P09",
+      "P03"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10018"
+  },
+  {
+    "id": "T19",
+    "code": "T19",
+    "name": "ASI(UB) Bisu Benjamin Mardi",
+    "designation": "Station Records & Investigation Instructor",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P09"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P11"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P11"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10019"
+  },
+  {
+    "id": "T20",
+    "code": "T20",
+    "name": "SI(UB) Sankar Bhowmick",
+    "designation": "Personal Development Counselor",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P10"
+    ],
+    "backupPaperIds": [
+      "P04",
+      "P07"
+    ],
+    "secondaryPaperIds": [
+      "P04",
+      "P07"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10020"
+  },
+  {
+    "id": "T21",
+    "code": "T21",
+    "name": "SI(UB) Sanjay Majumdar",
+    "designation": "Behavioral Skills & Leadership Counselor",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P10"
+    ],
+    "backupPaperIds": [
+      "P11",
+      "P12"
+    ],
+    "secondaryPaperIds": [
+      "P11",
+      "P12"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10021"
+  },
+  {
+    "id": "T22",
+    "code": "T22",
+    "name": "SI(UB) Biman Ghosh",
+    "designation": "Internal Security & Public Order Master",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P11"
+    ],
+    "backupPaperIds": [
+      "P05",
+      "P10"
+    ],
+    "secondaryPaperIds": [
+      "P05",
+      "P10"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10022"
+  },
+  {
+    "id": "T23",
+    "code": "T23",
+    "name": "SI(AB) Debashis Ray",
+    "designation": "Internal Security & Tactical Head",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P11"
+    ],
+    "backupPaperIds": [
+      "P12",
+      "P09"
+    ],
+    "secondaryPaperIds": [
+      "P12",
+      "P09"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10023"
+  },
+  {
+    "id": "T24",
+    "code": "T24",
+    "name": "SI(UB) Krishnapada Barman",
+    "designation": "Ethics & Police Accountability Instructor",
+    "assignedBuilding": "NEW",
+    "primaryPaperIds": [
+      "P12"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P09"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P09"
+    ],
+    "maxDailyPeriods": 3,
+    "phone": "+91 94120 10024"
+  },
+  {
+    "id": "T25",
+    "code": "T25",
+    "name": "SI(UB) Chandan Kr. Siddhanta",
+    "designation": "Ethics, Integrity & Values Trainer",
+    "assignedBuilding": "OLD",
+    "primaryPaperIds": [
+      "P12"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P07"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P07"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10025"
+  },
+  {
+    "id": "T26",
+    "code": "T26",
+    "name": "ASI(UB) Shiben Hansda",
+    "designation": "Ethics & Accountability Floating Master",
+    "assignedBuilding": "FLOATING",
+    "primaryPaperIds": [
+      "P12"
+    ],
+    "backupPaperIds": [
+      "P10",
+      "P11"
+    ],
+    "secondaryPaperIds": [
+      "P10",
+      "P11"
+    ],
+    "maxDailyPeriods": 4,
+    "phone": "+91 94120 10026"
+  }
+]

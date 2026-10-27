@@ -160,6 +160,30 @@ const RULES_LIST: RuleItem[] = [
     description:
       'Prevents any subject paper from being scheduled more than twice in the exact same classroom on a single day to maintain curriculum diversity.',
   },
+  {
+    key: 'enableSingleSubjectPerClassDaily',
+    title: 'Single Subject Per Classroom Daily (Max 1 Subject/Class/Day)',
+    category: 'Curriculum & Room Limits',
+    badge: 'Single Subject Focus',
+    description:
+      'Ek class me ek din me maximum ek hi subject apply hoga. All periods in each classroom are focused on that single subject paper for the day.',
+  },
+  {
+    key: 'enableNoSubstituteAllotment',
+    title: 'No Substitute Allotment (Strict Primary Teacher Only)',
+    category: 'Attendance & Substitution',
+    badge: 'No Substitute Allotment',
+    description:
+      'Agar kisi subject ke liye main teacher nahi hai to koi substitute teacher apply nahi hoga. Wo jagah bilkul khali (blank) rahegi.',
+  },
+  {
+    key: 'replaceWithAvailableSubjectIfNoPrimary',
+    title: 'Replace with Alternate Available Subject (Sub-Rule)',
+    category: 'Attendance & Substitution',
+    badge: 'Alternate Subject Fill',
+    description:
+      'Sub-rule under No Substitute: Agar main teacher unavailable ho to khali chhodne ke bajaye slot ko dusre available subject aur uske available primary teacher se replace karein.',
+  },
 ];
 
 export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: RoutineRulesModalProps) {

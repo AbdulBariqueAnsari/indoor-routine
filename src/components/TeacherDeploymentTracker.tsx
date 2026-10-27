@@ -50,6 +50,8 @@ export interface TeacherTrackingStats {
   primaryPaperNames: string;
   backupPaperNames: string;
   isOnLeaveToday: boolean;
+  unavailType?: string | null;
+  unavailRemark?: string | null;
   todayPeriodsCount: number;
   totalSessionsCount: number;
   // Today's period by period assignment (Period 1..5)
@@ -108,6 +110,11 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
     return teachers.map((teacher) => {
       const tNormId = norm(teacher.id);
       const isOnLeaveToday = absentSet.has(tNormId);
+      const unavail = currentRoutine?.unavailableTeachers?.find(
+        (u) => norm(u.teacherId) === tNormId
+      );
+      const unavailType = unavail ? unavail.type : isOnLeaveToday ? 'ABSENT' : null;
+      const unavailRemark = unavail?.remark || null;
 
       // Primary paper names
       const primaryPaperNames = teacher.primaryPaperIds
@@ -222,6 +229,8 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
         primaryPaperNames,
         backupPaperNames,
         isOnLeaveToday,
+        unavailType,
+        unavailRemark,
         todayPeriodsCount: todayTeacherSlots.length,
         totalSessionsCount,
         todaySlots: todayTeacherSlots,
@@ -538,7 +547,15 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                   {focusedItem.isOnLeaveToday ? (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-200 border border-rose-400/30 flex items-center gap-1">
                       <UserX className="w-2.5 h-2.5" />
-                      On Leave Today
+                      {focusedItem.unavailType === 'ABSENT'
+                        ? 'Absent Today'
+                        : focusedItem.unavailType === 'LEAVE'
+                        ? 'On Leave Today'
+                        : focusedItem.unavailType === 'DUTY'
+                        ? 'Special Duty Today'
+                        : focusedItem.unavailType === 'SICK'
+                        ? 'Sick / Medical'
+                        : 'Unavailable Today'}
                     </span>
                   ) : (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 flex items-center gap-1">
@@ -979,9 +996,27 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-slate-900">{item.teacher.name}</h3>
                         {item.isOnLeaveToday ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                              item.unavailType === 'ABSENT'
+                                ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                : item.unavailType === 'LEAVE'
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : item.unavailType === 'DUTY'
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : 'bg-purple-100 text-purple-800 border-purple-200'
+                            }`}
+                          >
                             <UserX className="w-2.5 h-2.5" />
-                            On Leave Today
+                            {item.unavailType === 'ABSENT'
+                              ? 'Absent Today'
+                              : item.unavailType === 'LEAVE'
+                              ? 'On Leave Today'
+                              : item.unavailType === 'DUTY'
+                              ? 'Special Duty'
+                              : item.unavailType === 'SICK'
+                              ? 'Sick / Med'
+                              : 'Unavailable Today'}
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">

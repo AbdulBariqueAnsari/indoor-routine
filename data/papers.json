@@ -1,0 +1,246 @@
+[
+  {
+    "id": "P01",
+    "code": "Paper-1",
+    "title": "Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS)",
+    "category": "Legal Studies",
+    "totalTargetSessions": 46,
+    "originalTargetSessions": 55,
+    "primaryTeacherIds": [
+      "T1",
+      "T2",
+      "T3"
+    ],
+    "nearestPaperIds": [
+      "P02",
+      "P04",
+      "P03"
+    ],
+    "color": "#3B82F6",
+    "description": "Arrest procedures, custody, summons, charge sheet, trial procedures under BNSS 2023"
+  },
+  {
+    "id": "P02",
+    "code": "Paper-2",
+    "title": "Bharatiya Nyaya Sanhita 2023 (BNS)",
+    "category": "Legal Studies",
+    "totalTargetSessions": 56,
+    "originalTargetSessions": 67,
+    "primaryTeacherIds": [
+      "T4",
+      "T5",
+      "T6",
+      "T7"
+    ],
+    "nearestPaperIds": [
+      "P01",
+      "P04",
+      "P03"
+    ],
+    "color": "#0284C7",
+    "description": "Offences against body, property, state, public tranquility under BNS 2023"
+  },
+  {
+    "id": "P03",
+    "code": "Paper-3",
+    "title": "Central Minor Acts and Special Laws",
+    "category": "Legal Studies",
+    "totalTargetSessions": 50,
+    "originalTargetSessions": 60,
+    "primaryTeacherIds": [
+      "T8",
+      "T9",
+      "T10"
+    ],
+    "nearestPaperIds": [
+      "P01",
+      "P02",
+      "P04"
+    ],
+    "color": "#6366F1",
+    "description": "NDPS Act, POCSO Act, Arms Act, Motor Vehicles Act, Excise & Local Acts"
+  },
+  {
+    "id": "P04",
+    "code": "Paper-4",
+    "title": "Bharatiya Sakshya Adhiniyam 2023 (BSA)",
+    "category": "Legal Studies",
+    "totalTargetSessions": 23,
+    "originalTargetSessions": 28,
+    "primaryTeacherIds": [
+      "T11"
+    ],
+    "nearestPaperIds": [
+      "P01",
+      "P02",
+      "P03"
+    ],
+    "color": "#8B5CF6",
+    "description": "Admissibility, electronic evidence, burden of proof, expert witness under BSA 2023"
+  },
+  {
+    "id": "P05",
+    "code": "Paper-5",
+    "title": "Forensics",
+    "category": "Forensics & Investigation",
+    "totalTargetSessions": 34,
+    "originalTargetSessions": 41,
+    "primaryTeacherIds": [
+      "T12",
+      "T13"
+    ],
+    "nearestPaperIds": [
+      "P06",
+      "P13",
+      "P07"
+    ],
+    "color": "#EC4899",
+    "description": "Crime scene examination, ballistics, biology, DNA, fingerprint science, toxicology"
+  },
+  {
+    "id": "P06",
+    "code": "Paper-6",
+    "title": "ICT and Cyber Investigation",
+    "category": "Cyber & Technical",
+    "totalTargetSessions": 39,
+    "originalTargetSessions": 47,
+    "primaryTeacherIds": [
+      "T14",
+      "T15"
+    ],
+    "nearestPaperIds": [
+      "P05",
+      "P13"
+    ],
+    "color": "#06B6D4",
+    "description": "Cyber forensics, CDR/IPDR analysis, financial fraud, social media investigation"
+  },
+  {
+    "id": "P07",
+    "code": "Paper-7",
+    "title": "Criminology and Crime Prevention",
+    "category": "Criminology & Security",
+    "totalTargetSessions": 17,
+    "originalTargetSessions": 20,
+    "primaryTeacherIds": [
+      "T16"
+    ],
+    "nearestPaperIds": [
+      "P08",
+      "P09",
+      "P05"
+    ],
+    "color": "#F97316",
+    "description": "Theories of crime, criminal psychology, juvenile delinquency, surveillance, preventive policing"
+  },
+  {
+    "id": "P08",
+    "code": "Paper-8",
+    "title": "Police Organization and Administration",
+    "category": "Police Administration",
+    "totalTargetSessions": 8,
+    "originalTargetSessions": 10,
+    "primaryTeacherIds": [
+      "T17"
+    ],
+    "nearestPaperIds": [
+      "P07",
+      "P09",
+      "P10"
+    ],
+    "color": "#EAB308",
+    "description": "Organizational hierarchy, command structure, police manuals, disciplinary regulations"
+  },
+  {
+    "id": "P09",
+    "code": "Paper-9",
+    "title": "Police Station Management",
+    "category": "Police Administration",
+    "totalTargetSessions": 30,
+    "originalTargetSessions": 36,
+    "primaryTeacherIds": [
+      "T18",
+      "T19"
+    ],
+    "nearestPaperIds": [
+      "P08",
+      "P07",
+      "P10"
+    ],
+    "color": "#10B981",
+    "description": "GD entries, FIR registration, malkhana management, lockup rules, station records"
+  },
+  {
+    "id": "P10",
+    "code": "Paper-10",
+    "title": "Personal Development",
+    "category": "Behavioral & Leadership",
+    "totalTargetSessions": 40,
+    "originalTargetSessions": 48,
+    "primaryTeacherIds": [
+      "T20",
+      "T21"
+    ],
+    "nearestPaperIds": [
+      "P12",
+      "P11",
+      "P08"
+    ],
+    "color": "#14B8A6",
+    "description": "Leadership, stress management, public speaking, conflict resolution, mental fitness"
+  },
+  {
+    "id": "P11",
+    "code": "Paper-11",
+    "title": "Internal Security and Public Order",
+    "category": "Field & Public Order",
+    "totalTargetSessions": 38,
+    "originalTargetSessions": 45,
+    "primaryTeacherIds": [
+      "T22",
+      "T23"
+    ],
+    "nearestPaperIds": [
+      "P09",
+      "P13",
+      "P07"
+    ],
+    "color": "#D97706",
+    "description": "Riot control tactics, mob dispersal, VIP security, intelligence collection, counter-insurgency"
+  },
+  {
+    "id": "P12",
+    "code": "Paper-12",
+    "title": "Ethics and Accountability",
+    "category": "Behavioral & Ethics",
+    "totalTargetSessions": 54,
+    "originalTargetSessions": 65,
+    "primaryTeacherIds": [
+      "T24",
+      "T25",
+      "T26"
+    ],
+    "nearestPaperIds": [
+      "P10",
+      "P08"
+    ],
+    "color": "#64748B",
+    "description": "Police integrity, anti-corruption norms, human rights, custodial ethics, constitutional values"
+  },
+  {
+    "id": "P13",
+    "code": "Paper-13",
+    "title": "Practical (Hands on)",
+    "category": "Practical & Applied",
+    "totalTargetSessions": 188,
+    "originalTargetSessions": 226,
+    "primaryTeacherIds": [],
+    "nearestPaperIds": [
+      "P05",
+      "P06",
+      "P11"
+    ],
+    "color": "#84CC16",
+    "description": "Moot courts, crime scene simulations, CCTNS live entry, mob control drills, case diary drafting"
+  }
+]

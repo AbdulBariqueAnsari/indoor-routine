@@ -15,6 +15,15 @@ export interface BuildingInfo {
 
 export type SubjectPriorityTier = 'HIGH' | 'MEDIUM' | 'LOW' | 'NORMAL' | 'EXCLUDE';
 
+export type UnavailabilityType = 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK';
+
+export interface UnavailableInstructor {
+  teacherId: string;
+  type: UnavailabilityType; // 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK'
+  remark?: string;
+  date?: string;
+}
+
 export interface RoutineRuleConfig {
   enableWorkloadEqualization: boolean; // Balance instructor cumulative sessions gradually
   enableCaravanFlow: boolean; // Same-building room progression carrying ongoing subject (K -> K+1) [teacher caravan]
@@ -33,6 +42,9 @@ export interface RoutineRuleConfig {
   enableMaxRoomDailyLimit: boolean; // Maximum 2 periods of same subject per room per day
   enableDailyWorkloadSoftCap: boolean; // Instructor daily load soft-cap (target <= 3 periods)
   enablePracticalFlexible: boolean; // Flexible staffing for Practical (Paper-13) across campus
+  enableSingleSubjectPerClassDaily: boolean; // Ek class me ek din me maximum ek hi subject apply hoga
+  enableNoSubstituteAllotment: boolean; // Strict main teacher only: no substitute allotted, slot left blank if primary unavailable
+  replaceWithAvailableSubjectIfNoPrimary: boolean; // Sub-rule under no substitute: replace with alternate available subject if primary unavailable
 }
 
 export interface Classroom {
@@ -82,7 +94,7 @@ export interface Teacher {
   maxDailyPeriods: number; // default 3 or 4
   phone?: string;
   email?: string;
-  status?: 'ACTIVE' | 'LEAVE' | 'DEPUTED';
+  status?: 'ACTIVE' | 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK';
   qualification?: string;
   remarks?: string;
 }
@@ -104,6 +116,7 @@ export interface DailyRoutine {
   dayNumber: number; // Day 1, Day 2, Day 3...
   date: string; // YYYY-MM-DD
   absentTeacherIds: string[];
+  unavailableTeachers?: UnavailableInstructor[]; // Absent, Leave, Duty, Sick remarks
   priorityPaperIds: string[];
   roomPriorityPaperIds?: Record<string, string[]>; // roomId -> array of priority paperIds
   subjectPriorityTiers?: Record<string, SubjectPriorityTier>; // paperId -> HIGH | MEDIUM | LOW | NORMAL | EXCLUDE

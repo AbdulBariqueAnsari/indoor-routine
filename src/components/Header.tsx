@@ -18,6 +18,7 @@ import {
   Shield,
   Sliders,
   UserCheck,
+  UserX,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -161,11 +162,11 @@ export const Header: React.FC<HeaderProps> = ({
                 {onOpenLeaveManager && (
                   <button
                     onClick={onOpenLeaveManager}
-                    className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
-                    title="Instructor Leave & Substitute Assignments"
+                    className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 transition-colors"
+                    title="Faculty Unavailability Register (Absent / Leave / Duty / Sick)"
                   >
-                    <UserCheck className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Leave</span>
+                    <UserX className="w-3.5 h-3.5 text-rose-700" />
+                    <span>Unavailable Register</span>
                   </button>
                 )}
 
@@ -260,9 +261,9 @@ export const Header: React.FC<HeaderProps> = ({
                 {onOpenLeaveManager && (
                   <button
                     onClick={onOpenLeaveManager}
-                    className="px-2 py-0.5 text-[11px] font-medium rounded border border-slate-300 bg-white text-slate-700"
+                    className="px-2 py-0.5 text-[11px] font-semibold rounded border border-rose-300 bg-rose-50 text-rose-800"
                   >
-                    Leave
+                    Unavailable
                   </button>
                 )}
                 {onOpenMasterData && (

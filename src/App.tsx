@@ -23,7 +23,8 @@ import { RoutineRulesModal } from './components/RoutineRulesModal';
 import { MasterDataModal } from './components/MasterDataModal';
 import { PrintableRoutine } from './components/PrintableRoutine';
 import { AdminLoginModal } from './components/AdminLoginModal';
-import { FacultyLeaveManagerModal } from './components/FacultyLeaveManagerModal';
+import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
+import { modularLocalStorage } from './utils/storage';
 import { Database, Loader2, ShieldCheck, User } from 'lucide-react';
 
 export default function App() {
@@ -53,7 +54,7 @@ export default function App() {
   const [printLayoutMode, setPrintLayoutMode] = useState<'1-page' | '2-page'>('1-page');
   const [editingSlot, setEditingSlot] = useState<ClassSlot | null>(null);
 
-  // Initialize data on mount from Server Storage
+  // Initialize data on mount from Server Storage (with modular LocalStorage fallback)
   useEffect(() => {
     async function loadDataFromServer() {
       try {
@@ -66,8 +67,20 @@ export default function App() {
         setAllRoutines(data.routines || []);
         setRules(data.rules || DEFAULT_ROUTINE_RULES);
         setActiveRoutineId(data.settings?.activeRoutineId || data.routines?.[data.routines.length - 1]?.id || '');
+        // Sync into separated discrete localStorage keys
+        modularLocalStorage.syncFromServer(data);
       } catch (err) {
-        console.error('Failed to load data from server backend:', err);
+        console.error('Failed to load data from server backend, trying modular localStorage:', err);
+        const localData = modularLocalStorage.loadFromLocal();
+        if (localData) {
+          setBuildings(localData.buildings || INITIAL_BUILDINGS);
+          setClassrooms(localData.classrooms || []);
+          setPapers(localData.papers || []);
+          setTeachers(localData.teachers || []);
+          setAllRoutines(localData.routines || []);
+          setRules(localData.rules || DEFAULT_ROUTINE_RULES);
+          setActiveRoutineId(localData.settings?.activeRoutineId || localData.routines?.[localData.routines.length - 1]?.id || '');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -185,27 +198,38 @@ export default function App() {
     setIsGeneratorOpen(true);
   };
 
-  // Handle routine generated (saved to server)
-  const handleRoutineGenerated = async (newRoutine: DailyRoutine) => {
+  // Handle routine generated (saved to server & modular localStorage)
+  const handleRoutineGenerated = async (newRoutineOrRoutines: DailyRoutine | DailyRoutine[]) => {
     if (!isAdmin) return;
+    const batchList = Array.isArray(newRoutineOrRoutines) ? newRoutineOrRoutines : [newRoutineOrRoutines];
+    if (batchList.length === 0) return;
 
     let updatedAll: DailyRoutine[];
-    if (recreatingRoutine) {
-      updatedAll = allRoutines.map((r) => (r.id === recreatingRoutine.id ? newRoutine : r));
+    if (recreatingRoutine && batchList.length === 1) {
+      updatedAll = allRoutines.map((r) => (r.id === recreatingRoutine.id ? batchList[0] : r));
       setRecreatingRoutine(null);
     } else {
       const lockedPrevious = allRoutines.map((r) => ({ ...r, isLocked: true }));
-      updatedAll = [...lockedPrevious, newRoutine];
-      setActiveRoutineId(newRoutine.id);
+      // In batch, lock earlier days and keep latest day active/editable
+      const batchWithLock = batchList.map((r, idx) => ({
+        ...r,
+        isLocked: idx < batchList.length - 1 ? true : false,
+      }));
+      updatedAll = [...lockedPrevious, ...batchWithLock];
+      const latest = batchWithLock[batchWithLock.length - 1];
+      setActiveRoutineId(latest.id);
     }
 
     setAllRoutines(updatedAll);
     setIsGeneratorOpen(false);
     setActiveTab('matrix');
 
+    modularLocalStorage.saveRoutines(updatedAll);
+
     try {
       await api.saveRoutines(updatedAll);
-      await api.saveSettings({ activeRoutineId: newRoutine.id });
+      const latestId = batchList[batchList.length - 1].id;
+      await api.saveSettings({ activeRoutineId: latestId });
     } catch (err) {
       console.error('Error saving generated routine to server:', err);
     }
@@ -487,9 +511,9 @@ export default function App() {
           onLoginSuccess={handleLoginSuccess}
         />
 
-        {/* Emergency Leave & Instructor Manager (Admin only) */}
+        {/* Faculty Unavailability Register (Admin only) */}
         {isAdmin && isLeaveManagerOpen && currentRoutine && (
-          <FacultyLeaveManagerModal
+          <UnavailableRegisterModal
             isOpen={isLeaveManagerOpen}
             onClose={() => setIsLeaveManagerOpen(false)}
             routine={currentRoutine}

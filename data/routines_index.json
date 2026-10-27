@@ -1,0 +1,35 @@
+[
+  {
+    "id": "routine-day-3",
+    "dayNumber": 3,
+    "date": "2026-10-29",
+    "status": "published",
+    "isLocked": false,
+    "filePath": "routines/routine_routine-day-3.json",
+    "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - 0 instructors on leave, 1 subjects excluded",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T09:23:50.178Z"
+  },
+  {
+    "id": "routine-day-2",
+    "dayNumber": 2,
+    "date": "2026-10-28",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-2.json",
+    "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - 0 instructors on leave, 1 subjects excluded",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T08:42:15.197Z"
+  },
+  {
+    "id": "routine-day-1",
+    "dayNumber": 1,
+    "date": "2026-10-27",
+    "status": "published",
+    "isLocked": true,
+    "filePath": "routines/routine_routine-day-1.json",
+    "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
+    "totalSlots": 75,
+    "updatedAt": "2026-10-27T04:21:32.147Z"
+  }
+]

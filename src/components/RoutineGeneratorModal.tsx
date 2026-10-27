@@ -4,23 +4,39 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Classroom, DailyRoutine, Paper, RoutineRuleConfig, SubjectPriorityTier, Teacher } from '../types';
+import {
+  Classroom,
+  ClassSlot,
+  DailyRoutine,
+  Paper,
+  RoutineRuleConfig,
+  SubjectPriorityTier,
+  Teacher,
+  UnavailableInstructor,
+  UnavailabilityType,
+} from '../types';
 import { calculateCumulativeStats, generateDailyRoutine } from '../utils/scheduler';
 import { DEFAULT_ROUTINE_RULES } from '../data/initialData';
 import {
   AlertCircle,
   Ban,
+  Briefcase,
   Calendar,
   Check,
   ChevronDown,
   ChevronUp,
+  FilePlus,
   Filter,
+  HeartPulse,
   Info,
   Layers,
   RefreshCw,
   Search,
   Sliders,
   Sparkles,
+  UserCheck,
+  UserMinus,
+  Users,
   UserX,
   X,
 } from 'lucide-react';
@@ -28,7 +44,7 @@ import {
 interface RoutineGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRoutineGenerated: (newRoutine: DailyRoutine) => void;
+  onRoutineGenerated: (newRoutine: DailyRoutine | DailyRoutine[]) => void;
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
@@ -76,6 +92,57 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
   const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>(
     recreatingRoutine?.absentTeacherIds || []
   );
+
+  // New Generation Mode: 'single' | 'multiple' | 'blank'
+  const [generationMode, setGenerationMode] = useState<'single' | 'multiple' | 'blank'>('single');
+  const [multiDayCount, setMultiDayCount] = useState<number>(3);
+
+  // Unavailable Register remarks: map teacherId -> type ('ABSENT' | 'LEAVE' | 'DUTY' | 'SICK')
+  const [unavailableTypes, setUnavailableTypes] = useState<Record<string, UnavailabilityType>>(() => {
+    const map: Record<string, UnavailabilityType> = {};
+    if (recreatingRoutine?.unavailableTeachers) {
+      for (const u of recreatingRoutine.unavailableTeachers) {
+        map[u.teacherId] = u.type;
+      }
+    }
+    for (const tid of recreatingRoutine?.absentTeacherIds || []) {
+      if (!map[tid]) map[tid] = 'ABSENT';
+    }
+    return map;
+  });
+
+  const [unavailableRemarks, setUnavailableRemarks] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    if (recreatingRoutine?.unavailableTeachers) {
+      for (const u of recreatingRoutine.unavailableTeachers) {
+        if (u.remark) map[u.teacherId] = u.remark;
+      }
+    }
+    return map;
+  });
+
+  const handleSetTeacherStatus = (teacherId: string, status: 'AVAILABLE' | UnavailabilityType) => {
+    if (status === 'AVAILABLE') {
+      setAbsentTeacherIds((prev) => prev.filter((id) => id !== teacherId));
+      setUnavailableTypes((prev) => {
+        const copy = { ...prev };
+        delete copy[teacherId];
+        return copy;
+      });
+    } else {
+      setAbsentTeacherIds((prev) => (prev.includes(teacherId) ? prev : [...prev, teacherId]));
+      setUnavailableTypes((prev) => ({ ...prev, [teacherId]: status }));
+      if (!unavailableRemarks[teacherId]) {
+        const defaultNotes: Record<UnavailabilityType, string> = {
+          ABSENT: 'Absent',
+          LEAVE: 'Sanctioned Leave',
+          DUTY: 'Special Duty',
+          SICK: 'Medical / Sick',
+        };
+        setUnavailableRemarks((prev) => ({ ...prev, [teacherId]: defaultNotes[status] }));
+      }
+    }
+  };
 
   // Priority tiers per paper: 'HIGH' | 'MEDIUM' | 'LOW' | 'NORMAL' | 'EXCLUDE'
   const [subjectTiers, setSubjectTiers] = useState<Record<string, SubjectPriorityTier>>(() => {
@@ -222,6 +289,89 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
       .filter(([_, t]) => t === 'HIGH')
       .map(([id]) => id);
 
+    const unavailableTeachersList: UnavailableInstructor[] = absentTeacherIds.map((tid) => ({
+      teacherId: tid,
+      type: unavailableTypes[tid] || 'ABSENT',
+      remark: unavailableRemarks[tid] || (unavailableTypes[tid] === 'LEAVE' ? 'Sanctioned Leave' : unavailableTypes[tid] === 'DUTY' ? 'Special Duty' : unavailableTypes[tid] === 'SICK' ? 'Sick' : 'Absent'),
+      date,
+    }));
+
+    // 1. BLANK ROUTINE CREATION
+    if (generationMode === 'blank') {
+      const blankSlots: ClassSlot[] = [];
+      for (const room of classrooms) {
+        for (let p = 1; p <= 5; p++) {
+          blankSlots.push({
+            id: `slot-${dayNumber}-${room.id}-P${p}`,
+            roomId: room.id,
+            period: p,
+            paperId: '',
+            teacherId: '',
+            isSubstitute: false,
+            isPriority: false,
+          });
+        }
+      }
+
+      const blankRoutine: DailyRoutine = {
+        id: isRecreating && recreatingRoutine ? recreatingRoutine.id : `routine-day-${dayNumber}-${Date.now()}`,
+        dayNumber,
+        date,
+        absentTeacherIds,
+        unavailableTeachers: unavailableTeachersList,
+        priorityPaperIds: [],
+        slots: blankSlots,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isLocked: false,
+        status: 'draft',
+        notes: notes || `Manual Blank Routine for Day ${dayNumber} (${date}) - ready for slot assignment`,
+      };
+
+      onRoutineGenerated(blankRoutine);
+      return;
+    }
+
+    // 2. MULTIPLE DAYS BATCH CREATION
+    if (generationMode === 'multiple') {
+      const generatedBatch: DailyRoutine[] = [];
+      let currentHistory = [...effectiveHistory];
+
+      for (let d = 0; d < multiDayCount; d++) {
+        const currentDayNumber = dayNumber + d;
+        const dDate = new Date(date);
+        dDate.setDate(dDate.getDate() + d);
+        const dateStr = dDate.toISOString().split('T')[0];
+
+        const r = generateDailyRoutine({
+          classrooms,
+          papers,
+          teachers,
+          absentTeacherIds,
+          priorityPaperIds: derivedHighPriority,
+          roomPriorityPaperIds: priorityMode === 'roomWise' ? roomPriorityMap : {},
+          subjectPriorityTiers: subjectTiers,
+          prioritySubjectMinPeriods: subjectMinPeriods,
+          excludedPaperIds: derivedExcluded,
+          rules: localRules,
+          historicalRoutines: currentHistory,
+          targetDayNumber: currentDayNumber,
+          targetDate: dateStr,
+          notes:
+            notes ||
+            `STC, SAP 4th Bn Day ${currentDayNumber} Routine (${dateStr}) - Batch generated (${multiDayCount} days)`,
+        });
+
+        r.unavailableTeachers = unavailableTeachersList.map((u) => ({ ...u, date: dateStr }));
+        generatedBatch.push(r);
+        currentHistory.push(r);
+      }
+
+      onRoutineGenerated(generatedBatch);
+      return;
+    }
+
+    // 3. SINGLE DAY STANDARD GENERATION
     const newRoutine = generateDailyRoutine({
       classrooms,
       papers,
@@ -238,8 +388,10 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
       targetDate: date,
       notes:
         notes ||
-        `STC, SAP 4th Bn Day ${dayNumber} Routine (${date}) - ${absentTeacherIds.length} instructors on leave, ${derivedExcluded.length} subjects excluded`,
+        `STC, SAP 4th Bn Day ${dayNumber} Routine (${date}) - ${absentTeacherIds.length} instructors unavailable, ${derivedExcluded.length} subjects excluded`,
     });
+
+    newRoutine.unavailableTeachers = unavailableTeachersList;
 
     if (isRecreating && recreatingRoutine) {
       newRoutine.id = recreatingRoutine.id;
@@ -291,6 +443,91 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 space-y-5 overflow-y-auto">
+          {/* Generation Mode Selector */}
+          {!isRecreating && (
+            <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
+              <label className="block text-xs font-bold text-indigo-950">
+                Routine Creation Mode:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode('single')}
+                  className={`p-2.5 rounded-lg border font-semibold flex items-center gap-2 transition-all text-left ${
+                    generationMode === 'single'
+                      ? 'bg-white border-indigo-600 text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'bg-white/60 border-slate-200 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="font-bold">Single Day Routine</div>
+                    <div className="text-[10px] text-slate-500 font-normal">Generate Day {dayNumber}</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode('multiple')}
+                  className={`p-2.5 rounded-lg border font-semibold flex items-center gap-2 transition-all text-left ${
+                    generationMode === 'multiple'
+                      ? 'bg-white border-indigo-600 text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'bg-white/60 border-slate-200 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="font-bold">Multiple Days (Batch)</div>
+                    <div className="text-[10px] text-slate-500 font-normal">Generate {multiDayCount} days together</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode('blank')}
+                  className={`p-2.5 rounded-lg border font-semibold flex items-center gap-2 transition-all text-left ${
+                    generationMode === 'blank'
+                      ? 'bg-white border-indigo-600 text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'bg-white/60 border-slate-200 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <FilePlus className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="font-bold">New Blank Routine</div>
+                    <div className="text-[10px] text-slate-500 font-normal">75 empty slots for manual edit</div>
+                  </div>
+                </button>
+              </div>
+
+              {generationMode === 'multiple' && (
+                <div className="pt-2 border-t border-indigo-100 flex items-center justify-between text-xs">
+                  <span className="text-indigo-900 font-medium">
+                    Consecutive Days to Generate:
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {[2, 3, 4, 5, 6, 7].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setMultiDayCount(num)}
+                        className={`w-7 h-7 rounded-md font-bold text-xs transition-colors ${
+                          multiDayCount === num
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-indigo-900 border border-indigo-200 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                    <span className="text-[11px] text-indigo-700 font-semibold ml-1">
+                      (Day {dayNumber} to Day {dayNumber + multiDayCount - 1})
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Day & Date info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
             <div>
@@ -298,12 +535,13 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                 Training Day:
               </label>
               <div className="font-bold text-sm text-indigo-700">
-                Day {dayNumber} {isRecreating && <span className="text-xs text-amber-700 font-semibold">(Current Active Routine)</span>}
+                Day {dayNumber} {generationMode === 'multiple' && `to Day ${dayNumber + multiDayCount - 1}`}{' '}
+                {isRecreating && <span className="text-xs text-amber-700 font-semibold">(Current Active Routine)</span>}
               </div>
             </div>
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Routine Date:
+                {generationMode === 'multiple' ? 'Start Date:' : 'Routine Date:'}
               </label>
               <input
                 type="date"
@@ -314,22 +552,22 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             </div>
           </div>
 
-          {/* Section 1: Instructor Absences */}
+          {/* Section 1: Instructor Absences & Unavailability */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <UserX className="w-4 h-4 text-rose-600" />
                 <label className="text-xs font-bold text-slate-800">
-                  1. Mark Instructor Absences / Leave:
+                  1. Instructor Unavailability & Leave Remarks:
                 </label>
               </div>
               <span className="text-[11px] font-semibold text-slate-600">
-                {availableTeachersCount}/26 Available · {absentTeacherIds.length} On Leave
+                {availableTeachersCount}/26 Available · {absentTeacherIds.length} Unavailable
               </span>
             </div>
 
             <p className="text-[11px] text-slate-500 mb-2">
-              Instructors marked on leave are 100% excluded from today's routine. Qualified substitutes will automatically step in without timetable clashes.
+              Mark instructors as Absent, on Leave, on Special Duty, or Sick / Medical. Unavailable instructors are strictly excluded from generation.
             </p>
 
             <input
@@ -340,32 +578,91 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
               className="w-full text-xs rounded-lg border border-slate-200 px-2.5 py-1.5 mb-2 bg-slate-50 text-slate-800 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             />
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
               {filteredTeachers.map((t) => {
                 const isAbsent = absentTeacherIds.includes(t.id);
+                const currentType = unavailableTypes[t.id] || 'ABSENT';
+
                 return (
-                  <button
+                  <div
                     key={t.id}
-                    type="button"
-                    onClick={() => toggleAbsentTeacher(t.id)}
-                    className={`p-1.5 rounded-lg text-left text-xs transition-colors border flex items-center justify-between gap-1 ${
+                    className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-1 transition-colors ${
                       isAbsent
-                        ? 'bg-rose-100 border-rose-300 text-rose-900 font-semibold'
-                        : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+                        ? currentType === 'ABSENT'
+                          ? 'bg-rose-50 border-rose-300 text-rose-900'
+                          : currentType === 'LEAVE'
+                          ? 'bg-amber-50 border-amber-300 text-amber-900'
+                          : currentType === 'DUTY'
+                          ? 'bg-blue-50 border-blue-300 text-blue-900'
+                          : 'bg-purple-50 border-purple-300 text-purple-900'
+                        : 'bg-white border-slate-200 text-slate-800'
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-medium">{t.name}</p>
-                      <p className="text-[9px] text-slate-500 font-mono">{t.code}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-semibold">{t.name}</p>
+                      <p className="text-[9px] text-slate-500 font-mono">
+                        {t.code} · {t.designation}
+                      </p>
                     </div>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                        isAbsent ? 'bg-rose-200 text-rose-900' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {isAbsent ? 'Leave' : 'Active'}
-                    </span>
-                  </button>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'AVAILABLE')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          !isAbsent
+                            ? 'bg-emerald-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-emerald-50'
+                        }`}
+                      >
+                        Avail
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'ABSENT')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          isAbsent && currentType === 'ABSENT'
+                            ? 'bg-rose-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-rose-50'
+                        }`}
+                      >
+                        Abs
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'LEAVE')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          isAbsent && currentType === 'LEAVE'
+                            ? 'bg-amber-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-amber-50'
+                        }`}
+                      >
+                        Leave
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'DUTY')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          isAbsent && currentType === 'DUTY'
+                            ? 'bg-blue-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        Duty
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'SICK')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          isAbsent && currentType === 'SICK'
+                            ? 'bg-purple-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-purple-50'
+                        }`}
+                      >
+                        Sick
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -744,6 +1041,9 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                   { key: 'enableMaxRoomDailyLimit', label: 'Max 2 Periods/Subject in Room' },
                   { key: 'enableDailyWorkloadSoftCap', label: 'Daily Load Soft-Cap (<= 3 Periods)' },
                   { key: 'enablePracticalFlexible', label: 'Flexible Practical Staffing' },
+                  { key: 'enableSingleSubjectPerClassDaily', label: 'Single Subject Per Classroom Daily (Max 1 Subject/Class/Day)' },
+                  { key: 'enableNoSubstituteAllotment', label: 'No Substitute Allotment (Strict Primary Teacher Only - Blank)' },
+                  { key: 'replaceWithAvailableSubjectIfNoPrimary', label: 'Replace with Alternate Available Subject (Sub-Rule)' },
                 ].map((rule) => {
                   const isChecked = Boolean(localRules[rule.key as keyof RoutineRuleConfig]);
                   return (
@@ -804,11 +1104,27 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             className={`px-4 py-1.5 text-xs font-bold rounded-lg text-white shadow-xs flex items-center gap-1.5 ${
               isRecreating
                 ? 'bg-amber-600 hover:bg-amber-700'
+                : generationMode === 'blank'
+                ? 'bg-emerald-600 hover:bg-emerald-700'
                 : 'bg-indigo-600 hover:bg-indigo-700'
             }`}
           >
-            {isRecreating ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-            <span>{isRecreating ? `Regenerate & Overwrite Day ${dayNumber}` : 'Generate & Save Routine'}</span>
+            {isRecreating ? (
+              <RefreshCw className="w-3.5 h-3.5" />
+            ) : generationMode === 'blank' ? (
+              <FilePlus className="w-3.5 h-3.5" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {isRecreating
+                ? `Regenerate & Overwrite Day ${dayNumber}`
+                : generationMode === 'blank'
+                ? `Create Blank Routine (Day ${dayNumber})`
+                : generationMode === 'multiple'
+                ? `Generate Batch (${multiDayCount} Days)`
+                : `Generate & Save Day ${dayNumber} Routine`}
+            </span>
           </button>
         </div>
       </div>

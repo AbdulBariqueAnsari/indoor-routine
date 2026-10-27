@@ -154,6 +154,16 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
+// POST /api/unavailability
+app.post('/api/unavailability', (req, res) => {
+  try {
+    const store = serverStorage.saveUnavailability(req.body.unavailability || req.body);
+    res.json({ success: true, unavailability: store.unavailability });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/reset
 app.post('/api/reset', (req, res) => {
   try {

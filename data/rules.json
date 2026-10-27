@@ -1,0 +1,22 @@
+{
+  "enableWorkloadEqualization": true,
+  "enableCaravanFlow": false,
+  "enablePaperRotationalFlow": false,
+  "enableBuildingChangeGap": true,
+  "enableDayToDayProgression": false,
+  "enableZeroDoubleBooking": true,
+  "enableStrictAbsenteeExclusion": true,
+  "enableDesignatedBackup": true,
+  "enableCrossMutualBackup": false,
+  "enableSubjectPriorityTiers": false,
+  "enableProportionalRemainingRatio": true,
+  "enableGuaranteedPriorityPeriods": true,
+  "enableClassroomSubjectEqualization": true,
+  "enableRoomQuotaCompletionLock": true,
+  "enableMaxRoomDailyLimit": true,
+  "enableDailyWorkloadSoftCap": true,
+  "enablePracticalFlexible": true,
+  "enableSingleSubjectPerClassDaily": false,
+  "enableNoSubstituteAllotment": false,
+  "replaceWithAvailableSubjectIfNoPrimary": false
+}

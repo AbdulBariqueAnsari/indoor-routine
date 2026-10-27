@@ -1,0 +1,898 @@
+{
+  "id": "routine-day-1",
+  "dayNumber": 1,
+  "date": "2026-10-27",
+  "absentTeacherIds": [],
+  "priorityPaperIds": [],
+  "roomPriorityPaperIds": {
+    "OB-1": [
+      "P03",
+      "P06",
+      "P08",
+      "P10",
+      "P11",
+      "P01",
+      "P02",
+      "P04",
+      "P05",
+      "P07",
+      "P09",
+      "P12"
+    ],
+    "OB-2": [
+      "P01",
+      "P06",
+      "P02",
+      "P03",
+      "P05",
+      "P09",
+      "P10",
+      "P11",
+      "P12"
+    ],
+    "OB-3": [
+      "P07",
+      "P09",
+      "P12",
+      "P01",
+      "P02",
+      "P03",
+      "P05",
+      "P06",
+      "P10",
+      "P11"
+    ],
+    "OB-4": [
+      "P01",
+      "P05",
+      "P08",
+      "P12",
+      "P02",
+      "P03",
+      "P06",
+      "P09",
+      "P10",
+      "P11"
+    ],
+    "OB-5": [
+      "P01",
+      "P02",
+      "P03",
+      "P05",
+      "P06",
+      "P09",
+      "P10",
+      "P11",
+      "P12"
+    ],
+    "OB-6": [
+      "P04",
+      "P12",
+      "P01",
+      "P02",
+      "P03",
+      "P06",
+      "P10"
+    ],
+    "OB-7": [
+      "P06",
+      "P01",
+      "P02",
+      "P03",
+      "P12"
+    ],
+    "OB-8": [
+      "P02",
+      "P05",
+      "P08",
+      "P10",
+      "P01",
+      "P03",
+      "P06",
+      "P12"
+    ],
+    "NB-1": [
+      "P10",
+      "P11",
+      "P01",
+      "P02",
+      "P03",
+      "P12"
+    ],
+    "NB-2": [
+      "P04",
+      "P01",
+      "P02"
+    ],
+    "NB-3": [
+      "P09",
+      "P02"
+    ],
+    "CR-NB-12-1793034850769": [
+      "P02",
+      "P03"
+    ],
+    "CR-NB-13-1793034866049": [
+      "P07"
+    ],
+    "CR-NB-14-1793034895859": [
+      "P02",
+      "P03",
+      "P05",
+      "P11"
+    ],
+    "CR-NB-15-1793034922650": [
+      "P04",
+      "P07",
+      "P09"
+    ]
+  },
+  "subjectPriorityTiers": {
+    "P13": "EXCLUDE",
+    "P01": "LOW",
+    "P02": "LOW",
+    "P03": "LOW",
+    "P04": "LOW",
+    "P05": "LOW",
+    "P06": "LOW",
+    "P07": "LOW",
+    "P08": "LOW",
+    "P09": "LOW",
+    "P10": "LOW",
+    "P11": "LOW",
+    "P12": "LOW"
+  },
+  "prioritySubjectMinPeriods": {
+    "P01": 10,
+    "P02": 13,
+    "P03": 11,
+    "P04": 4,
+    "P05": 7,
+    "P06": 8,
+    "P07": 4,
+    "P08": 3,
+    "P09": 7,
+    "P10": 8,
+    "P11": 7,
+    "P12": 9
+  },
+  "excludedPaperIds": [
+    "P13"
+  ],
+  "slots": [
+    {
+      "id": "slot-1-OB-1-P1",
+      "roomId": "OB-1",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-2-P1",
+      "roomId": "OB-2",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-3-P1",
+      "roomId": "OB-3",
+      "period": 1,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-4-P1",
+      "roomId": "OB-4",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-5-P1",
+      "roomId": "OB-5",
+      "period": 1,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-6-P1",
+      "roomId": "OB-6",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-7-P1",
+      "roomId": "OB-7",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-8-P1",
+      "roomId": "OB-8",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-1-P1",
+      "roomId": "NB-1",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-2-P1",
+      "roomId": "NB-2",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-3-P1",
+      "roomId": "NB-3",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T11",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T11] SI(UB) Ratan Sarkar (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-12-1793034850769-P1",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T21",
+      "isSubstitute": true,
+      "originalTeacherId": "T24",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-13-1793034866049-P1",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T23",
+      "isSubstitute": true,
+      "originalTeacherId": "T24",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-14-1793034895859-P1",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-15-1793034922650-P1",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 1,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-1-P2",
+      "roomId": "OB-1",
+      "period": 2,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-2-P2",
+      "roomId": "OB-2",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-3-P2",
+      "roomId": "OB-3",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T1",
+      "isSubstitute": true,
+      "originalTeacherId": "T4",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T1] SI(UB) Md Jalaluddin (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-4-P2",
+      "roomId": "OB-4",
+      "period": 2,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-5-P2",
+      "roomId": "OB-5",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-6-P2",
+      "roomId": "OB-6",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T2",
+      "isSubstitute": true,
+      "originalTeacherId": "T20",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-7-P2",
+      "roomId": "OB-7",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-8-P2",
+      "roomId": "OB-8",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T8",
+      "isSubstitute": true,
+      "originalTeacherId": "T1",
+      "substituteReason": "Primary instructor busy in another classroom - Nearest related subject instructor substitute appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-1-P2",
+      "roomId": "NB-1",
+      "period": 2,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-2-P2",
+      "roomId": "NB-2",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T12",
+      "isSubstitute": true,
+      "originalTeacherId": "T14",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-3-P2",
+      "roomId": "NB-3",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T19",
+      "isSubstitute": true,
+      "originalTeacherId": "T20",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-12-1793034850769-P2",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T11",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T11] SI(UB) Ratan Sarkar (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-13-1793034866049-P2",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T16",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T16] SI(UB) Ghanashyam Mahato (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-14-1793034895859-P2",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-15-1793034922650-P2",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-OB-1-P3",
+      "roomId": "OB-1",
+      "period": 3,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-2-P3",
+      "roomId": "OB-2",
+      "period": 3,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-3-P3",
+      "roomId": "OB-3",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-4-P3",
+      "roomId": "OB-4",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-5-P3",
+      "roomId": "OB-5",
+      "period": 3,
+      "paperId": "P10",
+      "teacherId": "T24",
+      "isSubstitute": true,
+      "originalTeacherId": "T20",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-6-P3",
+      "roomId": "OB-6",
+      "period": 3,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-7-P3",
+      "roomId": "OB-7",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-8-P3",
+      "roomId": "OB-8",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T8",
+      "isSubstitute": true,
+      "originalTeacherId": "T4",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T8] SI(UB) Ebadul Ali Hossain (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-1-P3",
+      "roomId": "NB-1",
+      "period": 3,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-2-P3",
+      "roomId": "NB-2",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-NB-3-P3",
+      "roomId": "NB-3",
+      "period": 3,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-12-1793034850769-P3",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T15",
+      "isSubstitute": true,
+      "originalTeacherId": "T12",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T15] ASI(UB) Nripen Ch Roy (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-13-1793034866049-P3",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 3,
+      "paperId": "P04",
+      "teacherId": "T5",
+      "isSubstitute": true,
+      "originalTeacherId": "T11",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T5] SI(UB) Kaushik Sarkar (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-14-1793034895859-P3",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-15-1793034922650-P3",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-OB-1-P4",
+      "roomId": "OB-1",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-2-P4",
+      "roomId": "OB-2",
+      "period": 4,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-3-P4",
+      "roomId": "OB-3",
+      "period": 4,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-4-P4",
+      "roomId": "OB-4",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-5-P4",
+      "roomId": "OB-5",
+      "period": 4,
+      "paperId": "P05",
+      "teacherId": "T22",
+      "isSubstitute": true,
+      "originalTeacherId": "T12",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T22] SI(UB) Biman Ghosh (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-6-P4",
+      "roomId": "OB-6",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-7-P4",
+      "roomId": "OB-7",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-8-P4",
+      "roomId": "OB-8",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T19",
+      "isSubstitute": true,
+      "originalTeacherId": "T20",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T19] ASI(UB) Bisu Benjamin Mardi (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-1-P4",
+      "roomId": "NB-1",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T9",
+      "isSubstitute": true,
+      "originalTeacherId": "T1",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T9] SI(UB) Tika Kr. Damai (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-2-P4",
+      "roomId": "NB-2",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-3-P4",
+      "roomId": "NB-3",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-12-1793034850769-P4",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 4,
+      "paperId": "P11",
+      "teacherId": "T10",
+      "isSubstitute": true,
+      "originalTeacherId": "T22",
+      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-13-1793034866049-P4",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 4,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-14-1793034895859-P4",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 4,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-15-1793034922650-P4",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 4,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-1-P5",
+      "roomId": "OB-1",
+      "period": 5,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-2-P5",
+      "roomId": "OB-2",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T6",
+      "isSubstitute": true,
+      "originalTeacherId": "T1",
+      "substituteReason": "Primary instructor busy in another classroom - Nearest related subject instructor substitute appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-3-P5",
+      "roomId": "OB-3",
+      "period": 5,
+      "paperId": "P07",
+      "teacherId": "T17",
+      "isSubstitute": true,
+      "originalTeacherId": "T16",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T17] SI(AB) Avijit Bala (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-4-P5",
+      "roomId": "OB-4",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-5-P5",
+      "roomId": "OB-5",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-OB-6-P5",
+      "roomId": "OB-6",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T3",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Nearest related subject instructor substitute appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-7-P5",
+      "roomId": "OB-7",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-OB-8-P5",
+      "roomId": "OB-8",
+      "period": 5,
+      "paperId": "P08",
+      "teacherId": "T21",
+      "isSubstitute": true,
+      "originalTeacherId": "T17",
+      "substituteReason": "Primary instructor busy in another classroom - Nearest related subject instructor substitute appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-1-P5",
+      "roomId": "NB-1",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T16",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T16] SI(UB) Ghanashyam Mahato (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-NB-2-P5",
+      "roomId": "NB-2",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T18",
+      "isSubstitute": true,
+      "originalTeacherId": "T8",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T18] SI(UB) Parimal Saha (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-NB-3-P5",
+      "roomId": "NB-3",
+      "period": 5,
+      "paperId": "P09",
+      "teacherId": "T7",
+      "isSubstitute": true,
+      "originalTeacherId": "T18",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T7] SI(UB) Sadhan Kr Roy (Floating across campus) appointed",
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-12-1793034850769-P5",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": true
+    },
+    {
+      "id": "slot-1-CR-NB-13-1793034866049-P5",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T9",
+      "isSubstitute": true,
+      "originalTeacherId": "T1",
+      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T9] SI(UB) Tika Kr. Damai (Floating across campus) appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-14-1793034895859-P5",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T25",
+      "isSubstitute": true,
+      "originalTeacherId": "T1",
+      "substituteReason": "Primary instructor busy in another classroom - Emergency reserve instructor appointed",
+      "isPriority": false
+    },
+    {
+      "id": "slot-1-CR-NB-15-1793034922650-P5",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 5,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": true
+    }
+  ],
+  "createdAt": "2026-10-27T02:51:13.512Z",
+  "updatedAt": "2026-10-27T04:21:32.147Z",
+  "isLocked": true,
+  "status": "published",
+  "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules"
+}

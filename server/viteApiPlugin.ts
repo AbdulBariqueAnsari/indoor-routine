@@ -153,7 +153,15 @@ export function viteApiPlugin(): Plugin {
             return res.end(JSON.stringify({ success: true, settings: store.settings }));
           }
 
-          // 13. POST /api/reset - Factory reset on server
+          // 13. POST /api/unavailability - Save faculty unavailability register
+          if (pathname === '/api/unavailability' && req.method === 'POST') {
+            const body = await readBody();
+            const store = serverStorage.saveUnavailability(body.unavailability || body);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, unavailability: store.unavailability }));
+          }
+
+          // 14. POST /api/reset - Factory reset on server
           if (pathname === '/api/reset' && req.method === 'POST') {
             const store = serverStorage.resetToDefault();
             res.statusCode = 200;

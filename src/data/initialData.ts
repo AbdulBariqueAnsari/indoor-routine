@@ -39,7 +39,10 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableRoomQuotaCompletionLock: true, // Lock and exclude subjects from being allocated to a classroom once reaching 100% quota in that room
   enableMaxRoomDailyLimit: true,
   enableDailyWorkloadSoftCap: true,
-  enablePracticalFlexible: true
+  enablePracticalFlexible: true,
+  enableSingleSubjectPerClassDaily: false, // Ek class me ek din me maximum 1 hi subject
+  enableNoSubstituteAllotment: false, // No substitute allotment - slot khali rahega
+  replaceWithAvailableSubjectIfNoPrimary: false, // Dusra available subject se replace karne ka rule
 };
 
 export const INITIAL_CLASSROOMS: Classroom[] = [

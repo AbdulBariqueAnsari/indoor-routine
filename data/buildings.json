@@ -1,0 +1,16 @@
+[
+  {
+    "id": "OLD",
+    "name": "Old School Building",
+    "code": "OB",
+    "floors": 2,
+    "description": "8 Classrooms (Room No. 1 to Room No. 8), Capacity 70 candidates each"
+  },
+  {
+    "id": "NEW",
+    "name": "New School Building",
+    "code": "NB",
+    "floors": 3,
+    "description": "7 Classrooms (Room No. 1 to Room No. 7), Capacity 52 candidates each"
+  }
+]

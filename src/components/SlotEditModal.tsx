@@ -167,10 +167,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
                   // Prefer a primary teacher who is free
                   const freePrimary = p.primaryTeacherIds.find((tId) => !busyTeacherToRoom.has(tId));
                   setSelectedTeacherId(freePrimary || p.primaryTeacherIds[0]);
+                } else if (!newPaperId) {
+                  setSelectedTeacherId('');
                 }
               }}
               className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             >
+              <option value="">-- No Subject (Blank / Clear Slot) --</option>
               {papers.map((p) => {
                 const teacherCodes = p.primaryTeacherIds.map((tid) => teachers.find((t) => t.id === tid)?.code || tid).join(', ');
                 return (
@@ -220,6 +223,7 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
                   : 'border-slate-300'
               }`}
             >
+              <option value="">-- No Instructor (Leave Blank / Vacant) --</option>
               <optgroup label="Primary Instructors for this Paper">
                 {teachers
                   .filter((t) => selectedPaper?.primaryTeacherIds.includes(t.id))
