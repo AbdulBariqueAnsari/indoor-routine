@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BuildingInfo, Classroom, ClassSlot, DailyRoutine, Paper, RoutineRuleConfig, Teacher } from './types';
 import { api } from './utils/api';
 import { DEFAULT_ROUTINE_RULES, INITIAL_BUILDINGS } from './data/initialData';
@@ -25,7 +25,7 @@ import { PrintableRoutine } from './components/PrintableRoutine';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
 import { modularLocalStorage } from './utils/storage';
-import { Database, Loader2, ShieldCheck, User } from 'lucide-react';
+import { Clock, Database, Loader2, Shield, ShieldCheck, User } from 'lucide-react';
 
 export default function App() {
   const [buildings, setBuildings] = useState<BuildingInfo[]>(INITIAL_BUILDINGS);
@@ -88,15 +88,21 @@ export default function App() {
     loadDataFromServer();
   }, []);
 
-  const currentRoutine =
-    allRoutines.find((r) => r.id === activeRoutineId) ||
-    allRoutines[allRoutines.length - 1] ||
-    null;
+  // USER RULE: Routines in editable/unlocked mode are strictly hidden from public users.
+  // Only locked / published routines are visible to regular users.
+  // Administrators can see all routines (both locked and editable drafts).
+  const visibleRoutines = useMemo(() => {
+    return isAdmin ? allRoutines : allRoutines.filter((r) => r.isLocked);
+  }, [isAdmin, allRoutines]);
 
-  // Selected routine is editable by Admin if unlocked or latest
-  const isCurrentEditable = currentRoutine
-    ? !currentRoutine.isLocked || isRoutineEditable(currentRoutine, allRoutines)
-    : false;
+  const currentRoutine = useMemo(() => {
+    if (visibleRoutines.length === 0) return null;
+    const found = visibleRoutines.find((r) => r.id === activeRoutineId);
+    return found || visibleRoutines[visibleRoutines.length - 1] || null;
+  }, [visibleRoutines, activeRoutineId]);
+
+  // Selected routine is in editable mode ONLY if Admin is logged in and routine is unlocked (!currentRoutine.isLocked)
+  const isCurrentEditable = Boolean(isAdmin && currentRoutine && !currentRoutine.isLocked);
 
   // Live validation of current routine
   const validation = currentRoutine
@@ -235,11 +241,16 @@ export default function App() {
     }
   };
 
-  // Handle lock/unlock routine toggle (saved to server)
+  // Handle lock/unlock routine toggle (saved to server and modular storage)
   const handleToggleLockRoutine = async (routineId: string) => {
     if (!isAdmin) return;
-    const updatedAll = allRoutines.map((r) => (r.id === routineId ? { ...r, isLocked: !r.isLocked } : r));
+    const updatedAll = allRoutines.map((r) =>
+      r.id === routineId
+        ? { ...r, isLocked: !r.isLocked, updatedAt: new Date().toISOString() }
+        : r
+    );
     setAllRoutines(updatedAll);
+    modularLocalStorage.saveRoutines(updatedAll);
     try {
       await api.saveRoutines(updatedAll);
     } catch (err) {
@@ -376,7 +387,7 @@ export default function App() {
         {/* Top Bar Header */}
         <Header
           currentRoutine={currentRoutine}
-          allRoutines={allRoutines}
+          allRoutines={visibleRoutines}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onSelectRoutine={handleSelectRoutine}
@@ -390,6 +401,7 @@ export default function App() {
           onOpenRulesModal={() => setIsRulesModalOpen(true)}
           onPrint={handlePrint}
           isCurrentEditable={isCurrentEditable}
+          onToggleLockRoutine={handleToggleLockRoutine}
         />
 
         {/* Main Content Area */}
@@ -406,6 +418,28 @@ export default function App() {
               onOpenLeaveManager={() => setIsLeaveManagerOpen(true)}
               onPrint={handlePrint}
             />
+          )}
+
+          {/* Empty State: If no locked / published routine exists for viewing */}
+          {!currentRoutine && activeTab === 'matrix' && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-xs my-8">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">No Published Routine Available</h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
+                The indoor class routine is currently in draft / editable mode and being finalized by the Administrator. Only finalized and locked routines are published for public view.
+              </p>
+              {!isAdmin && (
+                <button
+                  onClick={() => setIsAdminLoginOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                >
+                  <Shield className="w-4 h-4 text-emerald-400" />
+                  <span>Admin Login</span>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Tab 1: Daily Routine Matrix */}
@@ -429,6 +463,7 @@ export default function App() {
               onOpenLeaveManager={() => setIsLeaveManagerOpen(true)}
               onRequireAdmin={() => setIsAdminLoginOpen(true)}
               onPrint={handlePrint}
+              onToggleLockRoutine={handleToggleLockRoutine}
             />
           )}
 
@@ -438,7 +473,7 @@ export default function App() {
               teachers={teachers}
               papers={papers}
               classrooms={classrooms}
-              allRoutines={allRoutines}
+              allRoutines={visibleRoutines}
               currentRoutine={currentRoutine}
             />
           )}

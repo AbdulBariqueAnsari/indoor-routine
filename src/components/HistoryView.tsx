@@ -148,14 +148,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
                     {/* Lock Status */}
                     {!r.isLocked ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>Editable / Active</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                        <Unlock className="w-3 h-3 text-amber-700" />
+                        <span>Editable Mode (Hidden from Users)</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        <Lock className="w-3 h-3 text-slate-400" />
-                        <span>Locked</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                        <Lock className="w-3 h-3 text-emerald-700" />
+                        <span>Locked (Published to Users)</span>
                       </span>
                     )}
 
@@ -205,18 +205,22 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   {isAdmin && onToggleLockRoutine && (
                     <button
                       onClick={() => onToggleLockRoutine(r.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
-                      title={r.isLocked ? 'Unlock to allow editing' : 'Lock routine'}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                        r.isLocked
+                          ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                          : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      }`}
+                      title={r.isLocked ? 'Unlock routine to allow editing (will hide from users while unlocked)' : 'Lock routine and publish to users'}
                     >
                       {r.isLocked ? (
                         <>
                           <Unlock className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Unlock</span>
+                          <span>Unlock (Edit)</span>
                         </>
                       ) : (
                         <>
-                          <Lock className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Lock</span>
+                          <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Lock & Publish</span>
                         </>
                       )}
                     </button>

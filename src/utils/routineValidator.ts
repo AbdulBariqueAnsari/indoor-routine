@@ -138,13 +138,10 @@ export function validateRoutine(
 
 /**
  * Check if a specific routine is editable.
- * USER RULE: Only the latest (current) routine can be edited/corrected.
- * Older historical routines are locked to preserve cumulative audit integrity.
+ * A routine is in editable mode when unlocked (!routine.isLocked).
+ * Locked routines are non-editable (published/read-only).
  */
-export function isRoutineEditable(routine: DailyRoutine, allRoutines: DailyRoutine[]): boolean {
-  if (!routine || allRoutines.length === 0) return false;
-  // Sort routines by dayNumber descending
-  const sorted = [...allRoutines].sort((a, b) => b.dayNumber - a.dayNumber);
-  const latestRoutine = sorted[0];
-  return routine.id === latestRoutine?.id;
+export function isRoutineEditable(routine: DailyRoutine, _allRoutines?: DailyRoutine[]): boolean {
+  if (!routine) return false;
+  return !routine.isLocked;
 }

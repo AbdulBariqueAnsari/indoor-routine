@@ -306,9 +306,11 @@
       "roomId": "OB-1",
       "period": 2,
       "paperId": "P08",
-      "teacherId": "T17",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T6",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T17",
+      "substituteReason": "Reassigned from T17 (DUTY): Designated Backup instructor [T6] SI(UB) Biswajit Saha"
     },
     {
       "id": "slot-1-OB-2-P2",
@@ -353,10 +355,10 @@
       "roomId": "OB-6",
       "period": 2,
       "paperId": "P10",
-      "teacherId": "T2",
+      "teacherId": "T20",
       "isSubstitute": true,
-      "originalTeacherId": "T20",
-      "substituteReason": "Guaranteed priority minimum periods fulfillment",
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Co-primary instructor [T20] SI(UB) Sankar Bhowmick",
       "isPriority": true
     },
     {
@@ -511,9 +513,11 @@
       "roomId": "OB-7",
       "period": 3,
       "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T1",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Co-primary instructor [T1] SI(UB) Md Jalaluddin"
     },
     {
       "id": "slot-1-OB-8-P3",
@@ -761,10 +765,10 @@
       "roomId": "OB-3",
       "period": 5,
       "paperId": "P07",
-      "teacherId": "T17",
+      "teacherId": "T13",
       "isSubstitute": true,
-      "originalTeacherId": "T16",
-      "substituteReason": "Primary instructor busy in another classroom - Designated Backup Instructor [T17] SI(AB) Avijit Bala (Floating across campus) appointed",
+      "originalTeacherId": "T17",
+      "substituteReason": "Reassigned from T17 (DUTY): Designated Backup instructor [T13] SI(UB) Rassel Hossain",
       "isPriority": true
     },
     {
@@ -772,9 +776,11 @@
       "roomId": "OB-4",
       "period": 5,
       "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": true
+      "teacherId": "T8",
+      "isSubstitute": true,
+      "isPriority": true,
+      "originalTeacherId": "T2",
+      "substituteReason": "Reassigned from T2 (DUTY): Available faculty [T8] SI(UB) Ebadul Ali Hossain"
     },
     {
       "id": "slot-1-OB-5-P5",
@@ -891,8 +897,9 @@
     }
   ],
   "createdAt": "2026-10-27T02:51:13.512Z",
-  "updatedAt": "2026-10-27T04:21:32.147Z",
+  "updatedAt": "2026-10-28T05:08:18.734Z",
   "isLocked": true,
   "status": "published",
-  "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules"
+  "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
+  "unavailableTeachers": []
 }

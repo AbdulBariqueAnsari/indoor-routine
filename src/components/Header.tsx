@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Shield,
   Sliders,
+  Unlock,
   UserCheck,
   UserX,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ interface HeaderProps {
   onOpenRulesModal?: () => void;
   onPrint: () => void;
   isCurrentEditable: boolean;
+  onToggleLockRoutine?: (routineId: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -55,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRulesModal,
   onPrint,
   isCurrentEditable,
+  onToggleLockRoutine,
 }) => {
   // Navigation tabs for Public & Admin
   const publicNavItems = [
@@ -127,11 +130,42 @@ export const Header: React.FC<HeaderProps> = ({
                     .sort((a, b) => b.dayNumber - a.dayNumber)
                     .map((r) => (
                       <option key={r.id} value={r.id}>
-                        Day {r.dayNumber} ({r.date}) {r.isLocked ? '🔒' : '✏️'}
+                        Day {r.dayNumber} ({r.date}) {r.isLocked ? '🔒 [Locked]' : '✏️ [Editable - Hidden]'}
                       </option>
                     ))}
                 </select>
               </div>
+            )}
+
+            {/* Admin Quick Lock / Unlock Toggle Button */}
+            {isAdmin && currentRoutine && onToggleLockRoutine && (
+              <button
+                onClick={() => onToggleLockRoutine(currentRoutine.id)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-colors shadow-2xs ${
+                  currentRoutine.isLocked
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                }`}
+                title={
+                  currentRoutine.isLocked
+                    ? 'Locked & Published to normal users. Click to Unlock for editing (will hide from normal users while unlocked).'
+                    : 'Editable / Unlocked Mode (HIDDEN from normal users). Click to Lock and publish to normal users.'
+                }
+              >
+                {currentRoutine.isLocked ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden sm:inline">Locked (Published)</span>
+                    <span className="sm:hidden">Locked</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-3.5 h-3.5 text-amber-700" />
+                    <span className="hidden sm:inline">Editable (Hidden)</span>
+                    <span className="sm:hidden">Draft</span>
+                  </>
+                )}
+              </button>
             )}
 
             {/* Print Action */}

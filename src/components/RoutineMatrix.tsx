@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Search,
   Sparkles,
+  Unlock,
   UserCheck,
   Users,
   UserX,
@@ -40,6 +41,7 @@ interface RoutineMatrixProps {
   onOpenLeaveManager?: () => void;
   onRequireAdmin?: () => void;
   onPrint?: () => void;
+  onToggleLockRoutine?: (routineId: string) => void;
 }
 
 export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
@@ -55,6 +57,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   onOpenLeaveManager,
   onRequireAdmin,
   onPrint,
+  onToggleLockRoutine,
 }) => {
   // Filter states
   const [buildingFilter, setBuildingFilter] = useState<'ALL' | 'OLD' | 'NEW'>('ALL');
@@ -454,24 +457,54 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                 <span className="font-bold text-sm text-white">
                   Day {routine.dayNumber} Routine ({routine.date})
                 </span>
-                {isEditable ? (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                    Active & Editable
+                {!routine.isLocked ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                    <Unlock className="w-3 h-3 text-amber-400" />
+                    <span>Editable Mode (Hidden from Users)</span>
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300">
-                    Locked Record
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-emerald-400" />
+                    <span>Locked (Published to Users)</span>
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-slate-300">
-                15 Classrooms · 75 Daily Slots · Click any slot cell to modify instructor or subject
+                15 Classrooms · 75 Daily Slots {!routine.isLocked ? '· Unlocked draft mode (Click slot to edit)' : '· Published read-only mode'}
               </p>
             </div>
           </div>
 
-          {/* Direct prominent actions to Recreate, Edit, and Swap */}
+          {/* Direct prominent actions to Lock/Publish, Recreate, Edit, and Swap */}
           <div className="flex flex-wrap items-center gap-2">
+            {onToggleLockRoutine && (
+              <button
+                onClick={() => onToggleLockRoutine(routine.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg shadow-xs transition-colors ${
+                  routine.isLocked
+                    ? 'bg-white/10 text-amber-300 border border-amber-300/40 hover:bg-white/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500'
+                }`}
+                title={
+                  routine.isLocked
+                    ? 'Unlock to make routine editable (will hide from users while unlocked)'
+                    : 'Lock routine and publish to all users'
+                }
+              >
+                {routine.isLocked ? (
+                  <>
+                    <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Unlock to Edit</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-white" />
+                    <span>Lock & Publish to Users</span>
+                  </>
+                )}
+              </button>
+            )}
+
             {isEditable && onRecreateRoutine && (
               <button
                 onClick={onRecreateRoutine}
