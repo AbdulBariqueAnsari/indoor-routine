@@ -14,7 +14,7 @@
   "enableProportionalRemainingRatio": true,
   "enableSubjectPriorityTiers": true,
   "enableGuaranteedPriorityPeriods": true,
-  "enableDayToDayProgression": true,
+  "enableDayToDayProgression": false,
   "enableWorkloadEqualization": true,
   "enableDailyWorkloadSoftCap": true,
   "enableNoSubstituteAllotment": true,

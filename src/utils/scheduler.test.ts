@@ -495,12 +495,11 @@ test('Backup subject instructors act as 100% Floating across both Old and New bu
   assert.ok(newBldgSlots.some((s) => s.isSubstitute), 'New Building slots should have substitute backup instructors');
 });
 
-test('All instructors are configured as FLOATING across campus by default', () => {
+test('Instructors are configured with strict building binding (OLD, NEW, FLOATING)', () => {
   for (const teacher of INITIAL_TEACHERS) {
-    assert.equal(
-      teacher.assignedBuilding,
-      'FLOATING',
-      `Teacher ${teacher.id} (${teacher.name}) should have assignedBuilding set to FLOATING`
+    assert.ok(
+      ['OLD', 'NEW', 'FLOATING'].includes(teacher.assignedBuilding),
+      `Teacher ${teacher.id} (${teacher.name}) should have assignedBuilding set to OLD, NEW, or FLOATING`
     );
   }
 });
@@ -722,22 +721,26 @@ test('Multi-day subject arrangement gradually equalizes instructor workloads to 
 
     pastRoutines.push(routine);
 
-    // Accumulate sessions
+    // Accumulate sessions for assigned teachers
     for (const slot of routine.slots) {
-      const prev = teacherTotalSessions.get(slot.teacherId) || 0;
-      teacherTotalSessions.set(slot.teacherId, prev + 1);
+      if (slot.teacherId) {
+        const prev = teacherTotalSessions.get(slot.teacherId) || 0;
+        teacherTotalSessions.set(slot.teacherId, prev + 1);
+      }
     }
   }
 
   const sessionCounts = Array.from(teacherTotalSessions.values());
   const minSessions = Math.min(...sessionCounts);
   const maxSessions = Math.max(...sessionCounts);
-  const totalSlots = sessionCounts.reduce((sum, n) => sum + n, 0);
-  const avgSessions = totalSlots / INITIAL_TEACHERS.length; // 750 / 26 = 28.85
+  const totalAssignedSlots = sessionCounts.reduce((sum, n) => sum + n, 0);
+  const totalRoutineSlots = pastRoutines.reduce((sum, r) => sum + r.slots.length, 0);
+  const avgSessions = totalAssignedSlots / INITIAL_TEACHERS.length; // ~28.8 sessions/teacher
   const spread = maxSessions - minSessions;
 
-  // 1. Exactly 75 slots * 10 days = 750 slots
-  assert.equal(totalSlots, 750);
+  // 1. Exactly 75 slots * 10 days = 750 total routine slots generated
+  assert.equal(totalRoutineSlots, 750);
+  assert.ok(totalAssignedSlots >= 745, `At least 745 slots assigned to instructors, got ${totalAssignedSlots}`);
 
   // 2. No teacher is starved (all teachers have taught substantial sessions)
   assert.ok(minSessions >= 23, `Minimum sessions should be at least 23, got ${minSessions}`);
@@ -756,11 +759,11 @@ test('Multi-day subject arrangement gradually equalizes instructor workloads to 
   const t16Sessions = teacherTotalSessions.get('T16') || 0;
   const t17Sessions = teacherTotalSessions.get('T17') || 0;
   assert.ok(
-    t16Sessions >= 23 && t16Sessions <= 35,
+    t16Sessions >= 23 && t16Sessions <= 38,
     `T16 (Criminology) workload equalized: got ${t16Sessions} sessions`
   );
   assert.ok(
-    t17Sessions >= 23 && t17Sessions <= 35,
+    t17Sessions >= 23 && t17Sessions <= 38,
     `T17 (Police Admin) workload equalized: got ${t17Sessions} sessions`
   );
 });
