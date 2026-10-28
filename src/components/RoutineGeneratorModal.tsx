@@ -16,7 +16,7 @@ import {
   UnavailabilityType,
 } from '../types';
 import { calculateCumulativeStats, generateDailyRoutine } from '../utils/scheduler';
-import { DEFAULT_ROUTINE_RULES } from '../data/initialData';
+import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES } from '../data/initialData';
 import {
   AlertCircle,
   Ban,
@@ -1010,7 +1010,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                     4. Routine Generation Rules & Constraint Checks
                   </span>
                   <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                    {Object.values(localRules).filter(Boolean).length}/{Object.keys(localRules).length} Active
+                    {MASTER_ROUTINE_RULES.filter((r) => Boolean(localRules[r.key])).length}/{MASTER_ROUTINE_RULES.length} Active
                   </span>
                 </div>
               </div>
@@ -1023,46 +1023,24 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
 
             {isRulesExpanded && (
               <div className="p-3.5 pt-0 border-t border-slate-200/80 space-y-3 mt-2">
+                {/* Priority Hierarchy notice */}
+                <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                  <strong>Priority Hierarchy:</strong> Tier 1 (Hard Rules 1–9) &gt; Tier 2 (Curriculum Rules 10–16) &gt; Tier 3 (Staffing Rules 17–24). Any conflict is resolved in favor of the higher tier.
+                </div>
+
                 {[
                   {
-                    tier: 'Tier 1: Inviolable Operational Constraints (Hard Rules)',
-                    rules: [
-                      { key: 'enableZeroDoubleBooking', label: '1. Strict Zero Double-Booking Guarantee' },
-                      { key: 'enableStrictAbsenteeExclusion', label: '2. Faculty Absentee & Leave Exclusion' },
-                      { key: 'enableStrictBuildingBinding', label: '3. Strict Building Detailment (Old in OB, New in NB)' },
-                      { key: 'enableBuildingChangeGap', label: '4. 1-Period Gap on Floating Campus Transit' },
-                      { key: 'enableRoomQuotaCompletionLock', label: '5. Classroom 100% Syllabus Quota Lockout' },
-                      { key: 'enableMaxOnePeriodPerSubjectPerRoomDaily', label: '6. Single Period/Subject/Room Daily (Moto II)' },
-                      { key: 'enableNonConsecutiveGapForSameSubject', label: '7. Mandatory Non-Consecutive Gap (Moto II)' },
-                      { key: 'enableMaxRoomDailyLimit', label: '8. Max 2 Periods/Subject in Room Daily' },
-                      { key: 'enableDailyWorkloadMaxCap', label: '8b. Hard-Cap: Max 4 Periods/Day per Teacher' },
-                    ]
+                    tier: 'Tier 1: Inviolable Operational Constraints (Hard Rules 1–9)',
+                    rules: MASTER_ROUTINE_RULES.filter((r) => r.tierNumber === 1),
                   },
                   {
-                    tier: 'Tier 2: Curriculum Progression & Subject Detailment (Moto I & IV)',
-                    rules: [
-                      { key: 'enableClassroomSubjectEqualization', label: '9. Room Quota % Equalization (Moto I)' },
-                      { key: 'enableSubjectFacultyLoadBalancing', label: '9b. Subject Detailment for 6-Day Faculty Load Equality' },
-                      { key: 'enablePaperRotationalFlow', label: '10. Sequential Subject Rotational Flow (Moto IV)' },
-                      { key: 'enableProportionalRemainingRatio', label: '11. Proportional Remaining Quota Fill-Up' },
-                      { key: 'enableSubjectPriorityTiers', label: '12. Priority Scaling (+50% High / -50% Low)' },
-                      { key: 'enableGuaranteedPriorityPeriods', label: '13. Guaranteed Priority Minimum Periods' },
-                      { key: 'enableDayToDayProgression', label: '14. Day-to-Day Room Carryover' },
-                    ]
+                    tier: 'Tier 2: Curriculum Progression & Subject Detailment (Moto I & IV: Rules 10–16)',
+                    rules: MASTER_ROUTINE_RULES.filter((r) => r.tierNumber === 2),
                   },
                   {
-                    tier: 'Tier 3: Faculty Staffing & Workload Management (Moto III)',
-                    rules: [
-                      { key: 'enableWorkloadEqualization', label: '15. Faculty Workload & Session Equalization' },
-                      { key: 'enableDailyWorkloadSoftCap', label: '16. Daily Load Soft-Cap (<= 3 Periods)' },
-                      { key: 'enableNoSubstituteAllotment', label: '17. Strict Main Teacher Only (No Substitute - Blank)' },
-                      { key: 'replaceWithAvailableSubjectIfNoPrimary', label: '18. Replace with Alternate Available Subject' },
-                      { key: 'enableDesignatedBackup', label: '19. Designated Backup Substitution' },
-                      { key: 'enableCrossMutualBackup', label: '20. Cross-Subject Mutual Backup' },
-                      { key: 'enablePracticalFlexible', label: '21. Flexible Practical (P-13) Staffing' },
-                      { key: 'enableCaravanFlow', label: '22. Instructor Caravan Flow (Default: OFF)' },
-                    ]
-                  }
+                    tier: 'Tier 3: Faculty Staffing & Workload Management (Moto III: Rules 17–24)',
+                    rules: MASTER_ROUTINE_RULES.filter((r) => r.tierNumber === 3),
+                  },
                 ].map((tierGroup, idx) => (
                   <div key={idx} className="space-y-1.5">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100/70 px-2 py-0.5 rounded">
@@ -1074,13 +1052,14 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                         return (
                           <label
                             key={rule.key}
+                            title={rule.description}
                             className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
                               isChecked
                                 ? 'bg-white border-blue-200 text-slate-900 font-medium shadow-2xs'
                                 : 'bg-slate-100 border-slate-200 text-slate-400'
                             }`}
                           >
-                            <span className="truncate pr-2">{rule.label}</span>
+                            <span className="truncate pr-2">{rule.title}</span>
                             <input
                               type="checkbox"
                               checked={isChecked}

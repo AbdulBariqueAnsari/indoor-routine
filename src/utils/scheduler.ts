@@ -440,7 +440,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   };
 
   // If enableGuaranteedPriorityPeriods is active, ensure priority papers are populated across rooms
-  if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableGuaranteedPriorityPeriods) {
+  if (activeRules.enableGuaranteedPriorityPeriods) {
     for (const p of schedulingPapers) {
       const minTarget = getGuaranteedMinPeriods(p.id);
       if (minTarget <= 0) continue;
@@ -915,16 +915,17 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     const roomDeficits = roomDeficitMaps.get(roomId) || globalDeficitMap;
     const roomPrios = getRoomPriorityPaperIds(roomId);
 
-    // Filter candidate papers that satisfy room constraints AND have at least one teacher available
-    const candidates = schedulingPapers.filter((p) => {
-      if (!canPaperBeScheduledInRoom(p.id, roomId, period, lastPaperIdInRoom)) return false;
-      return canTeachInPeriod(p, busyTeachersInPeriod, room, period);
-    });
+    // Filter candidate papers that strictly satisfy room constraints (Tier 1 Moto II)
+    const roomValidCandidates = schedulingPapers.filter((p) => canPaperBeScheduledInRoom(p.id, roomId, period, lastPaperIdInRoom));
+    const candidatesWithTeachers = roomValidCandidates.filter((p) => canTeachInPeriod(p, busyTeachersInPeriod, room, period));
 
+    // Prefer papers that satisfy room constraints AND have available teachers; if no teacher available under cap, still preserve room constraint
     const nonCompletedCandidates = schedulingPapers.filter(
       (p) => !combinedExcludedSet.has(p.id) && !isPaperRoomQuotaCompleted(roomId, p.id, roomCounts.get(p.id) || 0)
     );
-    const pool = candidates.length > 0 ? candidates : (nonCompletedCandidates.length > 0 ? nonCompletedCandidates : schedulingPapers);
+    const pool = candidatesWithTeachers.length > 0 
+      ? candidatesWithTeachers 
+      : (roomValidCandidates.length > 0 ? roomValidCandidates : (nonCompletedCandidates.length > 0 ? nonCompletedCandidates : schedulingPapers));
 
     const getPaperSelectionScore = (p: Paper): number => {
       let score = 0;
@@ -962,7 +963,8 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     paper: Paper,
     period: number,
     busyTeachersInPeriod: Set<string>,
-    room: Classroom
+    room: Classroom,
+    lastPaperIdInRoom?: string
   ): {
     teacherId: string;
     isSubstitute: boolean;
@@ -1032,19 +1034,25 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     // USER RULE: "no subsitute attotemnet.. agar kisi subject k liye main techer nhi to.. koi subsitute techer apply nhi hoga.. bass.. wo jagah khali rahega.. iske sub header me ek rule add karo. ki usko dusra availbale subject se replace karne kliye.."
     if (activeRules.enableNoSubstituteAllotment) {
       if (activeRules.replaceWithAvailableSubjectIfNoPrimary) {
-        // Sub-rule: Replace slot with another available subject whose primary instructor IS free
+        // Sub-rule: Replace slot with another available subject whose primary instructor IS free (strictly adhering to Tier 1 Room Constraints)
         for (const altPaper of schedulingPapers) {
           if (altPaper.id === paper.id) continue;
-          if (combinedExcludedSet.has(altPaper.id)) continue;
-          if (isPaperRoomQuotaCompleted(room.id, altPaper.id)) continue;
+          if (!canPaperBeScheduledInRoom(altPaper.id, room.id, period, lastPaperIdInRoom)) continue;
 
           const altPrimaryFree = altPaper.primaryTeacherIds
             .filter(
-              (tid) =>
-                availableTeacherIds.has(tid) &&
-                !busyTeachersInPeriod.has(tid) &&
-                isTeacherAllowedInRoomBuilding(teacherMap.get(tid)!, roomBuilding) &&
-                !hasBuildingChangeConflict(tid, period, roomBuilding)
+              (tid) => {
+                if (!availableTeacherIds.has(tid)) return false;
+                if (busyTeachersInPeriod.has(tid)) return false;
+                const t = teacherMap.get(tid);
+                if (!t || !isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
+                if (hasBuildingChangeConflict(tid, period, roomBuilding)) return false;
+                // Tier 1 Hard Rule 9: Hard-Cap of Max 4 Periods/Day per Instructor
+                const currentLoad = teacherDailyLoad.get(tid) || 0;
+                const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
+                if (activeRules.enableDailyWorkloadMaxCap && currentLoad >= maxAllowed) return false;
+                return true;
+              }
             )
             .map((tid) => teacherMap.get(tid)!)
             .filter(Boolean);
@@ -1284,31 +1292,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   // Pre-plan target papers for each classroom today
   const roomDailyPlans = new Map<string, Paper[]>();
 
-  if (activeRules.enableSingleSubjectPerClassDaily) {
-    // USER RULE: "ek class me ek din me.. maximum ek hi subject hi apply hoga routine creation me...."
-    // Each classroom gets exactly 1 single paper assigned for all 5 periods of today!
-    for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
-      const room = classrooms[rIdx];
-      const prioIds = getRoomPriorityPaperIds(room.id);
-      const prioPapers = prioIds
-        .map((pid) => paperMap.get(pid)!)
-        .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
 
-      let singlePaper: Paper;
-      if (prioPapers.length > 0) {
-        singlePaper = prioPapers[0];
-      } else {
-        const eligible = schedulingPapers.filter((p) => !isPaperRoomQuotaCompleted(room.id, p.id));
-        if (eligible.length > 0) {
-          singlePaper = eligible[rIdx % eligible.length];
-        } else {
-          singlePaper = schedulingPapers[rIdx % schedulingPapers.length];
-        }
-      }
-      // Set all 5 periods to this exact single subject
-      roomDailyPlans.set(room.id, [singlePaper, singlePaper, singlePaper, singlePaper, singlePaper]);
-    }
-  } else {
     for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
       const room = classrooms[rIdx];
       const prioIds = getRoomPriorityPaperIds(room.id);
@@ -1412,7 +1396,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
       roomDailyPlans.set(room.id, selectedPapers);
     }
-  }
 
   const generatedSlots: ClassSlot[] = [];
 
@@ -1443,7 +1426,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       const canRotateConsecutiveSameBuilding =
         (roomIndex >= 2 && roomIndex <= 8) || (roomIndex >= 10 && roomIndex <= 15);
 
-      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableCaravanFlow && period > 1 && canRotateConsecutiveSameBuilding) {
+      if (activeRules.enableCaravanFlow && period > 1 && canRotateConsecutiveSameBuilding) {
         const prevRoomIndex = roomIndex - 1;
         const prevSlot = generatedSlots.find(
           (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRoomIndex
@@ -1478,7 +1461,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       }
 
       // B. Cross-building rotation with mandatory 1-period gap (Room 8 -> Room 9; Room 15 -> Room 1)
-      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableCaravanFlow && period > 2 && !assignment) {
+      if (activeRules.enableCaravanFlow && period > 2 && !assignment) {
         let prevCrossRoomIndex = 0;
         if (roomIndex === 9) prevCrossRoomIndex = 8; // Old Bldg Room 8 -> New Bldg Room 9 after 1-period gap
         if (roomIndex === 1) prevCrossRoomIndex = 15; // New Bldg Room 15 -> Old Bldg Room 1 after 1-period gap
@@ -1527,7 +1510,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
       // 1B. Moto (IV): Sequential Subject / Paper Rotational Flow across Classrooms
       // "subject detailment .. har next period me next room me detail ho.. aisa sequence ho.. ..alag alag room me.. subject 1, subject 5 subject 9 subject12 subject 4..."
-      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enablePaperRotationalFlow && period > 1 && !assignment) {
+      if (activeRules.enablePaperRotationalFlow && period > 1 && !assignment) {
         const prevRotRoomIndex = roomIndex === 1 ? classrooms.length : roomIndex - 1;
         const prevRotSlot = generatedSlots.find(
           (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRotRoomIndex
@@ -1570,14 +1553,14 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
               };
             } else {
               // Assign next qualified teacher for this paper (building-bound & floating aware)
-              assignment = assignTeacherForPaperInPeriod(chosenPaper, period, busyTeachersInPeriod, room);
+              assignment = assignTeacherForPaperInPeriod(chosenPaper, period, busyTeachersInPeriod, room, lastPaperIdInRoom);
             }
           }
         }
       }
 
       // C. Day-to-Day start in Period 1:
-      if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableDayToDayProgression && period === 1 && !assignment) {
+      if (activeRules.enableDayToDayProgression && period === 1 && !assignment) {
         const dayCandidates = availableTeachers.filter((t) => {
           if (busyTeachersInPeriod.has(t.id)) return false;
           if (!isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
@@ -1689,7 +1672,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   // priority lagakar create karta hu.. to.. jitne minimum period dene h.. wo dena hoga..
   // utilising.. remaining all rules"
   // -------------------------------------------------------------------------------------
-  if (!activeRules.enableSingleSubjectPerClassDaily && activeRules.enableGuaranteedPriorityPeriods) {
+  if (activeRules.enableGuaranteedPriorityPeriods) {
     const priorityTargets = new Map<string, number>();
     for (const p of schedulingPapers) {
       const minP = getGuaranteedMinPeriods(p.id);
@@ -1753,6 +1736,17 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         if (deficit <= 0) break;
         const room = classroomMap.get(slot.roomId);
         if (!room) continue;
+
+        // Dynamic constraint check to prevent duplicate subject in same room if another slot was already updated
+        const dynamicRoomCount = generatedSlots.filter((x) => x.roomId === slot.roomId && x.paperId === prioPid).length;
+        if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && dynamicRoomCount >= 1) continue;
+        if (activeRules.enableMaxRoomDailyLimit && dynamicRoomCount >= 2) continue;
+        if (activeRules.enableNonConsecutiveGapForSameSubject) {
+          const prevPeriodSlot = generatedSlots.find((x) => x.roomId === slot.roomId && x.period === slot.period - 1);
+          if (prevPeriodSlot && prevPeriodSlot.paperId === prioPid) continue;
+          const nextPeriodSlot = generatedSlots.find((x) => x.roomId === slot.roomId && x.period === slot.period + 1);
+          if (nextPeriodSlot && nextPeriodSlot.paperId === prioPid) continue;
+        }
 
         // Option 1: Can the instructor already assigned to this slot teach prioPid?
         const currTeacher = teacherMap.get(slot.teacherId);

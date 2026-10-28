@@ -17,11 +17,10 @@
   "enableDayToDayProgression": true,
   "enableWorkloadEqualization": true,
   "enableDailyWorkloadSoftCap": true,
-  "enablePracticalFlexible": true,
-  "enableCaravanFlow": false,
-  "enableNoSubstituteAllotment": false,
-  "replaceWithAvailableSubjectIfNoPrimary": false,
+  "enableNoSubstituteAllotment": true,
+  "replaceWithAvailableSubjectIfNoPrimary": true,
   "enableDesignatedBackup": true,
   "enableCrossMutualBackup": true,
-  "enableSingleSubjectPerClassDaily": false
+  "enablePracticalFlexible": true,
+  "enableCaravanFlow": false
 }
