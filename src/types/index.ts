@@ -34,9 +34,11 @@ export interface RoutineRuleConfig {
   enableMaxOnePeriodPerSubjectPerRoomDaily: boolean; // Moto II: Max 1 period of a subject per room per day (5 different subjects/day)
   enableNonConsecutiveGapForSameSubject: boolean; // Moto II: Non-consecutive subject gap (mandatory >= 1 period gap if 2 periods occur)
   enableMaxRoomDailyLimit: boolean; // Daily Max Cap: Maximum 2 periods of any subject per room per day
+  enableDailyWorkloadMaxCap: boolean; // Hard-Cap: No instructor allotted > 4 periods in a single day
 
   // === TIER 2: Curriculum Progression & Subject Placement (Moto I & IV) ===
   enableClassroomSubjectEqualization: boolean; // Moto I: Equalize subject completion % across all rooms (lowest % first)
+  enableSubjectFacultyLoadBalancing: boolean; // Detail subjects to equalize instructor loads over 6-day cycle
   enablePaperRotationalFlow: boolean; // Moto IV: Sequential Subject Rotation across Classrooms (Room K in P -> Room K+1 in P+1)
   enableProportionalRemainingRatio: boolean; // Proportional session ratio based on remaining syllabus quota
   enableSubjectPriorityTiers: boolean; // Priority scaling (High: +50%, Low: -50%)

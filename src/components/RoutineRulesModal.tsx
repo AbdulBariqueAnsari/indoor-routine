@@ -100,6 +100,15 @@ const RULES_LIST: RuleItem[] = [
     description:
       'Prevents any subject paper from being scheduled more than twice in the exact same classroom on a single day to preserve curriculum diversity.',
   },
+  {
+    key: 'enableDailyWorkloadMaxCap',
+    title: '8b. Strict Hard-Cap: Max 4 Periods/Day per Instructor',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Hard Cap <= 4',
+    tierNumber: 1,
+    description:
+      'Kisi bhi instructor ko ek din me 4 se jyada period allot nahi hoga (Strict hard-cap of max 4 periods per day). No instructor will ever receive a 5th period.',
+  },
 
   // ==========================================
   // TIER 2: CURRICULUM PROGRESSION (MOTO I & IV)
@@ -112,6 +121,15 @@ const RULES_LIST: RuleItem[] = [
     tierNumber: 2,
     description:
       'Subject aise detailment ho har rooms me ki overall sessions completion percentage (completed / target quota %) har room aur subject me lagbhag equal aur balanced rahe.',
+  },
+  {
+    key: 'enableSubjectFacultyLoadBalancing',
+    title: '9b. Subject Detailment for 6-Day Faculty Load Equalization',
+    category: 'Tier 2: Curriculum & Progression (Moto I & IV)',
+    badge: '6-Day Equalizer',
+    tierNumber: 2,
+    description:
+      'Subjects ko rooms me aise detail karein jisse jin instructors ke sessions kam huye hain, unke subjects ko preference mile. Isse 6 din ke cycle me sabhi instructors ke sessions lagbhag barabar (approx 17-18 periods) equalize ho jaate hain.',
   },
   {
     key: 'enablePaperRotationalFlow',

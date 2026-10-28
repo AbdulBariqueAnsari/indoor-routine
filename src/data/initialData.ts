@@ -32,9 +32,11 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableMaxOnePeriodPerSubjectPerRoomDaily: true, // Moto II: Strict max 1 period per subject per room daily
   enableNonConsecutiveGapForSameSubject: true, // Moto II: Mandatory >= 1 period gap (never consecutive)
   enableMaxRoomDailyLimit: true, // Max 2 periods of same subject per room daily
+  enableDailyWorkloadMaxCap: true, // Strict Hard-Cap: Max 4 periods per instructor per day
 
   // Tier 2: Curriculum Progression (Moto I & IV)
   enableClassroomSubjectEqualization: true, // Moto I: Equalize completion % across rooms
+  enableSubjectFacultyLoadBalancing: true, // Detail subjects to equalize faculty load over 6-day cycle
   enablePaperRotationalFlow: true, // Moto IV: Sequential Subject Rotation across Classrooms
   enableProportionalRemainingRatio: true,
   enableSubjectPriorityTiers: true,

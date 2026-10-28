@@ -1035,12 +1035,14 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                       { key: 'enableMaxOnePeriodPerSubjectPerRoomDaily', label: '6. Single Period/Subject/Room Daily (Moto II)' },
                       { key: 'enableNonConsecutiveGapForSameSubject', label: '7. Mandatory Non-Consecutive Gap (Moto II)' },
                       { key: 'enableMaxRoomDailyLimit', label: '8. Max 2 Periods/Subject in Room Daily' },
+                      { key: 'enableDailyWorkloadMaxCap', label: '8b. Hard-Cap: Max 4 Periods/Day per Teacher' },
                     ]
                   },
                   {
                     tier: 'Tier 2: Curriculum Progression & Subject Detailment (Moto I & IV)',
                     rules: [
                       { key: 'enableClassroomSubjectEqualization', label: '9. Room Quota % Equalization (Moto I)' },
+                      { key: 'enableSubjectFacultyLoadBalancing', label: '9b. Subject Detailment for 6-Day Faculty Load Equality' },
                       { key: 'enablePaperRotationalFlow', label: '10. Sequential Subject Rotational Flow (Moto IV)' },
                       { key: 'enableProportionalRemainingRatio', label: '11. Proportional Remaining Quota Fill-Up' },
                       { key: 'enableSubjectPriorityTiers', label: '12. Priority Scaling (+50% High / -50% Low)' },

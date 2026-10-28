@@ -775,6 +775,9 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       if (!t) return false;
       if (!isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
       if (hasBuildingChangeConflict(tid, period, roomBuilding)) return false;
+      const dailyLoad = teacherDailyLoad.get(tid) || 0;
+      const maxLimit = Math.min(4, t.maxDailyPeriods || 4);
+      if (activeRules.enableDailyWorkloadMaxCap && dailyLoad >= maxLimit) return false;
       return true;
     };
 
@@ -830,6 +833,48 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return availableTeachers.some((t) => isTeacherEligible(t.id));
   };
 
+  // Score a candidate paper based on its faculty's need for teaching load equalization across the 6-day cycle
+  const getPaperFacultyWorkloadScore = (paper: Paper, roomBuilding: string): number => {
+    if (!activeRules.enableSubjectFacultyLoadBalancing && !activeRules.enableWorkloadEqualization) {
+      return 0;
+    }
+
+    const avgAcademy = getAcademyAverageLoad();
+
+    if (paper.id === 'P13') {
+      const freeEligible = availableTeachers.filter(
+        (t) => isTeacherAllowedInRoomBuilding(t, roomBuilding) && (teacherDailyLoad.get(t.id) || 0) < 4
+      );
+      if (freeEligible.length === 0) return -50;
+      const minLoad = Math.min(...freeEligible.map((t) => getTeacherTotalLoad(t.id)));
+      const minDaily = Math.min(...freeEligible.map((t) => teacherDailyLoad.get(t.id) || 0));
+      const lag = avgAcademy - minLoad;
+      const dailyBonus = (3 - minDaily) * 2.0;
+      return lag * 2.5 + dailyBonus;
+    }
+
+    const eligiblePrimaries = paper.primaryTeacherIds
+      .filter((tid) => availableTeacherIds.has(tid))
+      .map((tid) => teacherMap.get(tid)!)
+      .filter((t) => t && isTeacherAllowedInRoomBuilding(t, roomBuilding));
+
+    if (eligiblePrimaries.length === 0) {
+      return -15;
+    }
+
+    const withCapacity = eligiblePrimaries.filter((t) => (teacherDailyLoad.get(t.id) || 0) < 4);
+    if (withCapacity.length === 0) {
+      return -100; // All primary instructors have reached 4 periods today!
+    }
+
+    const minLoad = Math.min(...withCapacity.map((t) => getTeacherTotalLoad(t.id)));
+    const minDaily = Math.min(...withCapacity.map((t) => teacherDailyLoad.get(t.id) || 0));
+    const lag = avgAcademy - minLoad;
+    const dailyBonus = (3 - minDaily) * 2.5;
+
+    return lag * 3.0 + dailyBonus;
+  };
+
   // Moto (II) & Quota constraints: Helper to check if a paper can be scheduled in this classroom
   const canPaperBeScheduledInRoom = (
     paperId: string,
@@ -881,29 +926,25 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     );
     const pool = candidates.length > 0 ? candidates : (nonCompletedCandidates.length > 0 ? nonCompletedCandidates : schedulingPapers);
 
-    // Sort by weighted deficit in THIS SPECIFIC CLASSROOM (Moto I: syllabus % equalization)
-    const sorted = [...pool].sort((a, b) => {
-      const isPriorityA = roomPrios.includes(a.id) ? 1 : 0;
-      const isPriorityB = roomPrios.includes(b.id) ? 1 : 0;
-      if (isPriorityA !== isPriorityB) return isPriorityB - isPriorityA;
+    const getPaperSelectionScore = (p: Paper): number => {
+      let score = 0;
+      if (roomPrios.includes(p.id)) score += 100;
 
       if (activeRules.enableClassroomSubjectEqualization) {
-        // Moto (I): Subject with lowest completion percentage in this classroom comes first!
-        const targetA = a.totalTargetSessions > 0 ? Math.max(1, Math.round(a.totalTargetSessions / classrooms.length)) : 2;
-        const targetB = b.totalTargetSessions > 0 ? Math.max(1, Math.round(b.totalTargetSessions / classrooms.length)) : 2;
-        const countInRoomA = (roomPaperCompletedMap.get(room.id)?.get(a.id) || 0) + (roomCounts.get(a.id) || 0);
-        const countInRoomB = (roomPaperCompletedMap.get(room.id)?.get(b.id) || 0) + (roomCounts.get(b.id) || 0);
-        const percentA = (countInRoomA / targetA) * 100;
-        const percentB = (countInRoomB / targetB) * 100;
-        if (Math.abs(percentA - percentB) >= 0.01) {
-          return percentA - percentB;
-        }
+        const targetQuota = p.totalTargetSessions > 0 ? Math.max(1, Math.round(p.totalTargetSessions / classrooms.length)) : 2;
+        const countInRoom = (roomPaperCompletedMap.get(room.id)?.get(p.id) || 0) + (roomCounts.get(p.id) || 0);
+        const percent = (countInRoom / targetQuota) * 100;
+        score += (100 - percent) * 0.5;
       }
 
-      const deficitA = roomDeficits.get(a.id) ?? globalDeficitMap.get(a.id) ?? 0;
-      const deficitB = roomDeficits.get(b.id) ?? globalDeficitMap.get(b.id) ?? 0;
-      return deficitB - deficitA;
-    });
+      if (activeRules.enableSubjectFacultyLoadBalancing || activeRules.enableWorkloadEqualization) {
+        score += getPaperFacultyWorkloadScore(p, room.building);
+      }
+
+      return score;
+    };
+
+    const sorted = [...pool].sort((a, b) => getPaperSelectionScore(b) - getPaperSelectionScore(a));
 
     // Add mild randomized rotation among top 3 candidates to avoid lock-step repetition across rooms
     const topCandidates = sorted.slice(0, Math.min(3, sorted.length));
@@ -939,7 +980,8 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         (t) =>
           !busyTeachersInPeriod.has(t.id) &&
           isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
-          !hasBuildingChangeConflict(t.id, period, roomBuilding)
+          !hasBuildingChangeConflict(t.id, period, roomBuilding) &&
+          (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
       );
       if (freeForPractical.length > 0) {
         const sorted = sortCandidatesByProgressionAndLoad(freeForPractical, roomIndex, true);
@@ -957,7 +999,8 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           availableTeacherIds.has(tid) &&
           !busyTeachersInPeriod.has(tid) &&
           isTeacherAllowedInRoomBuilding(teacherMap.get(tid)!, roomBuilding) &&
-          !hasBuildingChangeConflict(tid, period, roomBuilding)
+          !hasBuildingChangeConflict(tid, period, roomBuilding) &&
+          (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(tid) || 0) < Math.min(4, teacherMap.get(tid)?.maxDailyPeriods || 4))
       )
       .map((tid) => teacherMap.get(tid)!)
       .filter(Boolean);
@@ -1184,7 +1227,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
     // 7. Emergency reserve: Any free teacher with NO building conflict
     const freeWithoutConflict = availableTeachers.filter(
-      (t) => !busyTeachersInPeriod.has(t.id) && isTeacherAllowedInRoomBuilding(t, roomBuilding) && !hasBuildingChangeConflict(t.id, period, roomBuilding)
+      (t) => !busyTeachersInPeriod.has(t.id) && isTeacherAllowedInRoomBuilding(t, roomBuilding) && !hasBuildingChangeConflict(t.id, period, roomBuilding) && (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
     );
     if (freeWithoutConflict.length > 0) {
       const sorted = sortCandidatesByProgressionAndLoad(freeWithoutConflict, roomIndex, true);
@@ -1196,10 +1239,16 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       };
     }
 
-    // Edge case if all non-conflicting teachers are busy: pick any available free teacher
-    const anyFreeTeachers = availableTeachers.filter((t) => !busyTeachersInPeriod.has(t.id));
-    if (anyFreeTeachers.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(anyFreeTeachers, roomIndex, true);
+    // Edge case if all preferred teachers are busy: pick any free teacher ALLOWED in this building under cap & with transit gap
+    const anyFreeInBuilding = availableTeachers.filter(
+      (t) =>
+        !busyTeachersInPeriod.has(t.id) &&
+        isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
+        !hasBuildingChangeConflict(t.id, period, roomBuilding) &&
+        (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
+    );
+    if (anyFreeInBuilding.length > 0) {
+      const sorted = sortCandidatesByProgressionAndLoad(anyFreeInBuilding, roomIndex, true);
       return {
         teacherId: sorted[0].id,
         isSubstitute: true,
@@ -1208,11 +1257,26 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       };
     }
 
-    // Absolute fallback
+    // If still no teacher allowed in this building is free under cap, check if preferred teacher is allowed in building
+    const prefTeacher = teacherMap.get(preferredOriginalId);
+    if (
+      prefTeacher &&
+      isTeacherAllowedInRoomBuilding(prefTeacher, roomBuilding) &&
+      !hasBuildingChangeConflict(prefTeacher.id, period, roomBuilding) &&
+      (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(prefTeacher.id) || 0) < Math.min(4, prefTeacher.maxDailyPeriods || 4)) &&
+      !busyTeachersInPeriod.has(prefTeacher.id)
+    ) {
+      return {
+        teacherId: prefTeacher.id,
+        isSubstitute: false,
+      };
+    }
+
+    // Under strict building binding, NEVER assign an instructor from the wrong building: leave slot blank!
     return {
-      teacherId: preferredOriginalId || teachers[0].id,
-      isSubstitute: true,
-      substituteReason: 'Instructor schedule review needed',
+      teacherId: '',
+      isSubstitute: false,
+      substituteReason: 'No instructor available in this building under maximum load cap',
     };
   };
 
@@ -1253,24 +1317,26 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
 
       const roomDeficits = roomDeficitMaps.get(room.id) || globalDeficitMap;
+      const getRoomPlanScore = (p: Paper): number => {
+        let score = 0;
+        const targetQuota = p.totalTargetSessions > 0 ? Math.max(1, Math.round(p.totalTargetSessions / classrooms.length)) : 2;
+        const countInThisRoom = roomPaperCompletedMap.get(room.id)?.get(p.id) || 0;
+        const percent = (countInThisRoom / targetQuota) * 100;
+
+        if (activeRules.enableClassroomSubjectEqualization) {
+          score += (100 - percent) * 0.4;
+        }
+
+        if (activeRules.enableSubjectFacultyLoadBalancing || activeRules.enableWorkloadEqualization) {
+          score += getPaperFacultyWorkloadScore(p, room.building);
+        }
+
+        return score;
+      };
+
       const nonPrioPapers = schedulingPapers
         .filter((p) => !prioIds.includes(p.id) && !isPaperRoomQuotaCompleted(room.id, p.id))
-        .sort((a, b) => {
-          if (activeRules.enableClassroomSubjectEqualization) {
-            const countInThisRoomA = roomPaperCompletedMap.get(room.id)?.get(a.id) || 0;
-            const countInThisRoomB = roomPaperCompletedMap.get(room.id)?.get(b.id) || 0;
-            const targetQuotaA = a.totalTargetSessions > 0 ? a.totalTargetSessions : 30;
-            const targetQuotaB = b.totalTargetSessions > 0 ? b.totalTargetSessions : 30;
-            const percentInThisRoomA = (countInThisRoomA / targetQuotaA) * 100;
-            const percentInThisRoomB = (countInThisRoomB / targetQuotaB) * 100;
-            if (Math.abs(percentInThisRoomA - percentInThisRoomB) >= 0.01) {
-              return percentInThisRoomA - percentInThisRoomB;
-            }
-          }
-          const defA = roomDeficits.get(a.id) ?? 0;
-          const defB = roomDeficits.get(b.id) ?? 0;
-          return defB - defA;
-        });
+        .sort((a, b) => getRoomPlanScore(b) - getRoomPlanScore(a));
 
       // Take all priority papers (up to 5)
       const selectedPapers: Paper[] = [...prioPapers.slice(0, 5)];
