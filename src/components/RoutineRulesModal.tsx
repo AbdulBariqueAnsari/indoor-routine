@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { RoutineRuleConfig } from '../types';
-import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES, MasterRuleDefinition } from '../data/initialData';
+import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES, MasterRuleDefinition, isRuleDisabled, normalizeRuleConfig } from '../data/initialData';
 import { Check, CheckCircle2, RotateCcw, Shield, Sliders, X, AlertTriangle } from 'lucide-react';
 
 interface RoutineRulesModalProps {
@@ -16,7 +16,7 @@ interface RoutineRulesModalProps {
 }
 
 export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: RoutineRulesModalProps) {
-  const [localRules, setLocalRules] = useState<RoutineRuleConfig>({ ...rules });
+  const [localRules, setLocalRules] = useState<RoutineRuleConfig>(normalizeRuleConfig(rules));
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
@@ -24,10 +24,14 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
   if (!isOpen) return null;
 
   const handleToggle = (key: keyof RoutineRuleConfig) => {
-    setLocalRules((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    if (isRuleDisabled(key, localRules)) return;
+    setLocalRules((prev) => {
+      const next = {
+        ...prev,
+        [key]: !prev[key],
+      };
+      return normalizeRuleConfig(next);
+    });
   };
 
   const handleEnableAll = () => {
@@ -35,7 +39,7 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
     MASTER_ROUTINE_RULES.forEach((r) => {
       updated[r.key] = true;
     });
-    setLocalRules(updated);
+    setLocalRules(normalizeRuleConfig(updated));
   };
 
   const handleDisableAll = () => {
@@ -43,11 +47,11 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
     MASTER_ROUTINE_RULES.forEach((r) => {
       updated[r.key] = false;
     });
-    setLocalRules(updated);
+    setLocalRules(normalizeRuleConfig(updated));
   };
 
   const handleResetDefaults = () => {
-    setLocalRules({ ...DEFAULT_ROUTINE_RULES });
+    setLocalRules(normalizeRuleConfig(DEFAULT_ROUTINE_RULES));
   };
 
   const handleSave = async () => {
@@ -150,7 +154,7 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
             <p className="text-[11px] text-amber-800 leading-relaxed">
               Jab bhi do rules me conflict hoga, higher tier rule strictly lower tier ko override karega:
               <br />
-              • <strong>Tier 1 (Hard Rules 1–9)</strong>: Inviolable constraints (Zero Double-Booking, Building Binding, Transit Gap, 100% Lock, Max 1 Period/Room, Non-consecutive, Hard-cap &le;4 periods/day). Never compromised.
+              • <strong>Tier 1 (Hard Rules: 1, 2, 3, 4, 5, 6, 6A, 6B, 7)</strong>: Inviolable constraints (Zero Double-Booking, Building Binding, Transit Gap, 100% Lock, Single Period / Max 2 &amp; Non-consecutive, Hard-cap &le;4 periods/day). Never compromised.
               <br />
               • <strong>Tier 2 (Curriculum Rules 10–16)</strong>: Moto I &amp; IV subject detailment (Syllabus % equality, 6-day load balance, Rotational sequence, Priority quotas).
               <br />
@@ -179,7 +183,8 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
         {/* Rules Grid */}
         <div className="p-5 overflow-y-auto space-y-3 flex-1 bg-slate-50/50">
           {filteredRules.map((item) => {
-            const isEnabled = Boolean(localRules[item.key]);
+            const disabled = isRuleDisabled(item.key, localRules);
+            const isEnabled = !disabled && Boolean(localRules[item.key]);
             const tierColor =
               item.tierNumber === 1
                 ? 'bg-rose-100 text-rose-800 border-rose-200'
@@ -190,11 +195,13 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
             return (
               <div
                 key={item.key}
-                onClick={() => handleToggle(item.key)}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none flex items-start justify-between gap-4 ${
-                  isEnabled
-                    ? 'bg-white border-blue-200 shadow-xs hover:border-blue-400'
-                    : 'bg-slate-100/80 border-slate-200 opacity-70 hover:opacity-100'
+                onClick={() => !disabled && handleToggle(item.key)}
+                className={`p-3.5 rounded-xl border transition-all select-none flex items-start justify-between gap-4 ${
+                  disabled
+                    ? 'bg-slate-100/60 border-slate-200 opacity-50 cursor-not-allowed'
+                    : isEnabled
+                    ? 'bg-white border-blue-200 shadow-xs hover:border-blue-400 cursor-pointer'
+                    : 'bg-slate-100/80 border-slate-200 opacity-70 hover:opacity-100 cursor-pointer'
                 }`}
               >
                 <div className="flex-1 space-y-1">
@@ -205,20 +212,33 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
                     </span>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                        isEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                        disabled
+                          ? 'bg-slate-200 text-slate-500'
+                          : isEnabled
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-200 text-slate-600'
                       }`}
                     >
-                      {item.badge}
+                      {disabled ? 'Inactive (Dependency Locked)' : item.badge}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>
+                  {disabled && item.disabledHint && (
+                    <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded inline-block">
+                      ↳ {item.disabledHint}
+                    </p>
+                  )}
                 </div>
 
                 {/* Toggle switch */}
                 <div className="pt-0.5">
                   <div
-                    className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 cursor-pointer ${
-                      isEnabled ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                    className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ${
+                      disabled
+                        ? 'bg-slate-200 cursor-not-allowed justify-start'
+                        : isEnabled
+                        ? 'bg-blue-600 justify-end cursor-pointer'
+                        : 'bg-slate-300 justify-start cursor-pointer'
                     }`}
                   >
                     <div className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />

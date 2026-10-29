@@ -24,17 +24,20 @@ export const INITIAL_BUILDINGS: BuildingInfo[] = [
 
 export interface MasterRuleDefinition {
   key: keyof RoutineRuleConfig;
-  ruleNumber: number;
+  ruleNumber: number | string;
   title: string;
   category: 'Tier 1: Inviolable Constraints' | 'Tier 2: Curriculum & Progression (Moto I & IV)' | 'Tier 3: Staffing & Substitution (Moto III)';
   tierNumber: 1 | 2 | 3;
   badge: string;
   description: string;
+  dependsOn?: keyof RoutineRuleConfig;
+  disabledHint?: string;
 }
 
 export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
   // ==========================================
   // TIER 1: INVIOLABLE CONSTRAINTS (HARD RULES)
+  // Active Rules: 1, 2, 3, 4, 5, 6, 6A, 6B, 7
   // ==========================================
   {
     key: 'enableZeroDoubleBooking',
@@ -88,38 +91,42 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
   },
   {
     key: 'enableMaxOnePeriodPerSubjectPerRoomDaily',
-    ruleNumber: 6,
-    title: '6. Single Period per Subject per Room Daily (Moto II)',
+    ruleNumber: '6',
+    title: '6. Single Period per Subject per Room per Day',
     category: 'Tier 1: Inviolable Constraints',
-    badge: 'Moto II: Daily Variety',
+    badge: 'Single Period/Room',
     tierNumber: 1,
     description:
-      'Ek room me ek hi din same subject ka 2 period nahi hoga. Har class me din ke 5 periods me 5 alag-alag subjects deliver honge.',
-  },
-  {
-    key: 'enableNonConsecutiveGapForSameSubject',
-    ruleNumber: 7,
-    title: '7. Mandatory Non-Consecutive Gap for Same Subject (Moto II)',
-    category: 'Tier 1: Inviolable Constraints',
-    badge: 'Moto II: No Back-to-Back',
-    tierNumber: 1,
-    description:
-      'Agar kisi class me kisi subject ke 2 period allow kiye jayein, toh wo kabhi bhi back-to-back nahi honge. Beech me kam se kam 1 period ka gap lazmi hoga (e.g. Period 1 and Period 3/4).',
+      'When enabled, a particular subject must not be assigned more than once in the same room/class on the same day (5 different subjects daily). When ON, Rules 6A and 6B are disabled.',
   },
   {
     key: 'enableMaxRoomDailyLimit',
-    ruleNumber: 8,
-    title: '8. Classroom Daily Max Limit (Max 2 Periods/Subject/Day)',
+    ruleNumber: '6A',
+    title: '6A. Maximum Two Periods per Subject per Class/Room per Day',
     category: 'Tier 1: Inviolable Constraints',
-    badge: 'Frequency Cap',
+    badge: 'Max 2 Periods/Room',
     tierNumber: 1,
+    dependsOn: 'enableMaxOnePeriodPerSubjectPerRoomDaily',
+    disabledHint: 'Available only when Rule 6 is OFF',
     description:
-      'Prevents any subject paper from being scheduled more than twice in the exact same classroom on a single day to preserve curriculum diversity.',
+      'Available only when Rule 6 is OFF. When enabled, the same subject may be assigned to the same room/class a maximum of two times per day.',
+  },
+  {
+    key: 'enableNonConsecutiveGapForSameSubject',
+    ruleNumber: '6B',
+    title: '6B. Prevent Consecutive Periods of the Same Subject',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'No Back-to-Back',
+    tierNumber: 1,
+    dependsOn: 'enableMaxRoomDailyLimit',
+    disabledHint: 'Available only when Rule 6 is OFF and Rule 6A is ON',
+    description:
+      'Available only when Rule 6A is ON. When enabled, the same subject must not be assigned in consecutive periods within the same room/class on the same day (e.g. Periods 1 and 3 allowed, Periods 1 and 2 prohibited).',
   },
   {
     key: 'enableDailyWorkloadMaxCap',
-    ruleNumber: 9,
-    title: '9. Strict Hard-Cap: Max 4 Periods/Day per Instructor',
+    ruleNumber: 7,
+    title: '7. Strict Hard-Cap: Max 4 Periods/Day per Instructor',
     category: 'Tier 1: Inviolable Constraints',
     badge: 'Hard Cap <= 4',
     tierNumber: 1,
@@ -294,8 +301,8 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableBuildingChangeGap: true,
   enableRoomQuotaCompletionLock: true,
   enableMaxOnePeriodPerSubjectPerRoomDaily: true,
-  enableNonConsecutiveGapForSameSubject: true,
-  enableMaxRoomDailyLimit: true,
+  enableMaxRoomDailyLimit: false,
+  enableNonConsecutiveGapForSameSubject: false,
   enableDailyWorkloadMaxCap: true,
 
   // Tier 2: Curriculum Progression (Moto I & IV)
@@ -317,6 +324,67 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enablePracticalFlexible: true,
   enableCaravanFlow: false,
 };
+
+/**
+ * Returns whether a given rule is currently disabled/locked based on its dependencies.
+ */
+export function isRuleDisabled(key: keyof RoutineRuleConfig, rules: RoutineRuleConfig): boolean {
+  if (key === 'enableMaxRoomDailyLimit') {
+    // Rule 6A is disabled when Rule 6 is ON
+    return Boolean(rules.enableMaxOnePeriodPerSubjectPerRoomDaily);
+  }
+  if (key === 'enableNonConsecutiveGapForSameSubject') {
+    // Rule 6B is disabled when Rule 6 is ON OR Rule 6A is OFF
+    return Boolean(rules.enableMaxOnePeriodPerSubjectPerRoomDaily) || !rules.enableMaxRoomDailyLimit;
+  }
+  if (key === 'replaceWithAvailableSubjectIfNoPrimary') {
+    // Rule 20 is disabled when Rule 19 (No Substitute) is OFF
+    return !rules.enableNoSubstituteAllotment;
+  }
+  return false;
+}
+
+/**
+ * Normalizes rule configuration to guarantee that dependent rules are kept inactive
+ * whenever their prerequisites are not met.
+ */
+export function normalizeRuleConfig(rules: Partial<RoutineRuleConfig> = {}): RoutineRuleConfig {
+  const merged: RoutineRuleConfig = {
+    ...DEFAULT_ROUTINE_RULES,
+    ...rules,
+  };
+
+  // Rule 6 -> Rule 6A -> Rule 6B dependency matrix
+  if (merged.enableMaxOnePeriodPerSubjectPerRoomDaily) {
+    // Rule 6 is ON -> 6A and 6B are inactive
+    merged.enableMaxRoomDailyLimit = false;
+    merged.enableNonConsecutiveGapForSameSubject = false;
+  } else if (!merged.enableMaxRoomDailyLimit) {
+    // Rule 6 is OFF, 6A is OFF -> 6B is inactive
+    merged.enableNonConsecutiveGapForSameSubject = false;
+  }
+
+  // Rule 19 -> Rule 20 dependency
+  if (!merged.enableNoSubstituteAllotment) {
+    merged.replaceWithAvailableSubjectIfNoPrimary = false;
+  }
+
+  return merged;
+}
+
+/**
+ * Safely migrates legacy stored rules without losing valid user configurations.
+ */
+export function migrateLegacyRules(stored: any): RoutineRuleConfig {
+  if (!stored || typeof stored !== 'object') {
+    return { ...DEFAULT_ROUTINE_RULES };
+  }
+  const result: RoutineRuleConfig = {
+    ...DEFAULT_ROUTINE_RULES,
+    ...stored,
+  };
+  return normalizeRuleConfig(result);
+}
 
 export const INITIAL_CLASSROOMS: Classroom[] = [
   // Old School Building (8 Classrooms, Capacity: 70)

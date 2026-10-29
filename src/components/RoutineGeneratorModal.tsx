@@ -16,7 +16,7 @@ import {
   UnavailabilityType,
 } from '../types';
 import { calculateCumulativeStats, generateDailyRoutine } from '../utils/scheduler';
-import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES } from '../data/initialData';
+import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES, isRuleDisabled, normalizeRuleConfig } from '../data/initialData';
 import {
   AlertCircle,
   Ban,
@@ -66,7 +66,9 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [localRules, setLocalRules] = useState<RoutineRuleConfig>(rules || DEFAULT_ROUTINE_RULES);
+  const [localRules, setLocalRules] = useState<RoutineRuleConfig>(
+    normalizeRuleConfig(rules || DEFAULT_ROUTINE_RULES)
+  );
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
 
   const isRecreating = !!recreatingRoutine;
@@ -796,7 +798,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto shrink-0">
-                            {/* Segmented Tier Buttons */}
+                            {/* Segmented Tier Buttons: High (1.50x), Medium (1.00x), Low (0.50x), Exclude (0.00x) */}
                             <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-[10px] font-bold shrink-0">
                               <button
                                 type="button"
@@ -806,21 +808,21 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                                     ? 'bg-amber-500 text-white shadow-2xs font-extrabold'
                                     : 'text-slate-600 hover:text-amber-800'
                                 }`}
-                                title="+50% more subject detailment than baseline (max 15 classrooms)"
+                                title="High Priority (1.50x multiplier: +50% allocation)"
                               >
-                                High (+50%)
+                                High (1.50x)
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setPaperTier(p.id, 'NORMAL')}
+                                onClick={() => setPaperTier(p.id, 'MEDIUM')}
                                 className={`px-2 py-1 rounded transition-all ${
-                                  currentTier === 'NORMAL'
+                                  currentTier === 'MEDIUM' || currentTier === 'NORMAL'
                                     ? 'bg-slate-300 text-slate-900 shadow-2xs font-bold'
                                     : 'text-slate-500 hover:text-slate-800'
                                 }`}
-                                title="Standard baseline proportional to remaining session percentage"
+                                title="Medium Priority (1.00x multiplier: baseline remaining demand)"
                               >
-                                Normal
+                                Medium (1.00x)
                               </button>
                               <button
                                 type="button"
@@ -830,9 +832,9 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                                     ? 'bg-teal-600 text-white shadow-2xs font-extrabold'
                                     : 'text-slate-600 hover:text-teal-800'
                                 }`}
-                                title="-50% less subject detailment than baseline"
+                                title="Low Priority (0.50x multiplier: -50% allocation)"
                               >
-                                Low (-50%)
+                                Low (0.50x)
                               </button>
                               <button
                                 type="button"
@@ -842,38 +844,11 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                                     ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
                                     : 'text-slate-600 hover:text-rose-800'
                                 }`}
-                                title="Completely omitted from routine (0 classes)"
+                                title="Exclude (0.00x multiplier: completely omitted from routine)"
                               >
                                 Exclude (0)
                               </button>
                             </div>
-
-                            {/* Guaranteed Minimum Periods Stepper for Priority Subjects */}
-                            {['HIGH', 'MEDIUM', 'LOW'].includes(currentTier) && (
-                              <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-lg px-2 py-0.5 text-[10px] font-bold text-amber-950 shadow-2xs">
-                                <span className="text-[9px] text-amber-700 uppercase tracking-wider font-semibold">Min:</span>
-                                <button
-                                  type="button"
-                                  onClick={() => updateMinPeriods(p.id, -1)}
-                                  className="w-4 h-4 rounded bg-white hover:bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 leading-none"
-                                  title="Decrease guaranteed minimum periods"
-                                >
-                                  -
-                                </button>
-                                <span className="w-5 text-center font-mono font-extrabold text-amber-900">
-                                  {subjectMinPeriods[p.id] ?? (currentTier === 'HIGH' ? 15 : currentTier === 'MEDIUM' ? 9 : 3)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => updateMinPeriods(p.id, 1)}
-                                  className="w-4 h-4 rounded bg-white hover:bg-amber-100 border border-amber-300 flex items-center justify-center font-bold text-amber-900 leading-none"
-                                  title="Increase guaranteed minimum periods"
-                                >
-                                  +
-                                </button>
-                                <span className="text-[9px] text-amber-600 font-normal">periods</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       );
@@ -1025,12 +1000,12 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
               <div className="p-3.5 pt-0 border-t border-slate-200/80 space-y-3 mt-2">
                 {/* Priority Hierarchy notice */}
                 <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-                  <strong>Priority Hierarchy:</strong> Tier 1 (Hard Rules 1–9) &gt; Tier 2 (Curriculum Rules 10–16) &gt; Tier 3 (Staffing Rules 17–24). Any conflict is resolved in favor of the higher tier.
+                  <strong>Priority Hierarchy:</strong> Tier 1 (Hard Rules: 1, 2, 3, 4, 5, 6, 6A, 6B, 7) &gt; Tier 2 (Curriculum Rules 10–16) &gt; Tier 3 (Staffing Rules 17–24). Any conflict is resolved in favor of the higher tier.
                 </div>
 
                 {[
                   {
-                    tier: 'Tier 1: Inviolable Operational Constraints (Hard Rules 1–9)',
+                    tier: 'Tier 1: Inviolable Operational Constraints (Hard Rules: 1, 2, 3, 4, 5, 6, 6A, 6B, 7)',
                     rules: MASTER_ROUTINE_RULES.filter((r) => r.tierNumber === 1),
                   },
                   {
@@ -1048,28 +1023,38 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {tierGroup.rules.map((rule) => {
-                        const isChecked = Boolean(localRules[rule.key as keyof RoutineRuleConfig]);
+                        const disabled = isRuleDisabled(rule.key as keyof RoutineRuleConfig, localRules);
+                        const isChecked = !disabled && Boolean(localRules[rule.key as keyof RoutineRuleConfig]);
                         return (
                           <label
                             key={rule.key}
-                            title={rule.description}
-                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
-                              isChecked
-                                ? 'bg-white border-blue-200 text-slate-900 font-medium shadow-2xs'
-                                : 'bg-slate-100 border-slate-200 text-slate-400'
+                            title={disabled ? (rule.disabledHint || 'Disabled by rule dependency') : rule.description}
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs select-none transition ${
+                              disabled
+                                ? 'bg-slate-100/50 border-slate-200 text-slate-400 opacity-50 cursor-not-allowed'
+                                : isChecked
+                                ? 'bg-white border-blue-200 text-slate-900 font-medium shadow-2xs cursor-pointer'
+                                : 'bg-slate-100 border-slate-200 text-slate-400 cursor-pointer'
                             }`}
                           >
-                            <span className="truncate pr-2">{rule.title}</span>
+                            <span className="truncate pr-2">
+                              {rule.title}
+                              {disabled && <span className="block text-[10px] text-amber-700 font-normal">↳ {rule.disabledHint}</span>}
+                            </span>
                             <input
                               type="checkbox"
+                              disabled={disabled}
                               checked={isChecked}
-                              onChange={() =>
-                                setLocalRules((prev) => ({
-                                  ...prev,
-                                  [rule.key]: !prev[rule.key as keyof RoutineRuleConfig],
-                                }))
-                              }
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                              onChange={() => {
+                                if (disabled) return;
+                                setLocalRules((prev) =>
+                                  normalizeRuleConfig({
+                                    ...prev,
+                                    [rule.key]: !prev[rule.key as keyof RoutineRuleConfig],
+                                  })
+                                );
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
                             />
                           </label>
                         );

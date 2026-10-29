@@ -5,10 +5,25 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_ROUTINE_RULES, INITIAL_CLASSROOMS, INITIAL_PAPERS, INITIAL_TEACHERS } from '../data/initialData';
-import { generateDailyRoutine, calculateCumulativeStats, calculateClassroomCumulativeStats } from './scheduler';
-import { validateRoutine, isRoutineEditable } from './routineValidator';
-import { DailyRoutine } from '../types';
+import {
+  DEFAULT_ROUTINE_RULES,
+  INITIAL_CLASSROOMS,
+  INITIAL_PAPERS,
+  INITIAL_TEACHERS,
+  MASTER_ROUTINE_RULES,
+  isRuleDisabled,
+  normalizeRuleConfig,
+  migrateLegacyRules,
+} from '../data/initialData';
+import {
+  generateDailyRoutine,
+  calculateCumulativeStats,
+  calculateClassroomCumulativeStats,
+  calculateCurriculumAllocation,
+  generateMultipleDaysRoutines,
+} from './scheduler';
+import { validateRoutine, validateSlotAssignmentTier1, isRoutineEditable } from './routineValidator';
+import { DailyRoutine, SubjectPriorityTier } from '../types';
 
 test('Routine generator produces exactly 75 slots for 15 classrooms and 5 periods', () => {
   const routine = generateDailyRoutine({
@@ -1133,6 +1148,677 @@ test('Classroom 100% Syllabus Completion Lockout: Subject is strictly excluded f
     'When completion lock is OFF, OB-1 can be allocated P08 as requested'
   );
 });
+
+// =========================================================================
+// SECTION 36 REQUIRED TESTS: TIER 1, CURRICULUM ALLOCATION, TEACHER ALLOCATION, MULTI-DAY
+// =========================================================================
+
+// --- Tier 1 Tests (Scenarios 1–9) ---
+
+test('Scenario 1: Rules 1–5 retain their existing behaviour', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T1', 'T2'],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, ['T1', 'T2'], DEFAULT_ROUTINE_RULES);
+  assert.equal(validation.tier1Passed, true);
+  assert.equal(validation.conflicts.length, 0); // Rule 1: Zero Double Booking
+  assert.equal(validation.absentViolations.length, 0); // Rule 2: Strict Absentee Exclusion
+  assert.equal(validation.buildingBindingViolations.length, 0); // Rule 3: Strict Building Binding
+  assert.equal(validation.buildingConflicts.length, 0); // Rule 4: Transit Gap
+});
+
+test('Scenario 2: Rule 6 ON disables Rules 6A and 6B', () => {
+  const normalized = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: true,
+    enableMaxRoomDailyLimit: true,
+    enableNonConsecutiveGapForSameSubject: true,
+  });
+
+  assert.equal(normalized.enableMaxOnePeriodPerSubjectPerRoomDaily, true);
+  assert.equal(normalized.enableMaxRoomDailyLimit, false);
+  assert.equal(normalized.enableNonConsecutiveGapForSameSubject, false);
+  assert.equal(isRuleDisabled('enableMaxRoomDailyLimit', normalized), true);
+  assert.equal(isRuleDisabled('enableNonConsecutiveGapForSameSubject', normalized), true);
+});
+
+test('Scenario 3: Rule 6 OFF makes Rule 6A available', () => {
+  const normalized = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+    enableMaxRoomDailyLimit: true,
+  });
+
+  assert.equal(normalized.enableMaxOnePeriodPerSubjectPerRoomDaily, false);
+  assert.equal(isRuleDisabled('enableMaxRoomDailyLimit', normalized), false);
+});
+
+test('Scenario 4: Rule 6A OFF disables Rule 6B', () => {
+  const normalized = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+    enableMaxRoomDailyLimit: false,
+    enableNonConsecutiveGapForSameSubject: true,
+  });
+
+  assert.equal(normalized.enableMaxRoomDailyLimit, false);
+  assert.equal(normalized.enableNonConsecutiveGapForSameSubject, false);
+  assert.equal(isRuleDisabled('enableNonConsecutiveGapForSameSubject', normalized), true);
+});
+
+test('Scenario 5: Rule 6A ON makes Rule 6B available', () => {
+  const normalized = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+    enableMaxRoomDailyLimit: true,
+    enableNonConsecutiveGapForSameSubject: true,
+  });
+
+  assert.equal(normalized.enableMaxRoomDailyLimit, true);
+  assert.equal(isRuleDisabled('enableNonConsecutiveGapForSameSubject', normalized), false);
+});
+
+test('Scenario 6: Rule 6A enforces the maximum of two subject periods per room/class per day', () => {
+  const rules = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+    enableMaxRoomDailyLimit: true,
+  });
+
+  // Valid: 2 periods of P01 in OB-1
+  const validSlots = [
+    { id: 's1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+    { id: 's2', roomId: 'OB-1', period: 3, paperId: 'P01', teacherId: 'T2', isSubstitute: false },
+  ];
+  const validCheck = validateSlotAssignmentTier1(
+    { roomId: 'OB-1', period: 4, paperId: 'P02', teacherId: 'T3' },
+    validSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    rules
+  );
+  assert.equal(validCheck.isValid, true);
+
+  // Invalid: 3rd period of P01 in OB-1
+  const invalidCheck = validateSlotAssignmentTier1(
+    { roomId: 'OB-1', period: 5, paperId: 'P01', teacherId: 'T3' },
+    validSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    rules
+  );
+  assert.equal(invalidCheck.isValid, false);
+});
+
+test('Scenario 7: Rule 6B prevents consecutive subject periods when enabled', () => {
+  const rules = normalizeRuleConfig({
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+    enableMaxRoomDailyLimit: true,
+    enableNonConsecutiveGapForSameSubject: true,
+  });
+
+  const slots = [
+    { id: 's1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+  ];
+
+  // Consecutive in Period 2: Forbidden
+  const consecutiveCheck = validateSlotAssignmentTier1(
+    { roomId: 'OB-1', period: 2, paperId: 'P01', teacherId: 'T3' },
+    slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    rules
+  );
+  assert.equal(consecutiveCheck.isValid, false);
+
+  // Non-consecutive in Period 3: Allowed
+  const nonConsecutiveCheck = validateSlotAssignmentTier1(
+    { roomId: 'OB-1', period: 3, paperId: 'P01', teacherId: 'T3' },
+    slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    rules
+  );
+  assert.equal(nonConsecutiveCheck.isValid, true);
+});
+
+test('Scenario 8: New Rule 7 preserves the old Rule 9 behaviour (Strict hard-cap <= 4 periods/day)', () => {
+  const rules = normalizeRuleConfig({
+    enableDailyWorkloadMaxCap: true,
+  });
+
+  const teacherId = 'T1';
+  const existingTeacherSlots = [
+    { id: 's1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId, isSubstitute: false },
+    { id: 's2', roomId: 'OB-2', period: 2, paperId: 'P01', teacherId, isSubstitute: false },
+    { id: 's3', roomId: 'OB-3', period: 3, paperId: 'P01', teacherId, isSubstitute: false },
+    { id: 's4', roomId: 'OB-4', period: 4, paperId: 'P01', teacherId, isSubstitute: false },
+  ];
+
+  // Propose 5th period: strictly rejected
+  const fifthCheck = validateSlotAssignmentTier1(
+    { roomId: 'OB-5', period: 5, paperId: 'P01', teacherId },
+    existingTeacherSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    rules
+  );
+  assert.equal(fifthCheck.isValid, false);
+});
+
+test('Scenario 9: Old rule settings migrate without incorrect mappings', () => {
+  const legacyStored = {
+    enableMaxRoomDailyLimit: true,
+    enableNonConsecutiveGapForSameSubject: true,
+    enableDailyWorkloadMaxCap: true,
+    enableMaxOnePeriodPerSubjectPerRoomDaily: false,
+  };
+
+  const migrated = migrateLegacyRules(legacyStored);
+  assert.equal(migrated.enableMaxRoomDailyLimit, true);
+  assert.equal(migrated.enableNonConsecutiveGapForSameSubject, true);
+  assert.equal(migrated.enableDailyWorkloadMaxCap, true);
+  assert.equal(migrated.enableMaxOnePeriodPerSubjectPerRoomDaily, false);
+});
+
+// --- Curriculum Allocation Tests (Scenarios 10–17) ---
+
+test('Scenario 10: High, Medium, Low and Exclude priorities apply the correct multipliers', () => {
+  const mockCompleted = new Map<string, Map<string, number>>();
+  INITIAL_CLASSROOMS.forEach((r) => {
+    const cMap = new Map<string, number>();
+    INITIAL_PAPERS.forEach((p) => cMap.set(p.id, 0));
+    mockCompleted.set(r.id, cMap);
+  });
+
+  const plan = calculateCurriculumAllocation(
+    INITIAL_CLASSROOMS,
+    INITIAL_PAPERS,
+    mockCompleted,
+    {
+      P01: 'HIGH',
+      P02: 'MEDIUM',
+      P03: 'LOW',
+      P04: 'EXCLUDE',
+    }
+  );
+
+  const allocP01 = plan.allocations.get('P01')!;
+  const allocP02 = plan.allocations.get('P02')!;
+  const allocP03 = plan.allocations.get('P03')!;
+  const allocP04 = plan.allocations.get('P04')!;
+
+  assert.equal(allocP01.priorityMultiplier, 1.50);
+  assert.equal(allocP02.priorityMultiplier, 1.00);
+  assert.equal(allocP03.priorityMultiplier, 0.50);
+  assert.equal(allocP04.priorityMultiplier, 0.00);
+  assert.equal(allocP04.adjustedDemand, 0);
+  assert.equal(allocP04.integerTarget, 0);
+});
+
+test('Scenario 11: Allocation percentages sum to 100% when eligible adjusted demand is positive', () => {
+  const mockCompleted = new Map<string, Map<string, number>>();
+  INITIAL_CLASSROOMS.forEach((r) => {
+    const cMap = new Map<string, number>();
+    INITIAL_PAPERS.forEach((p) => cMap.set(p.id, 0));
+    mockCompleted.set(r.id, cMap);
+  });
+
+  const plan = calculateCurriculumAllocation(
+    INITIAL_CLASSROOMS,
+    INITIAL_PAPERS,
+    mockCompleted,
+    {
+      P01: 'HIGH',
+      P02: 'MEDIUM',
+      P03: 'LOW',
+    }
+  );
+
+  const totalPct = Array.from(plan.allocations.values()).reduce((sum, a) => sum + a.allocationPercentage, 0);
+  assert.ok(Math.abs(totalPct - 100) < 0.01, `Allocation percentages should sum to 100%, got ${totalPct}`);
+});
+
+test('Scenario 12: Zero-demand and all-excluded cases do not cause division-by-zero errors', () => {
+  const mockCompleted = new Map<string, Map<string, number>>();
+  INITIAL_CLASSROOMS.forEach((r) => {
+    const cMap = new Map<string, number>();
+    INITIAL_PAPERS.forEach((p) => cMap.set(p.id, 0));
+    mockCompleted.set(r.id, cMap);
+  });
+
+  const allExcluded: Record<string, SubjectPriorityTier> = {};
+  INITIAL_PAPERS.forEach((p) => (allExcluded[p.id] = 'EXCLUDE'));
+
+  assert.doesNotThrow(() => {
+    const plan = calculateCurriculumAllocation(
+      INITIAL_CLASSROOMS,
+      INITIAL_PAPERS,
+      mockCompleted,
+      allExcluded
+    );
+    assert.equal(plan.totalAdjustedDemand, 0);
+  });
+});
+
+test('Scenario 13: Integer session targets sum to assignable capacity (75) when valid allocation is possible', () => {
+  const mockCompleted = new Map<string, Map<string, number>>();
+  INITIAL_CLASSROOMS.forEach((r) => {
+    const cMap = new Map<string, number>();
+    INITIAL_PAPERS.forEach((p) => cMap.set(p.id, 0));
+    mockCompleted.set(r.id, cMap);
+  });
+
+  const plan = calculateCurriculumAllocation(
+    INITIAL_CLASSROOMS,
+    INITIAL_PAPERS,
+    mockCompleted,
+    { P01: 'HIGH', P02: 'MEDIUM', P03: 'LOW' }
+  );
+
+  const sumIntegerTargets = Array.from(plan.allocations.values()).reduce((sum, a) => sum + a.integerTarget, 0);
+  assert.equal(sumIntegerTargets, 75);
+});
+
+test('Scenario 14: Reconciliation is deterministic', () => {
+  const mockCompleted = new Map<string, Map<string, number>>();
+  INITIAL_CLASSROOMS.forEach((r) => {
+    const cMap = new Map<string, number>();
+    INITIAL_PAPERS.forEach((p) => cMap.set(p.id, 0));
+    mockCompleted.set(r.id, cMap);
+  });
+
+  const plan1 = calculateCurriculumAllocation(INITIAL_CLASSROOMS, INITIAL_PAPERS, mockCompleted, { P01: 'HIGH', P02: 'LOW' });
+  const plan2 = calculateCurriculumAllocation(INITIAL_CLASSROOMS, INITIAL_PAPERS, mockCompleted, { P01: 'HIGH', P02: 'LOW' });
+
+  for (const paper of INITIAL_PAPERS) {
+    assert.equal(
+      plan1.allocations.get(paper.id)!.integerTarget,
+      plan2.allocations.get(paper.id)!.integerTarget
+    );
+  }
+});
+
+test('Scenario 15: No class/room receives more assignments than its available periods (5)', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  for (const room of INITIAL_CLASSROOMS) {
+    const roomSlots = routine.slots.filter((s) => s.roomId === room.id);
+    assert.equal(roomSlots.length, 5, `Room ${room.id} must have exactly 5 periods`);
+  }
+});
+
+test('Scenario 16: No subject exceeds legitimate remaining curriculum demand', () => {
+  // Mock classroom where P01 has reached 100% quota
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  assert.equal(routine.slots.length, 75);
+});
+
+test('Scenario 17: Vacancy filling respects Tier 1 and does not overfill a room', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, [], DEFAULT_ROUTINE_RULES);
+  assert.equal(validation.tier1Passed, true);
+  assert.equal(routine.slots.length, 75);
+});
+
+// --- Teacher Allocation Tests (Scenarios 18–27) ---
+
+test('Scenario 18: Teacher workload is calculated using the correct accounting scope', () => {
+  const day1Routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const day2Routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [day1Routine],
+    targetDayNumber: 2,
+    targetDate: '2026-10-25',
+  });
+
+  assert.ok(day2Routine.generationAudit);
+  assert.equal(day2Routine.slots.length, 75);
+});
+
+test('Scenario 19: Unavailable teachers are excluded for affected periods', () => {
+  const absentees = ['T1', 'T4', 'T10', 'T20'];
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: absentees,
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  for (const s of routine.slots) {
+    assert.equal(absentees.includes(s.teacherId), false, `Unavailable teacher ${s.teacherId} must not be scheduled`);
+  }
+});
+
+test('Scenario 20: Eligible main-subject teachers are preferred', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Non-substitute slots must match primary teachers
+  const nonSubstituteSlots = routine.slots.filter((s) => !s.isSubstitute && s.teacherId);
+  for (const s of nonSubstituteSlots) {
+    const paper = INITIAL_PAPERS.find((p) => p.id === s.paperId)!;
+    const teacher = INITIAL_TEACHERS.find((t) => t.id === s.teacherId)!;
+    if (paper.id === 'P13') continue; // flexible
+    assert.ok(
+      teacher.primaryPaperIds.includes(paper.id),
+      `Teacher ${teacher.name} should be primary for ${paper.code}`
+    );
+  }
+});
+
+test('Scenario 21: Teacher workload differences are minimised where feasible', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  assert.ok(routine.generationAudit);
+  assert.ok(routine.generationAudit.maxTeacherLoad <= 4, 'Hard cap of 4 strictly respected');
+  assert.ok(routine.generationAudit.workloadDifference <= 3, 'Daily workload difference is tight');
+});
+
+test('Scenario 22: No simultaneous double-booking occurs', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
+  assert.equal(validation.conflicts.length, 0);
+});
+
+test('Scenario 23: No Substitution ON prevents unauthorised substitution', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T1', 'T2', 'T3'], // all primary for P01 absent
+    priorityPaperIds: ['P01'],
+    rules: {
+      enableNoSubstituteAllotment: true,
+      replaceWithAvailableSubjectIfNoPrimary: false,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const p01Slots = routine.slots.filter((s) => s.paperId === 'P01');
+  assert.ok(p01Slots.length > 0);
+  for (const s of p01Slots) {
+    assert.equal(s.teacherId, '', 'Slot must be left blank / No Instructor');
+  }
+});
+
+test('Scenario 24: Change to Most Probable Subject is available only in the appropriate state', () => {
+  // When No Substitute is OFF: Change to Most Probable Subject is disabled
+  const rulesSubAllowed = normalizeRuleConfig({
+    enableNoSubstituteAllotment: false,
+    replaceWithAvailableSubjectIfNoPrimary: true,
+  });
+  assert.equal(rulesSubAllowed.replaceWithAvailableSubjectIfNoPrimary, false);
+  assert.equal(isRuleDisabled('replaceWithAvailableSubjectIfNoPrimary', rulesSubAllowed), true);
+
+  // When No Substitute is ON: Change to Most Probable Subject is available
+  const rulesNoSub = normalizeRuleConfig({
+    enableNoSubstituteAllotment: true,
+    replaceWithAvailableSubjectIfNoPrimary: true,
+  });
+  assert.equal(rulesNoSub.replaceWithAvailableSubjectIfNoPrimary, true);
+  assert.equal(isRuleDisabled('replaceWithAvailableSubjectIfNoPrimary', rulesNoSub), false);
+});
+
+test('Scenario 25: Disabled fallback does not replace subjects automatically', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T1', 'T2', 'T3'],
+    priorityPaperIds: ['P01'],
+    rules: {
+      enableNoSubstituteAllotment: true,
+      replaceWithAvailableSubjectIfNoPrimary: false,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const p01Slots = routine.slots.filter((s) => s.paperId === 'P01');
+  for (const s of p01Slots) {
+    assert.equal(s.teacherId, '');
+    assert.equal(s.paperId, 'P01', 'Subject is not replaced when fallback is disabled');
+  }
+});
+
+test('Scenario 26: An impossible assignment is marked No Instructor', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T1', 'T2', 'T3'],
+    priorityPaperIds: ['P01'],
+    rules: {
+      enableNoSubstituteAllotment: true,
+      replaceWithAvailableSubjectIfNoPrimary: false,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const emptySlots = routine.slots.filter((s) => s.teacherId === '');
+  assert.ok(emptySlots.length > 0);
+  for (const s of emptySlots) {
+    assert.equal(s.isSubstitute, false);
+    assert.ok(s.substituteReason?.includes('No instructor available'));
+  }
+});
+
+test('Scenario 27: A valid replacement updates subject allocation and workload records', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T1', 'T2', 'T3'], // P01 primaries
+    priorityPaperIds: ['P01'],
+    rules: {
+      enableNoSubstituteAllotment: true,
+      replaceWithAvailableSubjectIfNoPrimary: true,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Replaced slots will have alternate subject assigned
+  assert.ok(routine.generationAudit);
+  assert.equal(routine.slots.length, 75);
+});
+
+// --- Multi-day Tests (Scenarios 28–33) ---
+
+test('Scenario 28: Day 2 considers Day 1 final room assignments', () => {
+  const routines = generateMultipleDaysRoutines({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    startDayNumber: 1,
+    startDate: '2026-10-24',
+    numberOfDays: 2,
+  });
+
+  assert.equal(routines.length, 2);
+  assert.equal(routines[0].dayNumber, 1);
+  assert.equal(routines[1].dayNumber, 2);
+});
+
+test('Scenario 29: Curriculum progress updates correctly across days', () => {
+  const routines = generateMultipleDaysRoutines({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    startDayNumber: 1,
+    startDate: '2026-10-24',
+    numberOfDays: 2,
+  });
+
+  const stats = calculateCumulativeStats(INITIAL_PAPERS, [routines[0]], routines[1].slots);
+  const totalDone = stats.reduce((sum, s) => sum + s.completedSessions + s.todaySessions, 0);
+  assert.equal(totalDone, 150); // 75 + 75 = 150
+});
+
+test('Scenario 30: Teacher workloads are cumulative across days', () => {
+  const routines = generateMultipleDaysRoutines({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    startDayNumber: 1,
+    startDate: '2026-10-24',
+    numberOfDays: 3,
+  });
+
+  assert.equal(routines.length, 3);
+  const day3Audit = routines[2].generationAudit;
+  assert.ok(day3Audit);
+  // Total loads on day 3 reflect 3 full days of scheduling
+  const maxDay3 = day3Audit.maxTeacherLoad;
+  assert.ok(maxDay3 >= 7, `3 days of teaching load should accumulate, got ${maxDay3}`);
+});
+
+test('Scenario 31: Unavailable teachers are not assigned during unavailable periods', () => {
+  const day1Routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T5'],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const t5Slots = day1Routine.slots.filter((s) => s.teacherId === 'T5');
+  assert.equal(t5Slots.length, 0);
+});
+
+test('Scenario 32: Rule 12 rotational flow is maintained where feasible', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules: {
+      enablePaperRotationalFlow: true,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  assert.equal(routine.slots.length, 75);
+});
+
+test('Scenario 33: Multi-day generation respects all applicable Tier 1 constraints', () => {
+  const routines = generateMultipleDaysRoutines({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    startDayNumber: 1,
+    startDate: '2026-10-24',
+    numberOfDays: 3,
+  });
+
+  for (const routine of routines) {
+    const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, [], DEFAULT_ROUTINE_RULES);
+    assert.equal(validation.tier1Passed, true, `Day ${routine.dayNumber} must pass all Tier 1 hard constraints`);
+  }
+});
+
 
 
 

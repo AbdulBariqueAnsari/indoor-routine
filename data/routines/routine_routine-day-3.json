@@ -2,7 +2,10 @@
   "id": "routine-day-3",
   "dayNumber": 3,
   "date": "2026-10-29",
-  "absentTeacherIds": [],
+  "absentTeacherIds": [
+    "T2",
+    "T17"
+  ],
   "priorityPaperIds": [],
   "roomPriorityPaperIds": {
     "OB-1": [],
@@ -34,17 +37,19 @@
     "P10": "NORMAL",
     "P11": "NORMAL",
     "P12": "NORMAL",
-    "P13": "NORMAL"
+    "P13": "EXCLUDE"
   },
   "prioritySubjectMinPeriods": {},
-  "excludedPaperIds": [],
+  "excludedPaperIds": [
+    "P13"
+  ],
   "slots": [
     {
       "id": "slot-3-OB-1-P1",
       "roomId": "OB-1",
       "period": 1,
-      "paperId": "P04",
-      "teacherId": "T11",
+      "paperId": "P05",
+      "teacherId": "T12",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -52,8 +57,8 @@
       "id": "slot-3-OB-2-P1",
       "roomId": "OB-2",
       "period": 1,
-      "paperId": "P02",
-      "teacherId": "T4",
+      "paperId": "P07",
+      "teacherId": "T16",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -61,8 +66,8 @@
       "id": "slot-3-OB-3-P1",
       "roomId": "OB-3",
       "period": 1,
-      "paperId": "P10",
-      "teacherId": "T20",
+      "paperId": "P09",
+      "teacherId": "T18",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -70,8 +75,8 @@
       "id": "slot-3-OB-4-P1",
       "roomId": "OB-4",
       "period": 1,
-      "paperId": "P13",
-      "teacherId": "T18",
+      "paperId": "P10",
+      "teacherId": "T20",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -79,8 +84,8 @@
       "id": "slot-3-OB-5-P1",
       "roomId": "OB-5",
       "period": 1,
-      "paperId": "P03",
-      "teacherId": "T8",
+      "paperId": "P12",
+      "teacherId": "T25",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -88,8 +93,8 @@
       "id": "slot-3-OB-6-P1",
       "roomId": "OB-6",
       "period": 1,
-      "paperId": "P03",
-      "teacherId": "T10",
+      "paperId": "P06",
+      "teacherId": "T14",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -106,8 +111,8 @@
       "id": "slot-3-OB-8-P1",
       "roomId": "OB-8",
       "period": 1,
-      "paperId": "P05",
-      "teacherId": "T12",
+      "paperId": "P03",
+      "teacherId": "T10",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -115,43 +120,14 @@
       "id": "slot-3-NB-1-P1",
       "roomId": "NB-1",
       "period": 1,
-      "paperId": "P01",
-      "teacherId": "T2",
+      "paperId": "P02",
+      "teacherId": "T5",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-4 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-NB-2-P1",
       "roomId": "NB-2",
-      "period": 1,
-      "paperId": "P08",
-      "teacherId": "T17",
-      "isSubstitute": false,
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-NB-3-P1",
-      "roomId": "NB-3",
-      "period": 1,
-      "paperId": "P06",
-      "teacherId": "T15",
-      "isSubstitute": false,
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-CR-NB-12-1793034850769-P1",
-      "roomId": "CR-NB-12-1793034850769",
-      "period": 1,
-      "paperId": "P01",
-      "teacherId": "T3",
-      "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-6 was unavailable",
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-CR-NB-13-1793034866049-P1",
-      "roomId": "CR-NB-13-1793034866049",
       "period": 1,
       "paperId": "P09",
       "teacherId": "T19",
@@ -159,11 +135,38 @@
       "isPriority": false
     },
     {
+      "id": "slot-3-NB-3-P1",
+      "roomId": "NB-3",
+      "period": 1,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-3-CR-NB-12-1793034850769-P1",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 1,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-3-CR-NB-13-1793034866049-P1",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
       "id": "slot-3-CR-NB-14-1793034895859-P1",
       "roomId": "CR-NB-14-1793034895859",
       "period": 1,
-      "paperId": "P05",
-      "teacherId": "T13",
+      "paperId": "P01",
+      "teacherId": "T3",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -172,9 +175,8 @@
       "roomId": "CR-NB-15-1793034922650",
       "period": 1,
       "paperId": "P02",
-      "teacherId": "T5",
+      "teacherId": "T7",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-4 was unavailable",
       "isPriority": false
     },
     {
@@ -182,7 +184,7 @@
       "roomId": "OB-1",
       "period": 2,
       "paperId": "P02",
-      "teacherId": "T6",
+      "teacherId": "T4",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -190,8 +192,8 @@
       "id": "slot-3-OB-2-P2",
       "roomId": "OB-2",
       "period": 2,
-      "paperId": "P04",
-      "teacherId": "T11",
+      "paperId": "P05",
+      "teacherId": "T12",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -199,8 +201,8 @@
       "id": "slot-3-OB-3-P2",
       "roomId": "OB-3",
       "period": 2,
-      "paperId": "P02",
-      "teacherId": "T4",
+      "paperId": "P12",
+      "teacherId": "T26",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -208,8 +210,8 @@
       "id": "slot-3-OB-4-P2",
       "roomId": "OB-4",
       "period": 2,
-      "paperId": "P10",
-      "teacherId": "T20",
+      "paperId": "P09",
+      "teacherId": "T18",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -217,8 +219,8 @@
       "id": "slot-3-OB-5-P2",
       "roomId": "OB-5",
       "period": 2,
-      "paperId": "P13",
-      "teacherId": "T26",
+      "paperId": "P01",
+      "teacherId": "T1",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -226,8 +228,8 @@
       "id": "slot-3-OB-6-P2",
       "roomId": "OB-6",
       "period": 2,
-      "paperId": "P09",
-      "teacherId": "T18",
+      "paperId": "P12",
+      "teacherId": "T25",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -235,8 +237,8 @@
       "id": "slot-3-OB-7-P2",
       "roomId": "OB-7",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T10",
+      "paperId": "P02",
+      "teacherId": "T6",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -244,8 +246,8 @@
       "id": "slot-3-OB-8-P2",
       "roomId": "OB-8",
       "period": 2,
-      "paperId": "P11",
-      "teacherId": "T22",
+      "paperId": "P06",
+      "teacherId": "T14",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -253,8 +255,8 @@
       "id": "slot-3-NB-1-P2",
       "roomId": "NB-1",
       "period": 2,
-      "paperId": "P05",
-      "teacherId": "T13",
+      "paperId": "P03",
+      "teacherId": "T10",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -262,8 +264,8 @@
       "id": "slot-3-NB-2-P2",
       "roomId": "NB-2",
       "period": 2,
-      "paperId": "P01",
-      "teacherId": "T2",
+      "paperId": "P02",
+      "teacherId": "T5",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -271,8 +273,8 @@
       "id": "slot-3-NB-3-P2",
       "roomId": "NB-3",
       "period": 2,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P09",
+      "teacherId": "T19",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -280,8 +282,8 @@
       "id": "slot-3-CR-NB-12-1793034850769-P2",
       "roomId": "CR-NB-12-1793034850769",
       "period": 2,
-      "paperId": "P06",
-      "teacherId": "T15",
+      "paperId": "P10",
+      "teacherId": "T21",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -289,8 +291,8 @@
       "id": "slot-3-CR-NB-13-1793034866049-P2",
       "roomId": "CR-NB-13-1793034866049",
       "period": 2,
-      "paperId": "P01",
-      "teacherId": "T3",
+      "paperId": "P11",
+      "teacherId": "T23",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -298,8 +300,8 @@
       "id": "slot-3-CR-NB-14-1793034895859-P2",
       "roomId": "CR-NB-14-1793034895859",
       "period": 2,
-      "paperId": "P09",
-      "teacherId": "T19",
+      "paperId": "P12",
+      "teacherId": "T24",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -307,18 +309,17 @@
       "id": "slot-3-CR-NB-15-1793034922650-P2",
       "roomId": "CR-NB-15-1793034922650",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T9",
+      "paperId": "P01",
+      "teacherId": "T3",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-3] Central Minor Acts and Special Laws because primary instructor of Paper-5 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-1-P3",
       "roomId": "OB-1",
       "period": 3,
-      "paperId": "P03",
-      "teacherId": "T8",
+      "paperId": "P01",
+      "teacherId": "T3",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -326,8 +327,8 @@
       "id": "slot-3-OB-2-P3",
       "roomId": "OB-2",
       "period": 3,
-      "paperId": "P10",
-      "teacherId": "T20",
+      "paperId": "P02",
+      "teacherId": "T4",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -344,8 +345,8 @@
       "id": "slot-3-OB-4-P3",
       "roomId": "OB-4",
       "period": 3,
-      "paperId": "P02",
-      "teacherId": "T4",
+      "paperId": "P07",
+      "teacherId": "T16",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -353,18 +354,17 @@
       "id": "slot-3-OB-5-P3",
       "roomId": "OB-5",
       "period": 3,
-      "paperId": "P01",
-      "teacherId": "T1",
+      "paperId": "P09",
+      "teacherId": "T18",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-10 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-6-P3",
       "roomId": "OB-6",
       "period": 3,
-      "paperId": "P13",
-      "teacherId": "T14",
+      "paperId": "P01",
+      "teacherId": "T1",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -372,8 +372,8 @@
       "id": "slot-3-OB-7-P3",
       "roomId": "OB-7",
       "period": 3,
-      "paperId": "P09",
-      "teacherId": "T18",
+      "paperId": "P12",
+      "teacherId": "T25",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -381,8 +381,8 @@
       "id": "slot-3-OB-8-P3",
       "roomId": "OB-8",
       "period": 3,
-      "paperId": "P03",
-      "teacherId": "T10",
+      "paperId": "P02",
+      "teacherId": "T6",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -390,8 +390,8 @@
       "id": "slot-3-NB-1-P3",
       "roomId": "NB-1",
       "period": 3,
-      "paperId": "P11",
-      "teacherId": "T23",
+      "paperId": "P06",
+      "teacherId": "T15",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -399,8 +399,8 @@
       "id": "slot-3-NB-2-P3",
       "roomId": "NB-2",
       "period": 3,
-      "paperId": "P05",
-      "teacherId": "T13",
+      "paperId": "P03",
+      "teacherId": "T10",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -408,8 +408,8 @@
       "id": "slot-3-NB-3-P3",
       "roomId": "NB-3",
       "period": 3,
-      "paperId": "P01",
-      "teacherId": "T2",
+      "paperId": "P02",
+      "teacherId": "T5",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -417,8 +417,8 @@
       "id": "slot-3-CR-NB-12-1793034850769-P3",
       "roomId": "CR-NB-12-1793034850769",
       "period": 3,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P09",
+      "teacherId": "T19",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -426,8 +426,8 @@
       "id": "slot-3-CR-NB-13-1793034866049-P3",
       "roomId": "CR-NB-13-1793034866049",
       "period": 3,
-      "paperId": "P06",
-      "teacherId": "T15",
+      "paperId": "P10",
+      "teacherId": "T21",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -435,8 +435,8 @@
       "id": "slot-3-CR-NB-14-1793034895859-P3",
       "roomId": "CR-NB-14-1793034895859",
       "period": 3,
-      "paperId": "P01",
-      "teacherId": "T3",
+      "paperId": "P11",
+      "teacherId": "T23",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -444,8 +444,8 @@
       "id": "slot-3-CR-NB-15-1793034922650-P3",
       "roomId": "CR-NB-15-1793034922650",
       "period": 3,
-      "paperId": "P09",
-      "teacherId": "T19",
+      "paperId": "P12",
+      "teacherId": "T24",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -453,18 +453,17 @@
       "id": "slot-3-OB-1-P4",
       "roomId": "OB-1",
       "period": 4,
-      "paperId": "P01",
-      "teacherId": "T1",
+      "paperId": "P12",
+      "teacherId": "T26",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-9 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-2-P4",
       "roomId": "OB-2",
       "period": 4,
-      "paperId": "P03",
-      "teacherId": "T8",
+      "paperId": "P01",
+      "teacherId": "T1",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -472,8 +471,8 @@
       "id": "slot-3-OB-3-P4",
       "roomId": "OB-3",
       "period": 4,
-      "paperId": "P12",
-      "teacherId": "T25",
+      "paperId": "P02",
+      "teacherId": "T5",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -481,18 +480,17 @@
       "id": "slot-3-OB-4-P4",
       "roomId": "OB-4",
       "period": 4,
-      "paperId": "P01",
-      "teacherId": "T3",
+      "paperId": "P05",
+      "teacherId": "T12",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-4 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-5-P4",
       "roomId": "OB-5",
       "period": 4,
-      "paperId": "P02",
-      "teacherId": "T6",
+      "paperId": "P07",
+      "teacherId": "T16",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -503,34 +501,33 @@
       "paperId": "P02",
       "teacherId": "T4",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-1 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-7-P4",
       "roomId": "OB-7",
       "period": 4,
-      "paperId": "P13",
-      "teacherId": "T14",
+      "paperId": "P03",
+      "teacherId": "T8",
       "isSubstitute": false,
+      "substituteReason": "Substituted with alternate available subject [Paper-3] Central Minor Acts and Special Laws because primary instructor of Paper-9 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-8-P4",
       "roomId": "OB-8",
       "period": 4,
-      "paperId": "P07",
-      "teacherId": "T16",
+      "paperId": "P11",
+      "teacherId": "T22",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-7] Criminology and Crime Prevention because primary instructor of Paper-9 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-NB-1-P4",
       "roomId": "NB-1",
       "period": 4,
-      "paperId": "P03",
-      "teacherId": "T9",
+      "paperId": "P04",
+      "teacherId": "T11",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -538,8 +535,8 @@
       "id": "slot-3-NB-2-P4",
       "roomId": "NB-2",
       "period": 4,
-      "paperId": "P11",
-      "teacherId": "T23",
+      "paperId": "P06",
+      "teacherId": "T15",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -547,18 +544,17 @@
       "id": "slot-3-NB-3-P4",
       "roomId": "NB-3",
       "period": 4,
-      "paperId": "P02",
-      "teacherId": "T7",
+      "paperId": "P03",
+      "teacherId": "T9",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-5 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-CR-NB-12-1793034850769-P4",
       "roomId": "CR-NB-12-1793034850769",
       "period": 4,
-      "paperId": "P10",
-      "teacherId": "T21",
+      "paperId": "P02",
+      "teacherId": "T7",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -566,8 +562,8 @@
       "id": "slot-3-CR-NB-13-1793034866049-P4",
       "roomId": "CR-NB-13-1793034866049",
       "period": 4,
-      "paperId": "P08",
-      "teacherId": "T17",
+      "paperId": "P05",
+      "teacherId": "T13",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -575,18 +571,17 @@
       "id": "slot-3-CR-NB-14-1793034895859-P4",
       "roomId": "CR-NB-14-1793034895859",
       "period": 4,
-      "paperId": "P02",
-      "teacherId": "T5",
+      "paperId": "P10",
+      "teacherId": "T20",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-6 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-CR-NB-15-1793034922650-P4",
       "roomId": "CR-NB-15-1793034922650",
       "period": 4,
-      "paperId": "P01",
-      "teacherId": "T2",
+      "paperId": "P11",
+      "teacherId": "T23",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -594,53 +589,14 @@
       "id": "slot-3-OB-1-P5",
       "roomId": "OB-1",
       "period": 5,
-      "paperId": "P05",
-      "teacherId": "T12",
+      "paperId": "P06",
+      "teacherId": "T14",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-5] Forensics because primary instructor of Paper-10 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-OB-2-P5",
       "roomId": "OB-2",
-      "period": 5,
-      "paperId": "P01",
-      "teacherId": "T1",
-      "isSubstitute": false,
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-OB-3-P5",
-      "roomId": "OB-3",
-      "period": 5,
-      "paperId": "P06",
-      "teacherId": "T14",
-      "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-6] ICT and Cyber Investigation because primary instructor of Paper-3 was unavailable",
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-OB-4-P5",
-      "roomId": "OB-4",
-      "period": 5,
-      "paperId": "P12",
-      "teacherId": "T25",
-      "isSubstitute": false,
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-OB-5-P5",
-      "roomId": "OB-5",
-      "period": 5,
-      "paperId": "P07",
-      "teacherId": "T16",
-      "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-7] Criminology and Crime Prevention because primary instructor of Paper-6 was unavailable",
-      "isPriority": false
-    },
-    {
-      "id": "slot-3-OB-6-P5",
-      "roomId": "OB-6",
       "period": 5,
       "paperId": "P12",
       "teacherId": "T26",
@@ -648,8 +604,17 @@
       "isPriority": false
     },
     {
-      "id": "slot-3-OB-7-P5",
-      "roomId": "OB-7",
+      "id": "slot-3-OB-3-P5",
+      "roomId": "OB-3",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-3-OB-4-P5",
+      "roomId": "OB-4",
       "period": 5,
       "paperId": "P02",
       "teacherId": "T6",
@@ -657,11 +622,38 @@
       "isPriority": false
     },
     {
+      "id": "slot-3-OB-5-P5",
+      "roomId": "OB-5",
+      "period": 5,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-3-OB-6-P5",
+      "roomId": "OB-6",
+      "period": 5,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-3-OB-7-P5",
+      "roomId": "OB-7",
+      "period": 5,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
       "id": "slot-3-OB-8-P5",
       "roomId": "OB-8",
       "period": 5,
-      "paperId": "P13",
-      "teacherId": "T22",
+      "paperId": "P01",
+      "teacherId": "T3",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -669,18 +661,17 @@
       "id": "slot-3-NB-1-P5",
       "roomId": "NB-1",
       "period": 5,
-      "paperId": "P02",
-      "teacherId": "T7",
+      "paperId": "P05",
+      "teacherId": "T13",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-7 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-NB-2-P5",
       "roomId": "NB-2",
       "period": 5,
-      "paperId": "P03",
-      "teacherId": "T9",
+      "paperId": "P10",
+      "teacherId": "T21",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -688,8 +679,8 @@
       "id": "slot-3-NB-3-P5",
       "roomId": "NB-3",
       "period": 5,
-      "paperId": "P11",
-      "teacherId": "T23",
+      "paperId": "P06",
+      "teacherId": "T15",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -697,8 +688,8 @@
       "id": "slot-3-CR-NB-12-1793034850769-P5",
       "roomId": "CR-NB-12-1793034850769",
       "period": 5,
-      "paperId": "P02",
-      "teacherId": "T5",
+      "paperId": "P03",
+      "teacherId": "T9",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -706,8 +697,8 @@
       "id": "slot-3-CR-NB-13-1793034866049-P5",
       "roomId": "CR-NB-13-1793034866049",
       "period": 5,
-      "paperId": "P10",
-      "teacherId": "T21",
+      "paperId": "P02",
+      "teacherId": "T7",
       "isSubstitute": false,
       "isPriority": false
     },
@@ -716,26 +707,37 @@
       "roomId": "CR-NB-14-1793034895859",
       "period": 5,
       "paperId": "P12",
-      "teacherId": "T24",
+      "teacherId": "T25",
       "isSubstitute": false,
-      "substituteReason": "Substituted with alternate available subject [Paper-12] Ethics and Accountability because primary instructor of Paper-8 was unavailable",
       "isPriority": false
     },
     {
       "id": "slot-3-CR-NB-15-1793034922650-P5",
       "roomId": "CR-NB-15-1793034922650",
       "period": 5,
-      "paperId": "P12",
-      "teacherId": "",
+      "paperId": "P03",
+      "teacherId": "T10",
       "isSubstitute": false,
-      "substituteReason": "No substitute instructor allotted (Strict No-Substitute rule active)",
       "isPriority": false
     }
   ],
-  "createdAt": "2026-10-28T17:34:10.517Z",
-  "updatedAt": "2026-10-28T17:34:10.517Z",
+  "createdAt": "2026-10-29T13:41:59.825Z",
+  "updatedAt": "2026-10-29T14:02:53.756Z",
   "isLocked": true,
   "status": "published",
-  "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - Batch generated (7 days)",
-  "unavailableTeachers": []
+  "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - 2 instructors unavailable, 1 subjects excluded",
+  "unavailableTeachers": [
+    {
+      "teacherId": "T2",
+      "type": "DUTY",
+      "remark": "Special Duty",
+      "date": "2026-10-29"
+    },
+    {
+      "teacherId": "T17",
+      "type": "DUTY",
+      "remark": "Special Duty",
+      "date": "2026-10-29"
+    }
+  ]
 }

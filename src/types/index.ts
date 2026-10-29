@@ -25,16 +25,16 @@ export interface UnavailableInstructor {
 }
 
 export interface RoutineRuleConfig {
-  // === TIER 1: Inviolable Operational Constraints (Hard Rules: Priority Tier 1) ===
+  // === TIER 1: Inviolable Operational Constraints (Hard Rules: Priority Tier 1: Rules 1, 2, 3, 4, 5, 6, 6A, 6B, 7) ===
   enableZeroDoubleBooking: boolean; // Rule 1: Zero Double-Booking: Instructor cannot teach in 2 rooms at the same time
   enableStrictAbsenteeExclusion: boolean; // Rule 2: Strict Absentee/Leave Exclusion: Absent/Leave/Duty/Sick teachers strictly excluded
-  enableStrictBuildingBinding: boolean; // Rule 3: Moto III: Strict Building Binding (Old strictly in OB, New strictly in NB; only Floating can cross)
-  enableBuildingChangeGap: boolean; // Rule 4: Moto III: Mandatory 1-Period Transit Gap on Floating Building Transition
+  enableStrictBuildingBinding: boolean; // Rule 3: Strict Building Binding (Old strictly in OB, New strictly in NB; only Floating can cross)
+  enableBuildingChangeGap: boolean; // Rule 4: Mandatory 1-Period Transit Gap on Floating Building Transition
   enableRoomQuotaCompletionLock: boolean; // Rule 5: 100% Quota Lockout: Room cannot receive paper once reaching 100% target quota
-  enableMaxOnePeriodPerSubjectPerRoomDaily: boolean; // Rule 6: Moto II: Max 1 period of a subject per room per day (5 different subjects/day)
-  enableNonConsecutiveGapForSameSubject: boolean; // Rule 7: Moto II: Non-consecutive subject gap (mandatory >= 1 period gap if 2 periods occur)
-  enableMaxRoomDailyLimit: boolean; // Rule 8: Daily Max Cap: Maximum 2 periods of any subject per room per day
-  enableDailyWorkloadMaxCap: boolean; // Rule 9: Hard-Cap: No instructor allotted > 4 periods in a single day
+  enableMaxOnePeriodPerSubjectPerRoomDaily: boolean; // Rule 6: Single Period per Subject per Room per Day (5 different subjects/day)
+  enableMaxRoomDailyLimit: boolean; // Rule 6A: Maximum Two Periods per Subject per Class/Room per Day (available when Rule 6 is OFF)
+  enableNonConsecutiveGapForSameSubject: boolean; // Rule 6B: Prevent Consecutive Periods of the Same Subject (available when Rule 6A is ON)
+  enableDailyWorkloadMaxCap: boolean; // Rule 7: Strict Hard-Cap: Max 4 Periods/Day per Instructor (formerly Rule 9)
 
   // === TIER 2: Curriculum Progression & Subject Placement (Moto I & IV: Priority Tier 2) ===
   enableClassroomSubjectEqualization: boolean; // Rule 10: Moto I: Equalize subject completion % across all rooms (lowest % first)
@@ -137,6 +137,7 @@ export interface DailyRoutine {
   isLocked: boolean; // Only the latest routine is editable!
   status: 'draft' | 'published';
   notes?: string;
+  generationAudit?: any;
 }
 
 export interface ConflictInfo {

@@ -15,7 +15,8 @@ import {
   SubjectPriorityTier,
   Teacher,
 } from '../types/index.ts';
-import { DEFAULT_ROUTINE_RULES } from '../data/initialData.ts';
+import { DEFAULT_ROUTINE_RULES, normalizeRuleConfig } from '../data/initialData.ts';
+import { validateRoutine, validateSlotAssignmentTier1, ValidationResult } from './routineValidator.ts';
 
 export interface SchedulerOptions {
   classrooms: Classroom[];
@@ -25,13 +26,48 @@ export interface SchedulerOptions {
   priorityPaperIds: string[];
   roomPriorityPaperIds?: Record<string, string[]>; // room-wise priority papers
   subjectPriorityTiers?: Record<string, SubjectPriorityTier>; // paperId -> HIGH | MEDIUM | LOW | NORMAL | EXCLUDE
-  prioritySubjectMinPeriods?: Record<string, number>; // paperId -> guaranteed minimum periods (e.g. 15, 9, 3, or custom)
+  prioritySubjectMinPeriods?: Record<string, number>; // paperId -> guaranteed minimum periods
   excludedPaperIds?: string[]; // subjects explicitly omitted/removed from this routine
   rules?: Partial<RoutineRuleConfig>; // Toggleable routine preparation constraints
   historicalRoutines: DailyRoutine[];
   targetDayNumber: number;
   targetDate: string;
   notes?: string;
+}
+
+export interface SubjectAllocationDetail {
+  paperId: string;
+  paperCode: string;
+  title: string;
+  remainingSessions: number;
+  priorityTier: SubjectPriorityTier;
+  priorityMultiplier: number;
+  adjustedDemand: number;
+  allocationPercentage: number;
+  idealSessions: number;
+  integerTarget: number;
+  assignedCount: number;
+}
+
+export interface RoutineGenerationAudit {
+  totalCapacity: number;
+  totalRemainingDemand: number;
+  totalAdjustedDemand: number;
+  allocations: SubjectAllocationDetail[];
+  teacherWorkloads: {
+    teacherId: string;
+    teacherName: string;
+    initialLoad: number;
+    todayLoad: number;
+    totalLoad: number;
+  }[];
+  maxTeacherLoad: number;
+  minTeacherLoad: number;
+  workloadDifference: number;
+  vacanciesFilledCount: number;
+  replacementsCount: number;
+  noInstructorCount: number;
+  tier1Validation: ValidationResult;
 }
 
 /**
@@ -45,7 +81,7 @@ export function normalizeTeacherId(id: string): string {
 }
 
 /**
- * Calculates classroom-wise completed sessions for each classroom and each paper
+ * Calculates classroom-wise completed sessions for each classroom and each paper.
  * Strictly avoids double-counting: current routine slots are counted as today's sessions,
  * while historical routines exclude the current routine.
  */
@@ -57,7 +93,6 @@ export function calculateClassroomCumulativeStats(
   priorityPaperIds: string[] = [],
   currentRoutineId?: string
 ): ClassroomTotalProgress[] {
-  // Exclude current routine from historical routines to avoid double-counting
   const pastRoutines = historicalRoutines.filter((routine) => {
     if (currentRoutineId && routine.id === currentRoutineId) return false;
     if (currentRoutineSlots.length > 0 && routine.slots.length === currentRoutineSlots.length) {
@@ -66,9 +101,7 @@ export function calculateClassroomCumulativeStats(
     return true;
   });
 
-  // room-id -> paper-id -> historical count
   const roomHistorical = new Map<string, Map<string, number>>();
-  // room-id -> paper-id -> today's count
   const roomToday = new Map<string, Map<string, number>>();
 
   for (const room of classrooms) {
@@ -82,7 +115,6 @@ export function calculateClassroomCumulativeStats(
     roomToday.set(room.id, todayMap);
   }
 
-  // Count past completed routines per room
   for (const routine of pastRoutines) {
     for (const slot of routine.slots) {
       const roomHist = roomHistorical.get(slot.roomId);
@@ -92,7 +124,6 @@ export function calculateClassroomCumulativeStats(
     }
   }
 
-  // Count current routine slots per room
   for (const slot of currentRoutineSlots) {
     const rToday = roomToday.get(slot.roomId);
     if (rToday && rToday.has(slot.paperId)) {
@@ -100,79 +131,66 @@ export function calculateClassroomCumulativeStats(
     }
   }
 
-  return classrooms.map((room) => {
-    const histMap = roomHistorical.get(room.id)!;
-    const todayMap = roomToday.get(room.id)!;
+  return classrooms.map((classroom) => {
+    let roomCompletedAll = 0;
+    let roomTodayAll = 0;
+    let roomTargetAll = 0;
 
-    let roomCompletedBeforeToday = 0;
-    let roomTodayTotal = 0;
-    let roomTargetTotal = 0;
+    const paperProgressList: ClassroomPaperProgress[] = papers.map((paper) => {
+      const singleTarget = paper.totalTargetSessions > 0 ? paper.totalTargetSessions : 30;
+      const histDone = roomHistorical.get(classroom.id)?.get(paper.id) || 0;
+      const todayCount = roomToday.get(classroom.id)?.get(paper.id) || 0;
+      const totalDone = histDone + todayCount;
+      const remaining = Math.max(0, singleTarget - totalDone);
+      const percent = singleTarget > 0 ? Math.min(100, Math.round((totalDone / singleTarget) * 100)) : 0;
 
-    const paperProgress: ClassroomPaperProgress[] = papers.map((paper) => {
-      const completed = histMap.get(paper.id) || 0;
-      const today = todayMap.get(paper.id) || 0;
-      const totalDone = completed + today;
-      const remaining = Math.max(0, paper.totalTargetSessions - totalDone);
-      const progressPercent = Math.min(
-        100,
-        Math.round((totalDone / paper.totalTargetSessions) * 100)
-      );
-
-      roomCompletedBeforeToday += completed;
-      roomTodayTotal += today;
-      roomTargetTotal += paper.totalTargetSessions;
+      roomCompletedAll += totalDone;
+      roomTodayAll += todayCount;
+      roomTargetAll += singleTarget;
 
       return {
         paperId: paper.id,
         paperCode: paper.code,
         title: paper.title,
         titleHi: paper.titleHi,
-        category: paper.category,
-        targetSessions: paper.totalTargetSessions,
-        completedSessions: completed,
-        todaySessions: today,
+        category: paper.category || '',
+        color: paper.color || '#3b82f6',
+        targetSessions: singleTarget,
+        completedSessions: histDone,
+        todaySessions: todayCount,
         totalCompleted: totalDone,
         remainingSessions: remaining,
-        progressPercent,
-        color: paper.color,
+        progressPercent: percent,
         isPriority: priorityPaperIds.includes(paper.id),
       };
     });
 
-    const roomTotalDone = roomCompletedBeforeToday + roomTodayTotal;
-    const roomRemaining = Math.max(0, roomTargetTotal - roomTotalDone);
-    const roomPercent =
-      roomTargetTotal > 0
-        ? Math.min(100, Math.round((roomTotalDone / roomTargetTotal) * 100))
-        : 0;
+    const totalPercent = roomTargetAll > 0 ? Math.min(100, Math.round((roomCompletedAll / roomTargetAll) * 100)) : 0;
 
     return {
-      classroom: room,
-      totalTargetSessions: roomTargetTotal,
-      completedBeforeToday: roomCompletedBeforeToday,
-      todaySessions: roomTodayTotal,
-      totalCompleted: roomTotalDone,
-      remainingSessions: roomRemaining,
-      progressPercent: roomPercent,
-      paperProgress,
+      classroom,
+      totalTargetSessions: roomTargetAll,
+      completedBeforeToday: roomCompletedAll - roomTodayAll,
+      todaySessions: roomTodayAll,
+      totalCompleted: roomCompletedAll,
+      remainingSessions: Math.max(0, roomTargetAll - roomCompletedAll),
+      progressPercent: totalPercent,
+      paperProgress: paperProgressList,
     };
   });
 }
 
 /**
- * Calculates cumulative completed sessions for each paper across past routines (Academy Aggregate)
- * Strictly avoids double-counting: current routine slots are counted as today's sessions,
- * while historical routines exclude the current routine.
+ * Calculates academy-wide cumulative stats for each paper.
  */
 export function calculateCumulativeStats(
   papers: Paper[],
   historicalRoutines: DailyRoutine[],
   currentRoutineSlots: ClassSlot[] = [],
   priorityPaperIds: string[] = [],
-  multiplier: number = 15, // 15 classrooms by default (All classes quota = 15 * subject target)
+  totalClassroomsMultiplier: number = 15,
   currentRoutineId?: string
 ): PaperProgress[] {
-  // Exclude current routine from historical calculation to avoid double-counting
   const pastRoutines = historicalRoutines.filter((routine) => {
     if (currentRoutineId && routine.id === currentRoutineId) return false;
     if (currentRoutineSlots.length > 0 && routine.slots.length === currentRoutineSlots.length) {
@@ -181,60 +199,297 @@ export function calculateCumulativeStats(
     return true;
   });
 
-  // Count past completions
-  const completedCounts = new Map<string, number>();
-  for (const paper of papers) {
-    completedCounts.set(paper.id, 0);
-  }
+  const historicalCounts = new Map<string, number>();
+  papers.forEach((p) => historicalCounts.set(p.id, 0));
 
   for (const routine of pastRoutines) {
     for (const slot of routine.slots) {
-      if (completedCounts.has(slot.paperId)) {
-        completedCounts.set(slot.paperId, (completedCounts.get(slot.paperId) || 0) + 1);
+      if (historicalCounts.has(slot.paperId)) {
+        historicalCounts.set(slot.paperId, (historicalCounts.get(slot.paperId) || 0) + 1);
       }
     }
   }
 
-  // Count today's slots if provided
   const todayCounts = new Map<string, number>();
+  papers.forEach((p) => todayCounts.set(p.id, 0));
   for (const slot of currentRoutineSlots) {
-    todayCounts.set(slot.paperId, (todayCounts.get(slot.paperId) || 0) + 1);
+    if (todayCounts.has(slot.paperId)) {
+      todayCounts.set(slot.paperId, (todayCounts.get(slot.paperId) || 0) + 1);
+    }
   }
 
   return papers.map((paper) => {
-    const completed = completedCounts.get(paper.id) || 0;
+    const historical = historicalCounts.get(paper.id) || 0;
     const today = todayCounts.get(paper.id) || 0;
-    const totalDone = completed + today;
-    const target = paper.totalTargetSessions * multiplier;
-    const remaining = Math.max(0, target - totalDone);
-    const progressPercent = target > 0 ? Math.min(100, Math.round((totalDone / target) * 100)) : 0;
+    const completed = historical + today;
+    const singleQuota = paper.totalTargetSessions > 0 ? paper.totalTargetSessions : 30;
+    const target = singleQuota * (totalClassroomsMultiplier || 15);
+    const remaining = Math.max(0, target - completed);
+    const progressPercent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
 
     return {
       paperId: paper.id,
       paperCode: paper.code,
       title: paper.title,
       titleHi: paper.titleHi,
+      color: paper.color || '#3b82f6',
       targetSessions: target,
-      singleRoomTarget: paper.totalTargetSessions,
-      completedSessions: completed,
+      singleRoomTarget: singleQuota,
+      completedSessions: historical,
       todaySessions: today,
       remainingSessions: remaining,
       progressPercent,
-      color: paper.color,
       isPriority: priorityPaperIds.includes(paper.id),
     };
   });
 }
 
 /**
- * Intelligent Constraint Solver for Daily Class Routine
- * Guarantees:
- * 1. Exactly 75 slots (15 classrooms * 5 periods)
- * 2. 0 Teacher double-bookings: No teacher scheduled in > 1 classroom in any period
- * 3. 0 Absent teachers scheduled
- * 4. Automatic nearest-subject substitute teacher selection
- * 5. Balanced curriculum allocation based on cumulative session deficits & priorities per classroom
- * 6. Equitable teacher workload distribution
+ * Calculates priority-weighted curriculum allocation and deterministic integer targets
+ * using the Largest Remainder (Hamilton) method.
+ * Part B–D of Master Prompt.
+ */
+export function calculateCurriculumAllocation(
+  classrooms: Classroom[],
+  papers: Paper[],
+  roomPaperCompletedMap: Map<string, Map<string, number>>,
+  subjectPriorityTiers: Record<string, SubjectPriorityTier> = {},
+  priorityPaperIds: string[] = [],
+  excludedPaperIds: string[] = [],
+  rules?: Partial<RoutineRuleConfig>,
+  prioritySubjectMinPeriods: Record<string, number> = {}
+): {
+  totalCapacity: number;
+  totalRemainingDemand: number;
+  totalAdjustedDemand: number;
+  allocations: Map<string, SubjectAllocationDetail>;
+} {
+  const activeRules: RoutineRuleConfig = normalizeRuleConfig(rules);
+  const totalCapacity = classrooms.length * 5; // e.g. 15 * 5 = 75
+  const combinedExcludedSet = new Set(excludedPaperIds.map((id) => id.trim()));
+
+  for (const [pid, tier] of Object.entries(subjectPriorityTiers)) {
+    if (tier === 'EXCLUDE') {
+      combinedExcludedSet.add(pid);
+    }
+  }
+
+  const allocations = new Map<string, SubjectAllocationDetail>();
+  let totalRemainingDemand = 0;
+  let totalAdjustedDemand = 0;
+
+  // 1. Calculate remaining curriculum demand and priority multipliers
+  for (const paper of papers) {
+    const isExcluded = combinedExcludedSet.has(paper.id);
+    let remaining = 0;
+
+    if (!isExcluded) {
+      const singleQuota = paper.totalTargetSessions > 0 ? paper.totalTargetSessions : 30;
+      for (const room of classrooms) {
+        const done = roomPaperCompletedMap.get(room.id)?.get(paper.id) || 0;
+        const remInRoom = Math.max(0, singleQuota - done);
+        if (!activeRules.enableRoomQuotaCompletionLock || done < singleQuota) {
+          remaining += remInRoom;
+        }
+      }
+    }
+
+    const tier = subjectPriorityTiers[paper.id] || (priorityPaperIds.includes(paper.id) ? 'HIGH' : 'NORMAL');
+    let multiplier = 1.0;
+
+    if (isExcluded || tier === 'EXCLUDE') {
+      multiplier = 0.0;
+    } else if (tier === 'HIGH' || priorityPaperIds.includes(paper.id)) {
+      multiplier = 1.5; // +50% allocation
+    } else if (tier === 'LOW') {
+      multiplier = 0.5; // -50% allocation
+    } else {
+      multiplier = 1.0; // Medium / Normal: unchanged
+    }
+
+    const adjusted = isExcluded ? 0 : remaining * multiplier;
+
+    totalRemainingDemand += remaining;
+    totalAdjustedDemand += adjusted;
+
+    allocations.set(paper.id, {
+      paperId: paper.id,
+      paperCode: paper.code,
+      title: paper.title,
+      remainingSessions: remaining,
+      priorityTier: isExcluded ? 'EXCLUDE' : tier,
+      priorityMultiplier: multiplier,
+      adjustedDemand: adjusted,
+      allocationPercentage: 0,
+      idealSessions: 0,
+      integerTarget: 0,
+      assignedCount: 0,
+    });
+  }
+
+  // 2. Calculate percentages and ideal sessions
+  const eligiblePapers = papers.filter((p) => {
+    const alloc = allocations.get(p.id)!;
+    return alloc.adjustedDemand > 0 && !combinedExcludedSet.has(p.id);
+  });
+
+  if (totalAdjustedDemand > 0 && eligiblePapers.length > 0) {
+    for (const p of eligiblePapers) {
+      const alloc = allocations.get(p.id)!;
+      alloc.allocationPercentage = (alloc.adjustedDemand / totalAdjustedDemand) * 100;
+      alloc.idealSessions = (alloc.allocationPercentage * totalCapacity) / 100;
+    }
+
+    // 3. Deterministic Integer Allocation via Largest Remainder (Hamilton) Method
+    let sumFloors = 0;
+    for (const p of eligiblePapers) {
+      const alloc = allocations.get(p.id)!;
+      const floorVal = Math.floor(alloc.idealSessions);
+      alloc.integerTarget = floorVal;
+      sumFloors += floorVal;
+    }
+
+    let surplus = totalCapacity - sumFloors;
+
+    // Sort by remainder descending, then adjusted demand descending, then paper code
+    const sortedByRemainder = [...eligiblePapers].sort((a, b) => {
+      const allocA = allocations.get(a.id)!;
+      const allocB = allocations.get(b.id)!;
+      const remA = allocA.idealSessions - Math.floor(allocA.idealSessions);
+      const remB = allocB.idealSessions - Math.floor(allocB.idealSessions);
+      if (Math.abs(remA - remB) > 0.0001) return remB - remA;
+      if (allocA.adjustedDemand !== allocB.adjustedDemand) return allocB.adjustedDemand - allocA.adjustedDemand;
+      return a.code.localeCompare(b.code);
+    });
+
+    for (let i = 0; i < surplus && i < sortedByRemainder.length; i++) {
+      const alloc = allocations.get(sortedByRemainder[i].id)!;
+      alloc.integerTarget += 1;
+    }
+
+    // 3b. Guaranteed Priority Delivery (High = 15 rooms, Medium = 9 rooms, Low = 3 rooms)
+    if (activeRules.enableSubjectPriorityTiers || activeRules.enableGuaranteedPriorityPeriods) {
+      for (const p of eligiblePapers) {
+        const alloc = allocations.get(p.id)!;
+        const tier = subjectPriorityTiers[p.id] || (priorityPaperIds.includes(p.id) ? 'HIGH' : undefined);
+        let minTarget = 0;
+        if (tier === 'HIGH') minTarget = classrooms.length; // 15
+        else if (tier === 'MEDIUM') minTarget = Math.round(classrooms.length * 0.6); // 9
+        else if (tier === 'LOW') minTarget = Math.max(1, Math.min(3, Math.round(classrooms.length * 0.2))); // 3
+
+        if (prioritySubjectMinPeriods[p.id]) {
+          minTarget = prioritySubjectMinPeriods[p.id];
+        }
+
+        if (minTarget > alloc.integerTarget) {
+          alloc.integerTarget = minTarget;
+        }
+      }
+
+      // Reconcile total back to totalCapacity
+      let currentTotal = 0;
+      for (const p of eligiblePapers) {
+        currentTotal += allocations.get(p.id)!.integerTarget;
+      }
+
+      if (currentTotal > totalCapacity) {
+        const canTrim = eligiblePapers
+          .filter((p) => {
+            const tier = subjectPriorityTiers[p.id];
+            return tier !== 'HIGH' && !priorityPaperIds.includes(p.id);
+          })
+          .sort((a, b) => {
+            const allocA = allocations.get(a.id)!;
+            const allocB = allocations.get(b.id)!;
+            return allocA.adjustedDemand - allocB.adjustedDemand;
+          });
+
+        let overage = currentTotal - totalCapacity;
+        for (const p of canTrim) {
+          if (overage <= 0) break;
+          const alloc = allocations.get(p.id)!;
+          const tier = subjectPriorityTiers[p.id];
+          const minAllowed = tier === 'MEDIUM' ? Math.round(classrooms.length * 0.6) : (tier === 'LOW' ? 3 : 1);
+          const reducable = Math.max(0, alloc.integerTarget - minAllowed);
+          const deduct = Math.min(overage, reducable);
+          alloc.integerTarget -= deduct;
+          overage -= deduct;
+        }
+      }
+    }
+
+    // 4. Reconcile with max room limits
+    // Under Rule 6: Max 1 period per room -> Max total per subject across all classrooms = classrooms.length (15)
+    // Under Rule 6A: Max 2 periods per room -> Max total per subject across all classrooms = 2 * classrooms.length (30)
+    const maxPerRoomLimit = activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily
+      ? 1
+      : activeRules.enableMaxRoomDailyLimit
+      ? 2
+      : 5;
+    const maxTotalPerSubject = classrooms.length * maxPerRoomLimit;
+
+    let excessToRedistribute = 0;
+    for (const p of eligiblePapers) {
+      const alloc = allocations.get(p.id)!;
+      if (alloc.integerTarget > maxTotalPerSubject) {
+        excessToRedistribute += alloc.integerTarget - maxTotalPerSubject;
+        alloc.integerTarget = maxTotalPerSubject;
+      }
+    }
+
+    if (excessToRedistribute > 0) {
+      const canReceiveMore = eligiblePapers.filter((p) => {
+        const alloc = allocations.get(p.id)!;
+        return alloc.integerTarget < maxTotalPerSubject;
+      });
+
+      for (let i = 0; i < excessToRedistribute && canReceiveMore.length > 0; i++) {
+        const targetPaper = canReceiveMore[i % canReceiveMore.length];
+        const alloc = allocations.get(targetPaper.id)!;
+        if (alloc.integerTarget < maxTotalPerSubject) {
+          alloc.integerTarget += 1;
+        }
+      }
+    }
+  } else {
+    // If no adjusted demand (e.g. all excluded or zero remaining), distribute capacity safely across available non-excluded
+    const nonExcluded = papers.filter((p) => !combinedExcludedSet.has(p.id));
+    if (nonExcluded.length > 0) {
+      const perPaper = Math.floor(totalCapacity / nonExcluded.length);
+      let rem = totalCapacity % nonExcluded.length;
+      for (const p of nonExcluded) {
+        const alloc = allocations.get(p.id)!;
+        alloc.integerTarget = perPaper + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem--;
+      }
+    }
+  }
+
+  return {
+    totalCapacity,
+    totalRemainingDemand,
+    totalAdjustedDemand,
+    allocations,
+  };
+}
+
+/**
+ * Cross-subject mutual backup map:
+ * Forensics (P05) <-> ICT Cyber (P06)
+ * Police Admin (P08, P09) <-> Criminology (P07)
+ */
+export const CROSS_SUBJECT_BACKUP_MAP: Record<string, { backupPaperIds: string[]; pairLabel: string }> = {
+  P05: { backupPaperIds: ['P06'], pairLabel: 'Forensics ↔ ICT Cyber Instructor Mutual Backup' },
+  P06: { backupPaperIds: ['P05'], pairLabel: 'ICT Cyber ↔ Forensics Instructor Mutual Backup' },
+  P07: { backupPaperIds: ['P08', 'P09'], pairLabel: 'Criminology ↔ Police Admin Instructor Mutual Backup' },
+  P08: { backupPaperIds: ['P07', 'P09'], pairLabel: 'Police Admin ↔ Criminology Instructor Mutual Backup' },
+  P09: { backupPaperIds: ['P07', 'P08'], pairLabel: 'Station Mgmt ↔ Criminology Instructor Mutual Backup' },
+};
+
+/**
+ * Primary Routine Generation Engine implementing Tier 1 Hard Constraints,
+ * Tier 2 Priority-Based Curriculum Allocation, Rotational Wave Sequencing,
+ * and Fair Teacher Balancing.
  */
 export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   const {
@@ -254,12 +509,12 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     notes,
   } = options;
 
-  const activeRules: RoutineRuleConfig = {
-    ...DEFAULT_ROUTINE_RULES,
-    ...(rules || {}),
-  };
+  const activeRules: RoutineRuleConfig = normalizeRuleConfig(rules);
+  const totalDailySlots = classrooms.length * 5; // 75 slots
+  const paperMap = new Map(papers.map((p) => [p.id, p]));
+  const classroomMap = new Map(classrooms.map((c) => [c.id, c]));
+  const teacherMap = new Map(teachers.map((t) => [t.id, t]));
 
-  // Resolve excluded papers from explicit excludedPaperIds and tiers
   const combinedExcludedSet = new Set(excludedPaperIds.map((id) => id.trim()));
   for (const [pid, tier] of Object.entries(subjectPriorityTiers)) {
     if (tier === 'EXCLUDE') {
@@ -267,14 +522,11 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     }
   }
 
-  // Active papers that are NOT excluded
-  const eligiblePapers = papers.filter((p) => !combinedExcludedSet.has(p.id));
-  const schedulingPapers = eligiblePapers.length > 0 ? eligiblePapers : papers;
+  // Active papers ordered by paper code (Paper 1, Paper 2, ... Paper 13)
+  const sortedPapers = [...papers].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+  const schedulingPapers = sortedPapers.filter((p) => !combinedExcludedSet.has(p.id));
 
-  const paperMap = new Map(papers.map((p) => [p.id, p]));
-
-  // 1. Calculate cumulative historical counts and remaining deficits PER CLASSROOM
-  // USER RULE: Historical routines with dayNumber < targetDayNumber (both locked and unlocked/editable) count as past history!
+  // 1. Calculate cumulative historical counts per classroom
   const pastHistoricalRoutines = historicalRoutines.filter((r) => r.dayNumber < targetDayNumber);
   const roomProgressList = calculateClassroomCumulativeStats(
     classrooms,
@@ -284,7 +536,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     priorityPaperIds
   );
 
-  // Map room -> paper -> completed sessions before today
   const roomPaperCompletedMap = new Map<string, Map<string, number>>();
   for (const rp of roomProgressList) {
     const cMap = new Map<string, number>();
@@ -294,8 +545,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     roomPaperCompletedMap.set(rp.classroom.id, cMap);
   }
 
-  // Helper to determine if a paper has already reached 100% quota completion in a specific classroom
-  // USER RULE: "ek rule banao ki.. jis class me jiss subject ka session 100 percent ho jaye.. uss class me.. routine creation me.. wo subject allot na ho"
+  // Quota Lockout Helper (Rule 5)
   const isPaperRoomQuotaCompleted = (roomId: string, paperId: string, plannedInRoomToday: number = 0): boolean => {
     if (!activeRules.enableRoomQuotaCompletionLock) return false;
     const completed = (roomPaperCompletedMap.get(roomId)?.get(paperId) || 0) + plannedInRoomToday;
@@ -304,1065 +554,145 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return completed >= target;
   };
 
-  // Build resolved room priority map from user-provided roomPriorityPaperIds and subjectPriorityTiers
-  const resolvedRoomPriorityMap: Record<string, string[]> = {};
-  for (const r of classrooms) {
-    const userPrios = (roomPriorityPaperIds[r.id] || []).filter(
-      (pid) => !isPaperRoomQuotaCompleted(r.id, pid)
-    );
-    resolvedRoomPriorityMap[r.id] = userPrios;
-  }
-
-  // -------------------------------------------------------------------------------------
-  // Process Subject Priority Tiers & Proportional Remaining Session Ratio (75 Daily Slots Total)
-  // USER RULE: "konsa subject kitna period total milega wo 75 total period par count hoga..
-  // aur remaining period par ratio k upar hoga.. fir subject konse class me set karna h..
-  // wo count hoga.. jiss class me subject ka remaining session percent kam hoga.. unhi classes
-  // me subject detail hoga.. fir count hoga.. possible sequence ka.. p, r next me p+1 and r+1"
-  // -------------------------------------------------------------------------------------
-  const totalDailySlots = classrooms.length * 5; // 75 daily sessions
-
-  // Calculate total remaining sessions needed across classrooms for each paper
-  const paperRemainingTotals = new Map<string, number>();
-  const paperEligibleRoomsCount = new Map<string, number>();
-
-  for (const p of schedulingPapers) {
-    if (combinedExcludedSet.has(p.id)) {
-      paperRemainingTotals.set(p.id, 0);
-      paperEligibleRoomsCount.set(p.id, 0);
-      continue;
-    }
-
-    const singleQuota = p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
-    let totalRem = 0;
-    let eligibleRooms = 0;
-
-    for (const r of classrooms) {
-      const done = roomPaperCompletedMap.get(r.id)?.get(p.id) || 0;
-      const rem = Math.max(0, singleQuota - done);
-      if (!isPaperRoomQuotaCompleted(r.id, p.id)) {
-        totalRem += rem;
-        eligibleRooms++;
-      }
-    }
-    paperRemainingTotals.set(p.id, totalRem);
-    paperEligibleRoomsCount.set(p.id, eligibleRooms);
-  }
-
-  // Calculate weighted score based on absolute remaining curriculum sessions & priority tiers
-  const paperRatioScores = new Map<string, number>();
-  for (const p of schedulingPapers) {
-    if (combinedExcludedSet.has(p.id)) {
-      paperRatioScores.set(p.id, 0);
-      continue;
-    }
-    const tier = subjectPriorityTiers[p.id];
-    let mult = 1.0;
-    if (tier === 'HIGH' || priorityPaperIds.includes(p.id)) {
-      mult = 1.5; // +50% subject detailment
-    } else if (tier === 'LOW') {
-      mult = 0.5; // -50% subject detailment
-    } else if (tier === 'MEDIUM') {
-      mult = 1.25;
-    } else if (tier === 'EXCLUDE') {
-      mult = 0;
-    }
-
-    const rem = paperRemainingTotals.get(p.id) || 0;
-    // Base weight is proportional to absolute remaining sessions needed
-    const effectiveRem = Math.max(rem > 0 ? rem : 1, 1);
-    paperRatioScores.set(p.id, effectiveRem * mult);
-  }
-
-  const sumRatioScores = schedulingPapers.reduce(
-    (sum, p) => sum + (paperRatioScores.get(p.id) || 0),
-    0
+  // 2. Part B–D: Calculate Curriculum Allocation and Integer Targets
+  const curriculumPlan = calculateCurriculumAllocation(
+    classrooms,
+    papers,
+    roomPaperCompletedMap,
+    subjectPriorityTiers,
+    priorityPaperIds,
+    Array.from(combinedExcludedSet),
+    activeRules,
+    prioritySubjectMinPeriods
   );
 
-  // Helper to determine target rooms based on proportional remaining ratio and priority
-  const getProportionalTargetRooms = (pid: string): number => {
-    if (combinedExcludedSet.has(pid)) return 0;
-    const tier = subjectPriorityTiers[pid];
-    const eligibleCount = paperEligibleRoomsCount.get(pid) || classrooms.length;
-    const maxRooms = Math.min(classrooms.length, eligibleCount);
-
-    if (tier === 'HIGH') return maxRooms; // High priority guarantees 100% of rooms (max 15)
-    if (tier === 'LOW') {
-      // Low priority strictly capped at <= 3 rooms (max 20%)
-      return Math.max(1, Math.min(3, Math.round(classrooms.length * 0.2)));
-    }
-
-    if (activeRules.enableProportionalRemainingRatio && sumRatioScores > 0) {
-      const score = paperRatioScores.get(pid) || 0;
-      const rawCount = Math.round((totalDailySlots * score) / sumRatioScores);
-      let target = Math.min(maxRooms, Math.max(1, rawCount));
-      if (tier === 'MEDIUM') {
-        target = Math.max(3, Math.min(Math.round(classrooms.length * 0.6), target));
-      }
-      return target;
-    }
-
-    if (tier === 'MEDIUM') return Math.min(maxRooms, Math.round(classrooms.length * 0.6));
-    return Math.min(maxRooms, Math.round(totalDailySlots / schedulingPapers.length));
-  };
-
-  // Pre-calculate target daily room count for each scheduling paper (out of 75 slots)
-  const paperDailyTargetCount = new Map<string, number>();
-  let totalAllocatedDailyRooms = 0;
-
-  for (const p of schedulingPapers) {
-    if (combinedExcludedSet.has(p.id)) {
-      paperDailyTargetCount.set(p.id, 0);
-      continue;
-    }
-    const target = getProportionalTargetRooms(p.id);
-    paperDailyTargetCount.set(p.id, target);
-    totalAllocatedDailyRooms += target;
-  }
-
-  // Populate resolvedRoomPriorityMap for priority papers
-  if (activeRules.enableSubjectPriorityTiers || activeRules.enableProportionalRemainingRatio) {
-    for (const p of schedulingPapers) {
-      const pid = p.id;
-      if (combinedExcludedSet.has(pid)) continue;
-      const tier = subjectPriorityTiers[pid];
-      const isPriority = tier === 'HIGH' || tier === 'MEDIUM' || tier === 'LOW' || priorityPaperIds.includes(pid);
-
-      if (isPriority) {
-        const targetRoomCount = paperDailyTargetCount.get(pid) || 0;
-        if (targetRoomCount <= 0) continue;
-
-        // Filter out classrooms where this paper has already reached 100% quota
-        const eligibleRooms = classrooms.filter((r) => !isPaperRoomQuotaCompleted(r.id, pid));
-        if (eligibleRooms.length === 0) continue;
-
-        // Sort classrooms by completed sessions of this paper ascending (lowest completed gets priority)
-        const sortedRoomsForPaper = [...eligibleRooms].sort((a, b) => {
-          const countA = roomPaperCompletedMap.get(a.id)?.get(pid) || 0;
-          const countB = roomPaperCompletedMap.get(b.id)?.get(pid) || 0;
-          if (countA !== countB) return countA - countB;
-          return (a.id.localeCompare(b.id));
-        });
-
-        const selectedRooms = sortedRoomsForPaper.slice(0, targetRoomCount);
-        for (const r of selectedRooms) {
-          if (!resolvedRoomPriorityMap[r.id]) resolvedRoomPriorityMap[r.id] = [];
-          if (!resolvedRoomPriorityMap[r.id].includes(pid)) {
-            resolvedRoomPriorityMap[r.id].push(pid);
-          }
-        }
-      }
-    }
-  }
-
-  // Helper to determine guaranteed minimum periods for any subject
-  const getGuaranteedMinPeriods = (pid: string): number => {
-    if (prioritySubjectMinPeriods && prioritySubjectMinPeriods[pid] !== undefined && prioritySubjectMinPeriods[pid] > 0) {
-      return prioritySubjectMinPeriods[pid];
-    }
-    const tier = subjectPriorityTiers[pid];
-    if (tier === 'HIGH') return classrooms.length;
-    if (tier === 'MEDIUM') return Math.round(classrooms.length * 0.6);
-    if (tier === 'LOW') return Math.max(1, Math.min(3, Math.round(classrooms.length * 0.2)));
-    if (priorityPaperIds.includes(pid)) return classrooms.length;
-    let roomCount = 0;
-    for (const r of classrooms) {
-      if ((resolvedRoomPriorityMap[r.id] || []).includes(pid)) {
-        roomCount++;
-      }
-    }
-    return roomCount;
-  };
-
-  // If enableGuaranteedPriorityPeriods is active, ensure priority papers are populated across rooms
-  if (activeRules.enableGuaranteedPriorityPeriods) {
-    for (const p of schedulingPapers) {
-      const minTarget = getGuaranteedMinPeriods(p.id);
-      if (minTarget <= 0) continue;
-
-      let currentRoomCount = classrooms.filter((r) =>
-        (resolvedRoomPriorityMap[r.id] || []).includes(p.id)
-      ).length;
-
-      if (currentRoomCount < Math.min(minTarget, classrooms.length)) {
-        const candidateRooms = [...classrooms]
-          .filter(
-            (r) =>
-              !(resolvedRoomPriorityMap[r.id] || []).includes(p.id) &&
-              !isPaperRoomQuotaCompleted(r.id, p.id)
-          )
-          .sort((a, b) => {
-            const countA = roomPaperCompletedMap.get(a.id)?.get(p.id) || 0;
-            const countB = roomPaperCompletedMap.get(b.id)?.get(p.id) || 0;
-            return countA - countB;
-          });
-
-        for (const r of candidateRooms) {
-          if (currentRoomCount >= minTarget || currentRoomCount >= classrooms.length) break;
-          if (!resolvedRoomPriorityMap[r.id]) resolvedRoomPriorityMap[r.id] = [];
-          resolvedRoomPriorityMap[r.id].push(p.id);
-          currentRoomCount++;
-        }
-      }
-    }
-  }
-
-  // Helper to get priority papers for a room (merging room-specific and global priorities)
-  const getRoomPriorityPaperIds = (roomId: string): string[] => {
-    const specific = resolvedRoomPriorityMap[roomId] || [];
-    const global = priorityPaperIds || [];
-    return Array.from(new Set([...specific, ...global])).filter(
-      (pid) =>
-        paperMap.has(pid) &&
-        !combinedExcludedSet.has(pid) &&
-        !isPaperRoomQuotaCompleted(roomId, pid)
-    );
-  };
-
-  // 2. Filter available teachers (strictly exclude absentees with normalized ID comparison if enabled)
-  const normalizedAbsentSet = activeRules.enableStrictAbsenteeExclusion
-    ? new Set(absentTeacherIds.map(normalizeTeacherId))
-    : new Set<string>();
-  const availableTeachers = teachers.filter(
-    (t) => !normalizedAbsentSet.has(normalizeTeacherId(t.id))
-  );
-  const availableTeacherIds = new Set(availableTeachers.map((t) => t.id));
-  const teacherMap = new Map(teachers.map((t) => [t.id, t]));
-
-  // Track daily workload for each teacher
-  const teacherDailyLoad = new Map<string, number>();
-  for (const t of availableTeachers) {
-    teacherDailyLoad.set(t.id, 0);
-  }
-
-  // Calculate cumulative historical teacher sessions across past routines
-  const teacherHistoricalSessions = new Map<string, number>();
-  teachers.forEach((t) => teacherHistoricalSessions.set(t.id, 0));
-
-  // Teacher Classroom Deployment Tracker: teacherId -> roomId -> count of historical sessions taught in this room
-  // USER RULE: "techer k deploy ment tracker ko check karke hoga.. jis class me techer ka deploment sabse kam hua h.. waha hi techer ka deploument hoga"
-  const teacherRoomDeploymentCount = new Map<string, Map<string, number>>();
-  teachers.forEach((t) => {
-    const rMap = new Map<string, number>();
-    classrooms.forEach((r) => rMap.set(r.id, 0));
-    teacherRoomDeploymentCount.set(t.id, rMap);
-  });
-
-  historicalRoutines
-    .filter((r) => r.dayNumber < targetDayNumber)
-    .forEach((r) => {
-      r.slots.forEach((s) => {
-        if (s.teacherId) {
-          teacherHistoricalSessions.set(
-            s.teacherId,
-            (teacherHistoricalSessions.get(s.teacherId) || 0) + 1
-          );
-          if (teacherRoomDeploymentCount.has(s.teacherId)) {
-            const rMap = teacherRoomDeploymentCount.get(s.teacherId)!;
-            if (rMap.has(s.roomId)) {
-              rMap.set(s.roomId, (rMap.get(s.roomId) || 0) + 1);
-            }
-          }
-        }
-      });
-    });
-
-  // Calculate active academy average teacher sessions to detect teacher lagging/advancement
-  let totalPastSlotsForActive = 0;
-  availableTeachers.forEach((t) => {
-    totalPastSlotsForActive += teacherHistoricalSessions.get(t.id) || 0;
-  });
-  const avgTeacherSessions =
-    availableTeachers.length > 0 ? totalPastSlotsForActive / availableTeachers.length : 0;
-
-  const getTeacherTotalLoad = (tid: string): number => {
-    return (teacherHistoricalSessions.get(tid) || 0) + (teacherDailyLoad.get(tid) || 0);
-  };
-
-  const getAcademyAverageLoad = (): number => {
-    let totalAll = 0;
-    availableTeachers.forEach((t) => {
-      totalAll += (teacherHistoricalSessions.get(t.id) || 0) + (teacherDailyLoad.get(t.id) || 0);
-    });
-    return availableTeachers.length > 0 ? totalAll / availableTeachers.length : 0;
-  };
-
-  // SUBJECT DEFICIT & ARRANGEMENT EQUALIZATION:
-  // USER RULE: "subject ka arrangement aisa banao.. ki .dhire dhire.. har techer ko approx same session mile"
-  // Instead of raw remainingSessions (which starves shorter subjects like P07/P08),
-  // we compute completion ratio deficit & teacher cumulative session deficit:
-  // 1. Completion ratio deficit: (remainingSessions / totalTargetSessions) * 10
-  // 2. Teacher deficit boost: If primary instructors for a paper are lagging behind the academy average,
-  //    give a significant scheduling boost so their subject is taught and they catch up!
-  const getPaperArrangementWeight = (
-    paper: Paper,
-    remaining: number,
-    isPriority: boolean
-  ): number => {
-    const ratioRemaining =
-      paper.totalTargetSessions > 0 ? remaining / paper.totalTargetSessions : 0;
-    let baseWeight = ratioRemaining * 10; // 0 to 10 normalized scale
-
-    // Check primary teachers load (if workload equalization is enabled)
-    if (activeRules.enableWorkloadEqualization && paper.primaryTeacherIds.length > 0) {
-      const activePrimary = paper.primaryTeacherIds.filter((tid) =>
-        availableTeacherIds.has(tid)
-      );
-      if (activePrimary.length > 0) {
-        const avgPrimaryLoad =
-          activePrimary.reduce((sum, tid) => sum + getTeacherTotalLoad(tid), 0) /
-          activePrimary.length;
-        const teacherLag = avgTeacherSessions - avgPrimaryLoad;
-        if (teacherLag > 0) {
-          // Boost paper weight significantly so lagging instructors get scheduled!
-          baseWeight += teacherLag * 4.0;
-        } else if (teacherLag < -2) {
-          // If teacher is already far ahead, temper weight slightly to create space for lagging teachers
-          baseWeight = Math.max(0.5, baseWeight + teacherLag * 0.5);
-        }
-      }
-    }
-
-    if (isPriority) {
-      baseWeight *= 4.0;
-    }
-
-    return Math.max(0.1, baseWeight);
-  };
-
-  // Per-room deficit map: roomId -> paperId -> weight
-  const roomDeficitMaps = new Map<string, Map<string, number>>();
-  for (const rp of roomProgressList) {
-    const dMap = new Map<string, number>();
-    const roomPrios = getRoomPriorityPaperIds(rp.classroom.id);
-    for (const pp of rp.paperProgress) {
-      const paper = paperMap.get(pp.paperId)!;
-      const weight = getPaperArrangementWeight(
-        paper,
-        pp.remainingSessions,
-        roomPrios.includes(pp.paperId)
-      );
-      dMap.set(pp.paperId, weight);
-    }
-    roomDeficitMaps.set(rp.classroom.id, dMap);
-  }
-
-  // Global paper deficit map as fallback
-  const globalHistorical = calculateCumulativeStats(papers, historicalRoutines, []);
-  const globalDeficitMap = new Map<string, number>();
-  for (const prog of globalHistorical) {
-    const paper = paperMap.get(prog.paperId)!;
-    const weight = getPaperArrangementWeight(
-      paper,
-      prog.remainingSessions,
-      priorityPaperIds.includes(prog.paperId)
-    );
-    globalDeficitMap.set(prog.paperId, weight);
-  }
-
-  // Track how many times a paper has been taught in each classroom today
-  const roomPaperCounts = new Map<string, Map<string, number>>();
+  // 3. Part E: Subject Distribution Across Classrooms Starting From Paper 1
+  // Classroom assigned paper buckets: roomId -> Paper[]
+  const roomAssignedPapers = new Map<string, Paper[]>();
   for (const r of classrooms) {
-    roomPaperCounts.set(r.id, new Map<string, number>());
+    roomAssignedPapers.set(r.id, []);
   }
 
-  // 3. Setup classroom indexes (1-based: 1..15) and mapping
-  const classroomIndexMap = new Map<string, number>();
-  const classroomMap = new Map<string, Classroom>();
-  classrooms.forEach((c, idx) => {
-    classroomIndexMap.set(c.id, idx + 1);
-    classroomMap.set(c.id, c);
-  });
-
-  // Track last assigned slot for each teacher in the current day:
-  interface TeacherSlotRecord {
-    period: number;
-    building: 'OLD' | 'NEW';
-    roomIndex: number;
+  const paperAllocatedCount = new Map<string, number>();
+  for (const p of papers) {
+    paperAllocatedCount.set(p.id, 0);
   }
-  const teacherLastSlot = new Map<string, TeacherSlotRecord>();
 
-  // Teacher room rotation target (1..15)
-  // USER RULE: "yahi last day agar room 1 pe that to next period me.. use room2 milega .fir next period pe room 3 milega"
-  const teacherTargetRoomIndex = new Map<string, number>();
-
-  // Find previous day's routine (latest historical routine with dayNumber < targetDayNumber)
-  const previousRoutines = historicalRoutines
-    .filter((r) => r.dayNumber < targetDayNumber)
-    .sort((a, b) => b.dayNumber - a.dayNumber);
-  const previousDayRoutine = previousRoutines[0];
-
-  // Preferred/ongoing paper for each instructor (starts with primary paper or paper from previous day's last slot)
-  const teacherPreferredPaper = new Map<string, string>();
-
-  teachers.forEach((t, i) => {
-    // Moto (III): Stagger teachers strictly within their assigned building
-    let initialTarget: number;
-    if (t.assignedBuilding === 'OLD') {
-      initialTarget = (i % 8) + 1; // Classrooms 1 to 8 (Old Building)
-    } else if (t.assignedBuilding === 'NEW') {
-      initialTarget = 9 + (i % 7); // Classrooms 9 to 15 (New Building)
-    } else {
-      initialTarget = (i % classrooms.length) + 1; // Floating across all 15 classrooms
-    }
-    let initialPaperId = t.primaryPaperIds[0] || 'P01';
-
-    if (previousDayRoutine && previousDayRoutine.slots) {
-      // Find all slots taught by this teacher on the previous day
-      const pastSlots = previousDayRoutine.slots
-        .filter((s) => s.teacherId === t.id)
-        .sort((a, b) => b.period - a.period); // latest period first
-
-      if (pastSlots.length > 0) {
-        const lastSlot = pastSlots[0];
-        const lastRoomIndex = classroomIndexMap.get(lastSlot.roomId) || 1;
-        if (t.assignedBuilding === 'OLD') {
-          initialTarget = (lastRoomIndex % 8) + 1;
-        } else if (t.assignedBuilding === 'NEW') {
-          initialTarget = 9 + ((lastRoomIndex - 9 + 1) % 7);
-        } else {
-          initialTarget = (lastRoomIndex % classrooms.length) + 1;
-        }
-        initialPaperId = lastSlot.paperId;
+  // Pre-seed room-specific priorities from roomPriorityPaperIds
+  for (const r of classrooms) {
+    const userPrios = roomPriorityPaperIds[r.id] || [];
+    for (const pid of userPrios) {
+      if (roomAssignedPapers.get(r.id)!.length >= 5) break;
+      const p = paperMap.get(pid);
+      if (p && !combinedExcludedSet.has(pid) && !isPaperRoomQuotaCompleted(r.id, pid)) {
+        roomAssignedPapers.get(r.id)!.push(p);
+        paperAllocatedCount.set(pid, (paperAllocatedCount.get(pid) || 0) + 1);
       }
     }
+  }
 
-    teacherTargetRoomIndex.set(t.id, initialTarget);
-    teacherPreferredPaper.set(t.id, initialPaperId);
-  });
-
-  // USER RULE: "building change hone par.. ek period ka gap milega.. aur sab floating par hoga"
-  // If teacher taught in immediately preceding period in opposite building, they CANNOT teach in this period!
-  const hasBuildingChangeConflict = (
-    teacherId: string,
-    period: number,
-    targetBuilding: 'OLD' | 'NEW' | string
-  ): boolean => {
-    if (!activeRules.enableBuildingChangeGap) return false;
-    const last = teacherLastSlot.get(teacherId);
-    if (!last) return false;
-
-    if (last.period === period - 1 && last.building !== targetBuilding) {
-      return true;
-    }
-    return false;
-  };
-
-  // Helper to score and rank candidates based on room rotation progression, daily quota & cumulative session equalization:
-  // USER RULE: "techer k deploy ment tracker ko check karke hoga.. jis class me techer ka deploment sabse kam hua h..
-  // waha hi techer ka deploument hoga.. aur techer deplyoment ka aisa ho.. jaise har techer ko same session milne jaisa ho"
-  const sortCandidatesByProgressionAndLoad = (
-    candidates: Teacher[],
-    roomIndex: number,
-    isPracticalOrBackup: boolean = false,
-    roomId?: string
-  ): Teacher[] => {
-    const targetRoomId = roomId || classrooms[roomIndex - 1]?.id || '';
-    return [...candidates].sort((a, b) => {
-      const loadA = teacherDailyLoad.get(a.id) || 0;
-      const loadB = teacherDailyLoad.get(b.id) || 0;
-
-      // Soft daily quota cap: Instructors with >= 3 periods today yield to instructors with < 3 (if enabled)
-      if (activeRules.enableDailyWorkloadSoftCap) {
-        const cappedA = loadA >= 3 ? 1 : 0;
-        const cappedB = loadB >= 3 ? 1 : 0;
-        if (cappedA !== cappedB) return cappedA - cappedB;
-      }
-
-      // 1. TEACHER DEPLOYMENT TRACKER:
-      // USER RULE: "jis class me techer ka deploment sabse kam hua h.. waha hi techer ka deploument hoga"
-      if (targetRoomId) {
-        const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(targetRoomId) || 0;
-        const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(targetRoomId) || 0;
-        if (visitsA !== visitsB) return visitsA - visitsB; // Lowest visits to this room first!
-      }
-
-      // 2. CUMULATIVE WORKLOAD BALANCING:
-      // USER RULE: "aur techer deplyoment ka aisa ho.. jaise har techer ko same session milne jaisa ho"
-      const totalA = getTeacherTotalLoad(a.id);
-      const totalB = getTeacherTotalLoad(b.id);
-      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
-        return totalA - totalB;
-      }
-
-      // If daily load difference is >= 2, prioritize instructor with fewer periods today
-      if (Math.abs(loadA - loadB) >= 2) {
-        return loadA - loadB;
-      }
-
-      // Room carousel circular distance (progression flow)
-      const targetA = teacherTargetRoomIndex.get(a.id) || 1;
-      const targetB = teacherTargetRoomIndex.get(b.id) || 1;
-      const distA = (roomIndex - targetA + classrooms.length) % classrooms.length;
-      const distB = (roomIndex - targetB + classrooms.length) % classrooms.length;
-
-      if (distA !== distB) return distA - distB;
-
-      // Final tie-breakers
-      if (totalA !== totalB) return totalA - totalB;
-      return loadA - loadB;
-    });
-  };
-
-  // Cross-subject mutual backup map as specified by user:
-  // Forensics (P05) <-> ICT (P06)
-  // Police Admin (P08, P09) <-> Criminology (P07)
-  const CROSS_SUBJECT_BACKUP_MAP: Record<string, { backupPaperIds: string[]; pairLabel: string }> = {
-    P05: { backupPaperIds: ['P06'], pairLabel: 'Forensics ↔ ICT Cyber Instructor Mutual Backup' },
-    P06: { backupPaperIds: ['P05'], pairLabel: 'ICT Cyber ↔ Forensics Instructor Mutual Backup' },
-    P07: { backupPaperIds: ['P08', 'P09'], pairLabel: 'Criminology ↔ Police Admin Instructor Mutual Backup' },
-    P08: { backupPaperIds: ['P07', 'P09'], pairLabel: 'Police Admin ↔ Criminology Instructor Mutual Backup' },
-    P09: { backupPaperIds: ['P07', 'P08'], pairLabel: 'Station Mgmt ↔ Criminology Instructor Mutual Backup' },
-  };
-
-  // Moto (III): Strict Building Binding helper (Old teachers in Old Building, New in New Building, Floating in both)
-  const isTeacherAllowedInRoomBuilding = (t: Teacher, rBuilding: string): boolean => {
-    if (!activeRules.enableStrictBuildingBinding) return true;
-    if (t.assignedBuilding === 'FLOATING') return true;
-    return t.assignedBuilding === rBuilding;
-  };
-
-  // Helper to check if any qualified teacher can teach a paper in the given period for a specific room
-  const canTeachInPeriod = (
-    paper: Paper,
-    busyTeachersInPeriod: Set<string>,
-    room: Classroom,
-    period: number
-  ): boolean => {
-    const roomBuilding = room.building as 'OLD' | 'NEW';
-    const isTeacherEligible = (tid: string): boolean => {
-      if (!availableTeacherIds.has(tid)) return false;
-      if (activeRules.enableZeroDoubleBooking && busyTeachersInPeriod.has(tid)) return false;
-      const t = teacherMap.get(tid);
-      if (!t) return false;
-      if (!isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
-      if (hasBuildingChangeConflict(tid, period, roomBuilding)) return false;
-      const dailyLoad = teacherDailyLoad.get(tid) || 0;
-      const maxLimit = Math.min(4, t.maxDailyPeriods || 4);
-      if (activeRules.enableDailyWorkloadMaxCap && dailyLoad >= maxLimit) return false;
-      return true;
-    };
-
-    // Practical P13
-    if (paper.id === 'P13') {
-      return availableTeachers.some((t) => isTeacherEligible(t.id));
-    }
-
-    // Primary teachers
-    if (paper.primaryTeacherIds.some(isTeacherEligible)) {
-      return true;
-    }
-
-    // Designated backup teachers
-    if (
-      availableTeachers.some((t) => {
-        const isBackup =
-          (t.backupPaperIds && t.backupPaperIds.includes(paper.id)) ||
-          (t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id));
-        const dailyLoad = teacherDailyLoad.get(t.id) || 0;
-        const withinQuota = dailyLoad < (t.maxDailyPeriods || 4);
-        return isBackup && withinQuota && isTeacherEligible(t.id);
-      })
-    ) {
-      return true;
-    }
-
-    // Cross-backup pairs
-    const crossConfig = CROSS_SUBJECT_BACKUP_MAP[paper.id];
-    if (crossConfig) {
-      for (const bpid of crossConfig.backupPaperIds) {
-        const bp = paperMap.get(bpid);
-        if (bp && bp.primaryTeacherIds.some(isTeacherEligible)) {
-          return true;
-        }
-      }
-    }
-
-    // Nearest papers
-    for (const nid of paper.nearestPaperIds) {
-      const np = paperMap.get(nid);
-      if (np && np.primaryTeacherIds.some(isTeacherEligible)) {
-        return true;
-      }
-    }
-
-    // Secondary qualified teachers
-    if (availableTeachers.some((t) => t.secondaryPaperIds.includes(paper.id) && isTeacherEligible(t.id))) {
-      return true;
-    }
-
-    // Emergency reserve: any available teacher who is free and has no building conflict
-    return availableTeachers.some((t) => isTeacherEligible(t.id));
-  };
-
-  // Score a candidate paper based on its faculty's need for teaching load equalization across the 6-day cycle
-  const getPaperFacultyWorkloadScore = (paper: Paper, roomBuilding: string): number => {
-    if (!activeRules.enableSubjectFacultyLoadBalancing && !activeRules.enableWorkloadEqualization) {
-      return 0;
-    }
-
-    const avgAcademy = getAcademyAverageLoad();
-
-    if (paper.id === 'P13') {
-      const freeEligible = availableTeachers.filter(
-        (t) => isTeacherAllowedInRoomBuilding(t, roomBuilding) && (teacherDailyLoad.get(t.id) || 0) < 4
-      );
-      if (freeEligible.length === 0) return -50;
-      const minLoad = Math.min(...freeEligible.map((t) => getTeacherTotalLoad(t.id)));
-      const minDaily = Math.min(...freeEligible.map((t) => teacherDailyLoad.get(t.id) || 0));
-      const lag = avgAcademy - minLoad;
-      const dailyBonus = (3 - minDaily) * 2.0;
-      return lag * 2.5 + dailyBonus;
-    }
-
-    const eligiblePrimaries = paper.primaryTeacherIds
-      .filter((tid) => availableTeacherIds.has(tid))
-      .map((tid) => teacherMap.get(tid)!)
-      .filter((t) => t && isTeacherAllowedInRoomBuilding(t, roomBuilding));
-
-    if (eligiblePrimaries.length === 0) {
-      return -15;
-    }
-
-    const withCapacity = eligiblePrimaries.filter((t) => (teacherDailyLoad.get(t.id) || 0) < 4);
-    if (withCapacity.length === 0) {
-      return -100; // All primary instructors have reached 4 periods today!
-    }
-
-    const minLoad = Math.min(...withCapacity.map((t) => getTeacherTotalLoad(t.id)));
-    const minDaily = Math.min(...withCapacity.map((t) => teacherDailyLoad.get(t.id) || 0));
-    const lag = avgAcademy - minLoad;
-    const dailyBonus = (3 - minDaily) * 2.5;
-
-    return lag * 3.0 + dailyBonus;
-  };
-
-  // Moto (II) & Quota constraints: Helper to check if a paper can be scheduled in this classroom
-  const canPaperBeScheduledInRoom = (
-    paperId: string,
-    roomId: string,
-    period: number,
-    lastPaperIdInRoom?: string
-  ): boolean => {
-    // 1. Exclude if paper is explicitly excluded
+  // Helper to check if paper can fit in room based on Rules 5, 6, 6A
+  const canAddPaperToRoom = (paperId: string, roomId: string): boolean => {
     if (combinedExcludedSet.has(paperId)) return false;
+    const currentInRoom = roomAssignedPapers.get(roomId) || [];
+    if (currentInRoom.length >= 5) return false;
+    if (isPaperRoomQuotaCompleted(roomId, paperId, currentInRoom.filter((p) => p.id === paperId).length)) {
+      return false;
+    }
+    const countInRoom = currentInRoom.filter((p) => p.id === paperId).length;
 
-    // 2. Exclude if paper is already 100% quota completed in this classroom
-    const timesInRoomToday = roomPaperCounts.get(roomId)?.get(paperId) || 0;
-    if (isPaperRoomQuotaCompleted(roomId, paperId, timesInRoomToday)) return false;
+    // Rule 6: Max 1 period per subject per room daily
+    if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && countInRoom >= 1) return false;
 
-    // 3. Moto (II): Max 1 period per subject per room daily (5 different subjects daily)
-    if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && timesInRoomToday >= 1) return false;
-
-    // 4. Max 2 periods daily cap
-    if (activeRules.enableMaxRoomDailyLimit && timesInRoomToday >= 2) return false;
-
-    // 5. Moto (II): Non-consecutive subject gap (strictly never consecutive)
-    if (activeRules.enableNonConsecutiveGapForSameSubject && lastPaperIdInRoom && lastPaperIdInRoom === paperId) {
+    // Rule 6A: Max 2 periods per subject per class/room daily
+    if (!activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && activeRules.enableMaxRoomDailyLimit && countInRoom >= 2) {
       return false;
     }
 
     return true;
   };
 
-  // Paper selection helper with room-specific deficit & completion % equalization (Moto I)
-  const pickBestPaperForRoom = (
-    roomId: string,
-    period: number,
-    busyTeachersInPeriod: Set<string>,
-    room: Classroom,
-    lastPaperIdInRoom?: string
-  ): Paper => {
-    const roomCounts = roomPaperCounts.get(roomId)!;
-    const roomDeficits = roomDeficitMaps.get(roomId) || globalDeficitMap;
-    const roomPrios = getRoomPriorityPaperIds(roomId);
-
-    // Filter candidate papers that strictly satisfy room constraints (Tier 1 Moto II)
-    const roomValidCandidates = schedulingPapers.filter((p) => canPaperBeScheduledInRoom(p.id, roomId, period, lastPaperIdInRoom));
-    const candidatesWithTeachers = roomValidCandidates.filter((p) => canTeachInPeriod(p, busyTeachersInPeriod, room, period));
-
-    // Prefer papers that satisfy room constraints AND have available teachers; if no teacher available under cap, still preserve room constraint
-    const nonCompletedCandidates = schedulingPapers.filter(
-      (p) => !combinedExcludedSet.has(p.id) && !isPaperRoomQuotaCompleted(roomId, p.id, roomCounts.get(p.id) || 0)
-    );
-    const pool = candidatesWithTeachers.length > 0 
-      ? candidatesWithTeachers 
-      : (roomValidCandidates.length > 0 ? roomValidCandidates : (nonCompletedCandidates.length > 0 ? nonCompletedCandidates : schedulingPapers));
-
-    const getPaperSelectionScore = (p: Paper): number => {
-      let score = 0;
-      if (roomPrios.includes(p.id)) score += 100;
-
-      if (activeRules.enableClassroomSubjectEqualization) {
-        const targetQuota = p.totalTargetSessions > 0 ? Math.max(1, Math.round(p.totalTargetSessions / classrooms.length)) : 2;
-        const countInRoom = (roomPaperCompletedMap.get(room.id)?.get(p.id) || 0) + (roomCounts.get(p.id) || 0);
-        const percent = (countInRoom / targetQuota) * 100;
-        score += (100 - percent) * 0.5;
-      }
-
-      if (activeRules.enableSubjectFacultyLoadBalancing || activeRules.enableWorkloadEqualization) {
-        score += getPaperFacultyWorkloadScore(p, room.building);
-      }
-
-      return score;
-    };
-
-    const sorted = [...pool].sort((a, b) => getPaperSelectionScore(b) - getPaperSelectionScore(a));
-
-    // Add mild randomized rotation among top 3 candidates to avoid lock-step repetition across rooms
-    const topCandidates = sorted.slice(0, Math.min(3, sorted.length));
-    const chosen = topCandidates[Math.floor(Math.random() * topCandidates.length)] || sorted[0];
-
-    // Decrement room deficit slightly so same paper doesn't starve others in the same day for this room
-    const currentWeight = roomDeficits.get(chosen.id) || 1;
-    roomDeficits.set(chosen.id, Math.max(0.5, currentWeight - 0.7));
-
-    return chosen;
+  // Helper: calculate class-specific remaining percentage
+  const getClassRemainingPercentage = (paperId: string, roomId: string): number => {
+    const p = paperMap.get(paperId);
+    const target = p && p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
+    const completed = roomPaperCompletedMap.get(roomId)?.get(paperId) || 0;
+    const remaining = Math.max(0, target - completed);
+    return target > 0 ? (remaining / target) * 100 : 0;
   };
 
-  // Teacher finder helper with room progression rotation & building change gap logic
-  const assignTeacherForPaperInPeriod = (
-    paper: Paper,
-    period: number,
-    busyTeachersInPeriod: Set<string>,
-    room: Classroom,
-    lastPaperIdInRoom?: string
-  ): {
-    teacherId: string;
-    isSubstitute: boolean;
-    originalTeacherId?: string;
-    substituteReason?: string;
-    alternatePaperId?: string;
-  } => {
-    const roomIndex = classroomIndexMap.get(room.id) || 1;
-    const roomBuilding = room.building as 'OLD' | 'NEW';
+  // Begin filling from Paper 1, Paper 2, ... Paper 13 in configured paper order
+  for (const paper of schedulingPapers) {
+    const alloc = curriculumPlan.allocations.get(paper.id);
+    let targetSessions = alloc ? alloc.integerTarget : 0;
 
-    // User Rule: "Practical k liye.. fixed teachers ki jarurat nhi.. koi v teacher practical karega.."
-    // Practical acts as the primary academy-wide equalizer: candidates with lowest cumulative sessions are picked first!
-    if (activeRules.enablePracticalFlexible && paper.id === 'P13') {
-      const freeForPractical = availableTeachers.filter(
-        (t) =>
-          !busyTeachersInPeriod.has(t.id) &&
-          isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
-          !hasBuildingChangeConflict(t.id, period, roomBuilding) &&
-          (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
-      );
-      if (freeForPractical.length > 0) {
-        const sorted = sortCandidatesByProgressionAndLoad(freeForPractical, roomIndex, true);
-        return {
-          teacherId: sorted[0].id,
-          isSubstitute: false,
-        };
-      }
+    // If explicit minimum periods configured in options, ensure target respects it
+    if (prioritySubjectMinPeriods[paper.id] && prioritySubjectMinPeriods[paper.id] > targetSessions) {
+      targetSessions = prioritySubjectMinPeriods[paper.id];
     }
 
-    // 1. First priority: Primary teachers of this paper who are available, not busy, and have NO building conflict
-    const freePrimaryTeachers = paper.primaryTeacherIds
-      .filter(
-        (tid) =>
-          availableTeacherIds.has(tid) &&
-          !busyTeachersInPeriod.has(tid) &&
-          isTeacherAllowedInRoomBuilding(teacherMap.get(tid)!, roomBuilding) &&
-          !hasBuildingChangeConflict(tid, period, roomBuilding) &&
-          (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(tid) || 0) < Math.min(4, teacherMap.get(tid)?.maxDailyPeriods || 4))
-      )
-      .map((tid) => teacherMap.get(tid)!)
-      .filter(Boolean);
+    if (targetSessions <= 0) continue;
 
-    const primaryWithinQuota = freePrimaryTeachers.filter((t) => {
-      const dailyLoad = teacherDailyLoad.get(t.id) || 0;
-      const withinMax = dailyLoad < (t.maxDailyPeriods || 4);
-      const withinSoftCap = !activeRules.enableDailyWorkloadSoftCap || dailyLoad < 3;
-      return withinMax && withinSoftCap;
-    });
-
-    if (primaryWithinQuota.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(primaryWithinQuota, roomIndex, false);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: false,
-      };
-    }
-
-    // 1b. Check if any free primary teacher exists (even at soft-cap)
-    if (freePrimaryTeachers.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(freePrimaryTeachers, roomIndex, false);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: false,
-      };
-    }
-
-    // USER RULE: "no subsitute attotemnet.. agar kisi subject k liye main techer nhi to.. koi subsitute techer apply nhi hoga.. bass.. wo jagah khali rahega.. iske sub header me ek rule add karo. ki usko dusra availbale subject se replace karne kliye.."
-    if (activeRules.enableNoSubstituteAllotment) {
-      if (activeRules.replaceWithAvailableSubjectIfNoPrimary) {
-        // Sub-rule: Replace slot with another available subject whose primary instructor IS free (strictly adhering to Tier 1 Room Constraints)
-        for (const altPaper of schedulingPapers) {
-          if (altPaper.id === paper.id) continue;
-          if (!canPaperBeScheduledInRoom(altPaper.id, room.id, period, lastPaperIdInRoom)) continue;
-
-          const altPrimaryFree = altPaper.primaryTeacherIds
-            .filter(
-              (tid) => {
-                if (!availableTeacherIds.has(tid)) return false;
-                if (busyTeachersInPeriod.has(tid)) return false;
-                const t = teacherMap.get(tid);
-                if (!t || !isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
-                if (hasBuildingChangeConflict(tid, period, roomBuilding)) return false;
-                // Tier 1 Hard Rule 9: Hard-Cap of Max 4 Periods/Day per Instructor
-                const currentLoad = teacherDailyLoad.get(tid) || 0;
-                const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
-                if (activeRules.enableDailyWorkloadMaxCap && currentLoad >= maxAllowed) return false;
-                return true;
-              }
-            )
-            .map((tid) => teacherMap.get(tid)!)
-            .filter(Boolean);
-
-          if (altPrimaryFree.length > 0) {
-            const sorted = sortCandidatesByProgressionAndLoad(altPrimaryFree, roomIndex, false);
-            return {
-              teacherId: sorted[0].id,
-              isSubstitute: false,
-              alternatePaperId: altPaper.id,
-              substituteReason: `Substituted with alternate available subject [${altPaper.code}] ${altPaper.title} because primary instructor of ${paper.code} was unavailable`,
-            };
-          }
-        }
-      }
-
-      // No substitute allotted: Slot left blank / vacant
-      return {
-        teacherId: '',
-        isSubstitute: false,
-        substituteReason: 'No substitute instructor allotted (Strict No-Substitute rule active)',
-      };
-    }
-
-    // Identify who would have been the preferred primary teacher for this room
-    const preferredOriginalId = paper.primaryTeacherIds[0] || 'T1';
-    const isOriginalAbsent = absentTeacherIds.includes(preferredOriginalId);
-    const primaryAbsentReason = isOriginalAbsent
-      ? 'Primary instructor on leave today'
-      : 'Primary instructor busy in another classroom';
-
-    // 2. Designated Backup Instructors assigned to this subject paper (with NO building conflict)
-    // Rule: "backup subject matlab hi floating ho"
-    const freeBackupTeachers = availableTeachers.filter((t) => {
-      const isBackup =
-        (t.backupPaperIds && t.backupPaperIds.includes(paper.id)) ||
-        (t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id));
-      const dailyLoad = teacherDailyLoad.get(t.id) || 0;
-      const withinQuota = dailyLoad < (t.maxDailyPeriods || 4);
-      return (
-        isBackup &&
-        withinQuota &&
-        !busyTeachersInPeriod.has(t.id) &&
-        isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
-        !hasBuildingChangeConflict(t.id, period, roomBuilding)
-      );
-    });
-
-    if (activeRules.enableDesignatedBackup && freeBackupTeachers.length > 0) {
-      freeBackupTeachers.sort((a, b) => {
-        // Priority 1: Backup Slot 1 prioritized over Backup Slot 2
-        const indexA = a.backupPaperIds ? a.backupPaperIds.indexOf(paper.id) : 99;
-        const indexB = b.backupPaperIds ? b.backupPaperIds.indexOf(paper.id) : 99;
-        if (indexA !== indexB && indexA !== -1 && indexB !== -1) return indexA - indexB;
-
-        // Priority 2: Workload daily soft-cap
-        const loadA = teacherDailyLoad.get(a.id) || 0;
-        const loadB = teacherDailyLoad.get(b.id) || 0;
-        const cappedA = loadA >= 3 ? 1 : 0;
-        const cappedB = loadB >= 3 ? 1 : 0;
-        if (cappedA !== cappedB) return cappedA - cappedB;
-
-        // Priority 3: Cumulative workload balance
-        const totalA = getTeacherTotalLoad(a.id);
-        const totalB = getTeacherTotalLoad(b.id);
-        if (totalA !== totalB) return totalA - totalB;
-
-        // Priority 4: Room rotation progression
-        const targetA = teacherTargetRoomIndex.get(a.id) || 1;
-        const targetB = teacherTargetRoomIndex.get(b.id) || 1;
-        const distA = (roomIndex - targetA + classrooms.length) % classrooms.length;
-        const distB = (roomIndex - targetB + classrooms.length) % classrooms.length;
-        if (distA !== distB) return distA - distB;
-
-        return loadA - loadB;
+    // Rank eligible classrooms for this subject: highest remaining demand % first
+    const eligibleRooms = classrooms
+      .filter((r) => canAddPaperToRoom(paper.id, r.id))
+      .sort((a, b) => {
+        const hasA = (roomAssignedPapers.get(a.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
+        const hasB = (roomAssignedPapers.get(b.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
+        if (hasA !== hasB) return hasA - hasB; // Classrooms without this paper yet get it first!
+        const pctA = getClassRemainingPercentage(paper.id, a.id);
+        const pctB = getClassRemainingPercentage(paper.id, b.id);
+        if (Math.abs(pctA - pctB) > 0.001) return pctB - pctA; // Highest remaining % first!
+        const remA = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(a.id)?.get(paper.id) || 0));
+        const remB = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(b.id)?.get(paper.id) || 0));
+        if (remA !== remB) return remB - remA;
+        return a.id.localeCompare(b.id);
       });
 
-      const selected = freeBackupTeachers[0];
-      return {
-        teacherId: selected.id,
-        isSubstitute: true,
-        originalTeacherId: preferredOriginalId,
-        substituteReason: `${primaryAbsentReason} - Designated Backup Instructor [${selected.code}] ${selected.name} (Floating across campus) appointed`,
-      };
-    }
-
-    // 3. Third priority: Explicit Cross-Subject Mutual Backup Pairs (with NO building conflict)
-    const crossBackupConfig = CROSS_SUBJECT_BACKUP_MAP[paper.id];
-    if (activeRules.enableCrossMutualBackup && crossBackupConfig) {
-      const crossTeachers: Teacher[] = [];
-      for (const backupPid of crossBackupConfig.backupPaperIds) {
-        const bPaper = paperMap.get(backupPid);
-        if (!bPaper) continue;
-        for (const tid of bPaper.primaryTeacherIds) {
-          if (
-            availableTeacherIds.has(tid) &&
-            !busyTeachersInPeriod.has(tid) &&
-            isTeacherAllowedInRoomBuilding(teacherMap.get(tid)!, roomBuilding) &&
-            !hasBuildingChangeConflict(tid, period, roomBuilding)
-          ) {
-            const t = teacherMap.get(tid);
-            const load = teacherDailyLoad.get(tid) || 0;
-            if (t && load < (t.maxDailyPeriods || 4) && !crossTeachers.some((ct) => ct.id === t.id)) {
-              crossTeachers.push(t);
-            }
-          }
-        }
-      }
-
-      if (crossTeachers.length > 0) {
-        const sorted = sortCandidatesByProgressionAndLoad(crossTeachers, roomIndex, true);
-        return {
-          teacherId: sorted[0].id,
-          isSubstitute: true,
-          originalTeacherId: preferredOriginalId,
-          substituteReason: `${primaryAbsentReason} - ${crossBackupConfig.pairLabel} substitute appointed`,
-        };
+    for (const room of eligibleRooms) {
+      if (paperAllocatedCount.get(paper.id)! >= targetSessions) break;
+      if (canAddPaperToRoom(paper.id, room.id)) {
+        roomAssignedPapers.get(room.id)!.push(paper);
+        paperAllocatedCount.set(paper.id, (paperAllocatedCount.get(paper.id) || 0) + 1);
       }
     }
-
-    // 4. Fourth priority: Substitute from Nearest Subject Papers (with NO building conflict)
-    const nearestTeachers: Teacher[] = [];
-    for (const nearId of paper.nearestPaperIds) {
-      const nearPaper = paperMap.get(nearId);
-      if (!nearPaper) continue;
-      for (const tid of nearPaper.primaryTeacherIds) {
-        if (
-          availableTeacherIds.has(tid) &&
-          !busyTeachersInPeriod.has(tid) &&
-          isTeacherAllowedInRoomBuilding(teacherMap.get(tid)!, roomBuilding) &&
-          !hasBuildingChangeConflict(tid, period, roomBuilding)
-        ) {
-          const t = teacherMap.get(tid);
-          const load = teacherDailyLoad.get(tid) || 0;
-          if (t && load < (t.maxDailyPeriods || 4) && !nearestTeachers.some((item) => item.id === t.id)) {
-            nearestTeachers.push(t);
-          }
-        }
-      }
-    }
-
-    if (nearestTeachers.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(nearestTeachers, roomIndex, true);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: true,
-        originalTeacherId: preferredOriginalId,
-        substituteReason: `${primaryAbsentReason} - Nearest related subject instructor substitute appointed`,
-      };
-    }
-
-    // 5. Fifth priority: Secondary qualified teachers (with NO building conflict)
-    const secondaryTeachers = availableTeachers.filter(
-      (t) =>
-        t.secondaryPaperIds.includes(paper.id) &&
-        (teacherDailyLoad.get(t.id) || 0) < (t.maxDailyPeriods || 4) &&
-        !busyTeachersInPeriod.has(t.id) &&
-        isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
-        !hasBuildingChangeConflict(t.id, period, roomBuilding)
-    );
-
-    if (secondaryTeachers.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(secondaryTeachers, roomIndex, true);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: true,
-        originalTeacherId: preferredOriginalId,
-        substituteReason: `${primaryAbsentReason} - Secondary qualified instructor substitute appointed`,
-      };
-    }
-
-    // 6. Primary teachers with no building conflict (even if at soft-cap)
-    if (freePrimaryTeachers.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(freePrimaryTeachers, roomIndex, false);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: false,
-      };
-    }
-
-    // 7. Emergency reserve: Any free teacher with NO building conflict
-    const freeWithoutConflict = availableTeachers.filter(
-      (t) => !busyTeachersInPeriod.has(t.id) && isTeacherAllowedInRoomBuilding(t, roomBuilding) && !hasBuildingChangeConflict(t.id, period, roomBuilding) && (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
-    );
-    if (freeWithoutConflict.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(freeWithoutConflict, roomIndex, true);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: true,
-        originalTeacherId: preferredOriginalId,
-        substituteReason: `${primaryAbsentReason} - Emergency reserve instructor appointed`,
-      };
-    }
-
-    // Edge case if all preferred teachers are busy: pick any free teacher ALLOWED in this building under cap & with transit gap
-    const anyFreeInBuilding = availableTeachers.filter(
-      (t) =>
-        !busyTeachersInPeriod.has(t.id) &&
-        isTeacherAllowedInRoomBuilding(t, roomBuilding) &&
-        !hasBuildingChangeConflict(t.id, period, roomBuilding) &&
-        (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(t.id) || 0) < Math.min(4, t.maxDailyPeriods || 4))
-    );
-    if (anyFreeInBuilding.length > 0) {
-      const sorted = sortCandidatesByProgressionAndLoad(anyFreeInBuilding, roomIndex, true);
-      return {
-        teacherId: sorted[0].id,
-        isSubstitute: true,
-        originalTeacherId: preferredOriginalId,
-        substituteReason: `${primaryAbsentReason} - Emergency reserve instructor appointed`,
-      };
-    }
-
-    // If still no teacher allowed in this building is free under cap, check if preferred teacher is allowed in building and NOT ABSENT
-    const prefTeacher = teacherMap.get(preferredOriginalId);
-    if (
-      prefTeacher &&
-      availableTeacherIds.has(prefTeacher.id) &&
-      isTeacherAllowedInRoomBuilding(prefTeacher, roomBuilding) &&
-      !hasBuildingChangeConflict(prefTeacher.id, period, roomBuilding) &&
-      (!activeRules.enableDailyWorkloadMaxCap || (teacherDailyLoad.get(prefTeacher.id) || 0) < Math.min(4, prefTeacher.maxDailyPeriods || 4)) &&
-      !busyTeachersInPeriod.has(prefTeacher.id)
-    ) {
-      return {
-        teacherId: prefTeacher.id,
-        isSubstitute: false,
-      };
-    }
-
-    // Under strict building binding, NEVER assign an instructor from the wrong building: leave slot blank!
-    return {
-      teacherId: '',
-      isSubstitute: false,
-      substituteReason: 'No instructor available in this building under maximum load cap',
-    };
-  };
-
-  // 3. Subject Assignment to Classrooms & Diagonal Rotational Wave Matching
-  // USER RULE: "konsa subject kitna period total milega wo 75 total period par count hoga..
-  // aur remaining period par ratio k upar hoga.. fir subject konse class me set karna h..
-  // wo count hoga.. jiss class me subject ka remaining session percent kam hoga.. unhi classes
-  // me subject detail hoga.. fir count hoga.. possible sequence ka.. p, r next me p+1 and r+1"
-  const roomDailyPlans = new Map<string, Paper[]>();
-  const plannedPaperRoomCount = new Map<string, number>();
-  for (const p of schedulingPapers) {
-    plannedPaperRoomCount.set(p.id, 0);
   }
 
-  // Wave phase mapping for papers to guarantee (P, R) -> (P+1, R+1) progression
+  // 4. Part F: Fill Vacant Periods & Balance Classes
+  let vacanciesFilledCount = 0;
+  for (const room of classrooms) {
+    const assigned = roomAssignedPapers.get(room.id)!;
+    while (assigned.length < 5) {
+      // Find candidate subjects with remaining curriculum demand that satisfy room constraints
+      const candidatePapers = schedulingPapers
+        .filter((p) => canAddPaperToRoom(p.id, room.id))
+        .sort((a, b) => {
+          const allocA = curriculumPlan.allocations.get(a.id);
+          const allocB = curriculumPlan.allocations.get(b.id);
+          const deficitA = (allocA ? allocA.integerTarget : 0) - (paperAllocatedCount.get(a.id) || 0);
+          const deficitB = (allocB ? allocB.integerTarget : 0) - (paperAllocatedCount.get(b.id) || 0);
+          if (deficitA !== deficitB) return deficitB - deficitA; // Under-allocated papers first!
+          const pctA = getClassRemainingPercentage(a.id, room.id);
+          const pctB = getClassRemainingPercentage(b.id, room.id);
+          return pctB - pctA;
+        });
+
+      if (candidatePapers.length === 0) break;
+      const chosen = candidatePapers[0];
+      assigned.push(chosen);
+      paperAllocatedCount.set(chosen.id, (paperAllocatedCount.get(chosen.id) || 0) + 1);
+      vacanciesFilledCount++;
+    }
+  }
+
+  // Update audit allocation assigned counts
+  for (const [pid, count] of paperAllocatedCount.entries()) {
+    const alloc = curriculumPlan.allocations.get(pid);
+    if (alloc) alloc.assignedCount = count;
+  }
+
+  // 5. Part G: Subject Rotational Wave Sequencing (Rule 12 & Rule 6B)
+  const roomDailyPlans = new Map<string, Paper[]>();
   const paperWavePhase = new Map<string, number>();
   schedulingPapers.forEach((p, idx) => {
     paperWavePhase.set(p.id, (idx * 2) % 5);
@@ -1383,96 +713,226 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
   for (let rIdx = 0; rIdx < classrooms.length; rIdx++) {
     const room = classrooms[rIdx];
-    const prioIds = getRoomPriorityPaperIds(room.id);
-    const prioPapers = prioIds
-      .map((pid) => paperMap.get(pid)!)
-      .filter((p) => Boolean(p) && !isPaperRoomQuotaCompleted(room.id, p.id));
-
-    // Start with priority papers (up to 5)
-    const selectedPapers: Paper[] = [...prioPapers.slice(0, 5)];
-    for (const p of selectedPapers) {
-      plannedPaperRoomCount.set(p.id, (plannedPaperRoomCount.get(p.id) || 0) + 1);
-    }
-
-    // Helper: calculate syllabus completion percentage for paper in this room
-    const getRoomCompletionPct = (p: Paper): number => {
-      const done = roomPaperCompletedMap.get(room.id)?.get(p.id) || 0;
-      const target = p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
-      return (done / target) * 100;
-    };
-
-    // Sort eligible non-priority papers for this classroom:
-    // USER RULE: Classrooms with lowest completion % in this subject receive it first!
-    const nonPrioCandidates = schedulingPapers
-      .filter((p) => !selectedPapers.some((item) => item.id === p.id) && !combinedExcludedSet.has(p.id) && !isPaperRoomQuotaCompleted(room.id, p.id))
-      .sort((a, b) => {
-        // Step 1: Check daily quota from 75-slot allocation
-        const targetA = paperDailyTargetCount.get(a.id) || 0;
-        const targetB = paperDailyTargetCount.get(b.id) || 0;
-        const plannedA = plannedPaperRoomCount.get(a.id) || 0;
-        const plannedB = plannedPaperRoomCount.get(b.id) || 0;
-
-        const exhaustedA = targetA > 0 && plannedA >= targetA ? 1 : 0;
-        const exhaustedB = targetB > 0 && plannedB >= targetB ? 1 : 0;
-        if (exhaustedA !== exhaustedB) return exhaustedA - exhaustedB;
-
-        // Step 2: Classroom with lowest syllabus completion % gets the subject (Moto I)
-        const pctA = getRoomCompletionPct(a);
-        const pctB = getRoomCompletionPct(b);
-        if (Math.abs(pctA - pctB) > 0.001) return pctA - pctB;
-
-        // Step 3: Workload equalization tie-break
-        const facA = getPaperFacultyWorkloadScore(a, room.building);
-        const facB = getPaperFacultyWorkloadScore(b, room.building);
-        return facB - facA;
-      });
-
-    for (const cand of nonPrioCandidates) {
-      if (selectedPapers.length >= 5) break;
-      selectedPapers.push(cand);
-      plannedPaperRoomCount.set(cand.id, (plannedPaperRoomCount.get(cand.id) || 0) + 1);
-    }
-
-    // Fallback if still under 5 papers (ensure distinct papers)
-    for (const p of schedulingPapers) {
-      if (selectedPapers.length >= 5) break;
-      if (!combinedExcludedSet.has(p.id) && !selectedPapers.some((item) => item.id === p.id)) {
-        selectedPapers.push(p);
-        plannedPaperRoomCount.set(p.id, (plannedPaperRoomCount.get(p.id) || 0) + 1);
+    const assigned = roomAssignedPapers.get(room.id) || [];
+    if (assigned.length < 5) {
+      // Fallback in rare constraint lockout: fill with any non-completed papers
+      for (const p of schedulingPapers) {
+        if (assigned.length >= 5) break;
+        if (!assigned.includes(p)) assigned.push(p);
       }
     }
 
-    // ROTATIONAL SEQUENCE WAVE: Arrange the 5 papers into Periods 1..5 matching (P, R) -> (P+1, R+1)
-    if (activeRules.enablePaperRotationalFlow && selectedPapers.length === 5) {
-      const allPerms = permute5(selectedPapers);
-      let bestPerm = selectedPapers;
-      let minDiff = Infinity;
+    const perms = permute5(assigned);
+    let bestPerm = assigned;
+    let minWaveDistance = Infinity;
 
-      for (const perm of allPerms) {
-        let diff = 0;
-        for (let pIdx = 0; pIdx < 5; pIdx++) {
-          const paper = perm[pIdx];
-          const phase = paperWavePhase.get(paper.id) || 0;
-          const idealPeriod = (rIdx - phase + 50) % 5;
-          const d = Math.min(Math.abs(pIdx - idealPeriod), 5 - Math.abs(pIdx - idealPeriod));
-          diff += d;
-        }
-        if (diff < minDiff) {
-          minDiff = diff;
-          bestPerm = perm;
-          if (diff === 0) break;
+    for (const perm of perms) {
+      // Check Rule 6B constraint: Prevent consecutive periods of same subject
+      let violates6B = false;
+      if (!activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && activeRules.enableMaxRoomDailyLimit && activeRules.enableNonConsecutiveGapForSameSubject) {
+        for (let pIdx = 0; pIdx < perm.length - 1; pIdx++) {
+          if (perm[pIdx].id === perm[pIdx + 1].id) {
+            violates6B = true;
+            break;
+          }
         }
       }
-      roomDailyPlans.set(room.id, bestPerm);
-    } else {
-      roomDailyPlans.set(room.id, selectedPapers);
+      if (violates6B) continue;
+
+      // Calculate distance to ideal wave period: (P, R) -> (P+1, R+1)
+      let dist = 0;
+      for (let pIdx = 0; pIdx < perm.length; pIdx++) {
+        const paper = perm[pIdx];
+        const phase = paperWavePhase.get(paper.id) || 0;
+        const idealPeriod = (rIdx - phase + 50) % 5;
+        const diff = Math.min(Math.abs(pIdx - idealPeriod), 5 - Math.abs(pIdx - idealPeriod));
+        dist += diff;
+      }
+
+      if (dist < minWaveDistance) {
+        minWaveDistance = dist;
+        bestPerm = perm;
+        if (dist === 0) break;
+      }
     }
+
+    roomDailyPlans.set(room.id, bestPerm);
   }
 
-  const generatedSlots: ClassSlot[] = [];
+  // 6. Part H & I: Teacher Workload Calculation & Assignment
+  const normalizedAbsentSet = activeRules.enableStrictAbsenteeExclusion
+    ? new Set(absentTeacherIds.map(normalizeTeacherId))
+    : new Set<string>();
 
-  // Generate slots period by period (P1 to P5) across all 15 classrooms
-  // Classrooms are ordered sequentially (OB-1..OB-8, NB-1..NB-7) so room progression naturally flows
+  const availableTeachers = teachers.filter((t) => !normalizedAbsentSet.has(normalizeTeacherId(t.id)));
+  const availableTeacherIds = new Set(availableTeachers.map((t) => t.id));
+
+  // Teacher historical sessions across past routines (accounting scope)
+  const teacherHistoricalSessions = new Map<string, number>();
+  teachers.forEach((t) => teacherHistoricalSessions.set(t.id, 0));
+
+  // Teacher Classroom Deployment Tracker: teacherId -> roomId -> visits count
+  const teacherRoomDeploymentCount = new Map<string, Map<string, number>>();
+  teachers.forEach((t) => {
+    const rMap = new Map<string, number>();
+    classrooms.forEach((r) => rMap.set(r.id, 0));
+    teacherRoomDeploymentCount.set(t.id, rMap);
+  });
+
+  pastHistoricalRoutines.forEach((r) => {
+    r.slots.forEach((s) => {
+      if (s.teacherId) {
+        teacherHistoricalSessions.set(s.teacherId, (teacherHistoricalSessions.get(s.teacherId) || 0) + 1);
+        if (teacherRoomDeploymentCount.has(s.teacherId)) {
+          const rMap = teacherRoomDeploymentCount.get(s.teacherId)!;
+          if (rMap.has(s.roomId)) {
+            rMap.set(s.roomId, (rMap.get(s.roomId) || 0) + 1);
+          }
+        }
+      }
+    });
+  });
+
+  const teacherDailyLoad = new Map<string, number>();
+  teachers.forEach((t) => teacherDailyLoad.set(t.id, 0));
+
+  const teacherLastSlot = new Map<
+    string,
+    { period: number; building: 'OLD' | 'NEW' | string; roomIndex: number }
+  >();
+
+  // Teacher room rotation target
+  const classroomIndexMap = new Map<string, number>();
+  classrooms.forEach((c, idx) => classroomIndexMap.set(c.id, idx + 1));
+
+  const teacherTargetRoomIndex = new Map<string, number>();
+  const previousRoutines = historicalRoutines
+    .filter((r) => r.dayNumber < targetDayNumber)
+    .sort((a, b) => b.dayNumber - a.dayNumber);
+  const previousDayRoutine = previousRoutines[0];
+
+  teachers.forEach((t, i) => {
+    let initialTarget: number;
+    if (t.assignedBuilding === 'OLD') {
+      initialTarget = (i % 8) + 1;
+    } else if (t.assignedBuilding === 'NEW') {
+      initialTarget = 9 + (i % 7);
+    } else {
+      initialTarget = (i % classrooms.length) + 1;
+    }
+
+    if (previousDayRoutine && previousDayRoutine.slots) {
+      const pastSlots = previousDayRoutine.slots
+        .filter((s) => s.teacherId === t.id)
+        .sort((a, b) => b.period - a.period);
+      if (pastSlots.length > 0) {
+        const lastSlot = pastSlots[0];
+        const lastRoomIndex = classroomIndexMap.get(lastSlot.roomId) || 1;
+        if (t.assignedBuilding === 'OLD') {
+          initialTarget = (lastRoomIndex % 8) + 1;
+        } else if (t.assignedBuilding === 'NEW') {
+          initialTarget = 9 + ((lastRoomIndex - 9 + 1) % 7);
+        } else {
+          initialTarget = (lastRoomIndex % classrooms.length) + 1;
+        }
+      }
+    }
+
+    teacherTargetRoomIndex.set(t.id, initialTarget);
+  });
+
+  const getTeacherTotalLoad = (tid: string): number => {
+    return (teacherHistoricalSessions.get(tid) || 0) + (teacherDailyLoad.get(tid) || 0);
+  };
+
+  // Helper to check building change gap (Rule 4)
+  const hasBuildingChangeConflict = (
+    teacherId: string,
+    period: number,
+    targetBuilding: 'OLD' | 'NEW' | string
+  ): boolean => {
+    if (!activeRules.enableBuildingChangeGap) return false;
+    const last = teacherLastSlot.get(teacherId);
+    if (!last) return false;
+    return last.period === period - 1 && last.building !== targetBuilding;
+  };
+
+  // Helper to check strict building binding (Rule 3)
+  const isTeacherAllowedInRoomBuilding = (t: Teacher, rBuilding: string): boolean => {
+    if (!activeRules.enableStrictBuildingBinding) return true;
+    if (t.assignedBuilding === 'FLOATING') return true;
+    return t.assignedBuilding === rBuilding;
+  };
+
+  // Sort candidate teachers to minimize workload difference (Part H & I)
+  const sortCandidatesByFairWorkload = (
+    candidates: Teacher[],
+    roomId: string,
+    roomIndex: number
+  ): Teacher[] => {
+    return [...candidates].sort((a, b) => {
+      const loadA = teacherDailyLoad.get(a.id) || 0;
+      const loadB = teacherDailyLoad.get(b.id) || 0;
+
+      // Soft daily cap: instructors with < 3 periods today prioritized
+      if (activeRules.enableDailyWorkloadSoftCap) {
+        const cappedA = loadA >= 3 ? 1 : 0;
+        const cappedB = loadB >= 3 ? 1 : 0;
+        if (cappedA !== cappedB) return cappedA - cappedB;
+      }
+
+      // 1. Teacher Deployment Tracker: lowest previous visits to this room first
+      const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
+      const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
+      if (visitsA !== visitsB) return visitsA - visitsB;
+
+      // 2. Cumulative Workload Balancing: minimize Max - Min projected workload
+      const totalA = getTeacherTotalLoad(a.id);
+      const totalB = getTeacherTotalLoad(b.id);
+      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
+        return totalA - totalB;
+      }
+
+      // Daily load difference
+      if (Math.abs(loadA - loadB) >= 2) {
+        return loadA - loadB;
+      }
+
+      // Room carousel circular distance
+      const targetA = teacherTargetRoomIndex.get(a.id) || 1;
+      const targetB = teacherTargetRoomIndex.get(b.id) || 1;
+      const distA = (roomIndex - targetA + classrooms.length) % classrooms.length;
+      const distB = (roomIndex - targetB + classrooms.length) % classrooms.length;
+      if (distA !== distB) return distA - distB;
+
+      if (totalA !== totalB) return totalA - totalB;
+      return loadA - loadB;
+    });
+  };
+
+  const isTeacherEligibleInPeriod = (
+    tid: string,
+    period: number,
+    room: Classroom,
+    busyInPeriod: Set<string>
+  ): boolean => {
+    if (!availableTeacherIds.has(tid)) return false;
+    if (activeRules.enableZeroDoubleBooking && busyInPeriod.has(tid)) return false;
+    const t = teacherMap.get(tid);
+    if (!t) return false;
+    if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
+    if (hasBuildingChangeConflict(tid, period, room.building)) return false;
+    const currentDaily = teacherDailyLoad.get(tid) || 0;
+    const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
+    if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
+    return true;
+  };
+
+  // 7. Generate Slots Period by Period (P1 to P5)
+  const generatedSlots: ClassSlot[] = [];
+  let replacementsCount = 0;
+  let noInstructorCount = 0;
+
   const orderedRooms = [...classrooms].sort(
     (a, b) => (classroomIndexMap.get(a.id) || 0) - (classroomIndexMap.get(b.id) || 0)
   );
@@ -1482,448 +942,284 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
     for (const room of orderedRooms) {
       const roomIndex = classroomIndexMap.get(room.id) || 1;
-      const roomBuilding = room.building as 'OLD' | 'NEW';
-      const roomCounts = roomPaperCounts.get(room.id)!;
-      const roomPrioIds = getRoomPriorityPaperIds(room.id);
-      const plan = roomDailyPlans.get(room.id)!;
+      const roomPlan = roomDailyPlans.get(room.id) || [];
+      let paper = roomPlan[period - 1] || schedulingPapers[0] || papers[0];
 
-      const isPlannedPeriodPriority = roomPrioIds.includes(plan[period - 1].id);
+      let selectedTeacherId = '';
+      let isSubstitute = false;
+      let originalTeacherId: string | undefined;
+      let substituteReason: string | undefined;
 
-      let chosenPaper: Paper | null = null;
-      let assignment: { teacherId: string; isSubstitute: boolean; originalTeacherId?: string; substituteReason?: string } | null = null;
-
-      // 1. Check if an incoming instructor is rotating into this classroom with their subject (Teacher Caravan)!
-      // USER RULE: "suppose techer 5, paper 2 le rha h.. class 6 me.. 2nd period me.. to uska next possible periad hona chahiye.. paper 2, class 7 , 3rd period me.. and so on.. isi ko calculte karna.. aur apply karna h.. day wise and period wise also.. sath hi.. building change par 1 period ka gap.."
-      // A. Same building consecutive rotation (Room 1 -> 2, 2 -> 3 ... 7 -> 8; Room 9 -> 10 ... 14 -> 15)
-      const canRotateConsecutiveSameBuilding =
-        (roomIndex >= 2 && roomIndex <= 8) || (roomIndex >= 10 && roomIndex <= 15);
-
-      if (activeRules.enableCaravanFlow && period > 1 && canRotateConsecutiveSameBuilding) {
-        const prevRoomIndex = roomIndex - 1;
-        const prevSlot = generatedSlots.find(
-          (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRoomIndex
+      // Practical (P13) flexible staffing
+      if (activeRules.enablePracticalFlexible && paper.id === 'P13') {
+        const freeForPractical = availableTeachers.filter((t) =>
+          isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
         );
-
-        if (
-          prevSlot &&
-          availableTeacherIds.has(prevSlot.teacherId) &&
-          !busyTeachersInPeriod.has(prevSlot.teacherId)
-        ) {
-          const t = teacherMap.get(prevSlot.teacherId);
-          const currentLoad = teacherDailyLoad.get(prevSlot.teacherId) || 0;
-          const withinQuota = currentLoad < (t?.maxDailyPeriods || 4) && currentLoad < 3;
-          const timesPaperInRoom = roomCounts.get(prevSlot.paperId) || 0;
-          const notExcluded = !combinedExcludedSet.has(prevSlot.paperId);
-          const notQuotaCompleted = !isPaperRoomQuotaCompleted(room.id, prevSlot.paperId, timesPaperInRoom);
-          const canFitPriority = !isPlannedPeriodPriority || prevSlot.paperId === plan[period - 1].id;
-
-          if (withinQuota && timesPaperInRoom < 2 && notExcluded && notQuotaCompleted && canFitPriority) {
-            const p = paperMap.get(prevSlot.paperId);
-            if (p) {
-              chosenPaper = p;
-              assignment = {
-                teacherId: prevSlot.teacherId,
-                isSubstitute: prevSlot.isSubstitute,
-                originalTeacherId: prevSlot.originalTeacherId,
-                substituteReason: prevSlot.substituteReason,
-              };
-            }
-          }
+        if (freeForPractical.length > 0) {
+          const sorted = sortCandidatesByFairWorkload(freeForPractical, room.id, roomIndex);
+          selectedTeacherId = sorted[0].id;
+          isSubstitute = false;
         }
       }
 
-      // B. Cross-building rotation with mandatory 1-period gap (Room 8 -> Room 9; Room 15 -> Room 1)
-      if (activeRules.enableCaravanFlow && period > 2 && !assignment) {
-        let prevCrossRoomIndex = 0;
-        if (roomIndex === 9) prevCrossRoomIndex = 8; // Old Bldg Room 8 -> New Bldg Room 9 after 1-period gap
-        if (roomIndex === 1) prevCrossRoomIndex = 15; // New Bldg Room 15 -> Old Bldg Room 1 after 1-period gap
+      // Step 1: Check primary teachers of this paper
+      if (!selectedTeacherId) {
+        const freePrimaries = paper.primaryTeacherIds
+          .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod))
+          .map((tid) => teacherMap.get(tid)!)
+          .filter(Boolean);
 
-        if (prevCrossRoomIndex > 0) {
-          const gapSlot = generatedSlots.find(
-            (s) => s.period === period - 2 && classroomIndexMap.get(s.roomId) === prevCrossRoomIndex
-          );
+        if (freePrimaries.length > 0) {
+          const sorted = sortCandidatesByFairWorkload(freePrimaries, room.id, roomIndex);
+          selectedTeacherId = sorted[0].id;
+          isSubstitute = false;
+        }
+      }
 
-          if (
-            gapSlot &&
-            availableTeacherIds.has(gapSlot.teacherId) &&
-            !busyTeachersInPeriod.has(gapSlot.teacherId)
-          ) {
-            const last = teacherLastSlot.get(gapSlot.teacherId);
-            // Ensure teacher was free in period - 1 (mandatory 1-period gap)
-            if (last && last.period <= period - 2) {
-              const t = teacherMap.get(gapSlot.teacherId);
-              const currentLoad = teacherDailyLoad.get(gapSlot.teacherId) || 0;
-              const withinQuota = currentLoad < (t?.maxDailyPeriods || 4) && currentLoad < 3;
-              const timesPaperInRoom = roomCounts.get(gapSlot.paperId) || 0;
-              const notExcluded = !combinedExcludedSet.has(gapSlot.paperId);
-              const notQuotaCompleted = !isPaperRoomQuotaCompleted(room.id, gapSlot.paperId, timesPaperInRoom);
-              const canFitPriority = !isPlannedPeriodPriority || gapSlot.paperId === plan[period - 1].id;
+      // Step 2: If primary teacher is unavailable, invoke Part J: No Substitution & Fallback
+      if (!selectedTeacherId) {
+        if (activeRules.enableNoSubstituteAllotment) {
+          // No Substitution is ON:
+          if (activeRules.replaceWithAvailableSubjectIfNoPrimary) {
+            // Change to Most Probable Subject fallback:
+            const candidateReplacements = schedulingPapers.filter((altPaper) => {
+              if (altPaper.id === paper.id) return false;
+              // Check Tier 1 room constraints for altPaper
+              const currentInRoom = generatedSlots.filter((s) => s.roomId === room.id);
+              const countInRoom = currentInRoom.filter((s) => s.paperId === altPaper.id).length;
+              if (isPaperRoomQuotaCompleted(room.id, altPaper.id, countInRoom)) return false;
+              if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && countInRoom >= 1) return false;
+              if (!activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && activeRules.enableMaxRoomDailyLimit && countInRoom >= 2) return false;
+              if (
+                !activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily &&
+                activeRules.enableMaxRoomDailyLimit &&
+                activeRules.enableNonConsecutiveGapForSameSubject
+              ) {
+                const prevSlot = currentInRoom.find((s) => s.period === period - 1);
+                if (prevSlot && prevSlot.paperId === altPaper.id) return false;
+              }
+              // Check if altPaper has an available primary teacher
+              return altPaper.primaryTeacherIds.some((tid) =>
+                isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)
+              );
+            });
 
-              if (withinQuota && timesPaperInRoom < 2 && notExcluded && notQuotaCompleted && canFitPriority) {
-                const p = paperMap.get(gapSlot.paperId);
-                if (p) {
-                  chosenPaper = p;
-                  assignment = {
-                    teacherId: gapSlot.teacherId,
-                    isSubstitute: gapSlot.isSubstitute,
-                    originalTeacherId: gapSlot.originalTeacherId,
-                    substituteReason: gapSlot.substituteReason,
-                  };
-                }
+            if (candidateReplacements.length > 0) {
+              // Rank replacement subjects by remaining curriculum %
+              candidateReplacements.sort((a, b) => {
+                const pctA = getClassRemainingPercentage(a.id, room.id);
+                const pctB = getClassRemainingPercentage(b.id, room.id);
+                return pctB - pctA;
+              });
+
+              const replacementPaper = candidateReplacements[0];
+              const eligiblePrimaries = replacementPaper.primaryTeacherIds
+                .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod))
+                .map((tid) => teacherMap.get(tid)!)
+                .filter(Boolean);
+
+              if (eligiblePrimaries.length > 0) {
+                const sorted = sortCandidatesByFairWorkload(eligiblePrimaries, room.id, roomIndex);
+                selectedTeacherId = sorted[0].id;
+                originalTeacherId = paper.primaryTeacherIds[0];
+                substituteReason = `Replaced ${paper.code} with alternate available subject ${replacementPaper.code} (${replacementPaper.title}) due to primary instructor unavailability`;
+                paper = replacementPaper;
+                replacementsCount++;
               }
             }
           }
-        }
-      }
 
-      // Find previous slot in this classroom today to enforce non-consecutive gap (Moto II)
-      const lastSlotInRoom = generatedSlots.slice().reverse().find((s) => s.roomId === room.id);
-      const lastPaperIdInRoom = lastSlotInRoom?.paperId;
+          if (!selectedTeacherId) {
+            // Leave slot blank / No Instructor
+            selectedTeacherId = '';
+            isSubstitute = false;
+            substituteReason = 'No instructor available (Strict No-Substitute rule active)';
+            noInstructorCount++;
+          }
+        } else {
+          // Substitution is permitted (No Substitution is OFF)
+          const preferredOriginalId = paper.primaryTeacherIds[0] || 'T1';
 
-      // 1B. Moto (IV): Sequential Subject / Paper Rotational Flow across Classrooms
-      // "subject detailment .. har next period me next room me detail ho.. aisa sequence ho.. ..alag alag room me.. subject 1, subject 5 subject 9 subject12 subject 4..."
-      if (activeRules.enablePaperRotationalFlow && period > 1 && !assignment) {
-        const prevRotRoomIndex = roomIndex === 1 ? classrooms.length : roomIndex - 1;
-        const prevRotSlot = generatedSlots.find(
-          (s) => s.period === period - 1 && classroomIndexMap.get(s.roomId) === prevRotRoomIndex
-        );
-
-        if (prevRotSlot) {
-          const rotPaperId = prevRotSlot.paperId;
-          const rotPaper = paperMap.get(rotPaperId);
-
-          const satisfiesRoomConstraints = canPaperBeScheduledInRoom(rotPaperId, room.id, period, lastPaperIdInRoom);
-          const canFitPriority = !isPlannedPeriodPriority || rotPaperId === plan[period - 1].id;
-
-          if (rotPaper && satisfiesRoomConstraints && canFitPriority && canTeachInPeriod(rotPaper, busyTeachersInPeriod, room, period)) {
-            chosenPaper = rotPaper;
-
-            // Check if teacher from previous period can continue with paper (must respect building binding!)
-            const prevTeacher = teacherMap.get(prevRotSlot.teacherId);
-            const prevLoad = teacherDailyLoad.get(prevRotSlot.teacherId) || 0;
-            const notAheadInWorkload =
-              !activeRules.enableWorkloadEqualization ||
-              getTeacherTotalLoad(prevRotSlot.teacherId) <= getAcademyAverageLoad() + 1.5;
-            const prevTeacherCanContinue =
-              prevTeacher &&
-              availableTeacherIds.has(prevTeacher.id) &&
-              (!activeRules.enableZeroDoubleBooking || !busyTeachersInPeriod.has(prevTeacher.id)) &&
-              isTeacherAllowedInRoomBuilding(prevTeacher, roomBuilding) &&
-              !hasBuildingChangeConflict(prevTeacher.id, period, roomBuilding) &&
-              prevLoad < (prevTeacher.maxDailyPeriods || 4) &&
-              (!activeRules.enableDailyWorkloadSoftCap || prevLoad < 3) &&
-              notAheadInWorkload &&
-              (prevTeacher.primaryPaperIds.includes(rotPaperId) || (prevTeacher.backupPaperIds || []).includes(rotPaperId));
-
-            if (prevTeacherCanContinue) {
-              const isPrimary = prevTeacher.primaryPaperIds.includes(rotPaperId);
-              assignment = {
-                teacherId: prevTeacher.id,
-                isSubstitute: !isPrimary,
-                originalTeacherId: isPrimary ? undefined : rotPaper.primaryTeacherIds[0],
-                substituteReason: isPrimary ? undefined : 'Rotational paper flow continuity',
-              };
-            } else {
-              // Assign next qualified teacher for this paper (building-bound & floating aware)
-              assignment = assignTeacherForPaperInPeriod(chosenPaper, period, busyTeachersInPeriod, room, lastPaperIdInRoom);
+          // A. Cross-Subject Mutual Backup Pairs (Forensics <-> ICT, Police Admin <-> Criminology)
+          const crossBackup = CROSS_SUBJECT_BACKUP_MAP[paper.id];
+          if (activeRules.enableCrossMutualBackup && crossBackup && !selectedTeacherId) {
+            const crossTeachers: Teacher[] = [];
+            for (const bpid of crossBackup.backupPaperIds) {
+              const bPaper = paperMap.get(bpid);
+              if (!bPaper) continue;
+              for (const tid of bPaper.primaryTeacherIds) {
+                if (isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)) {
+                  const t = teacherMap.get(tid);
+                  if (t && !crossTeachers.some((ct) => ct.id === t.id)) {
+                    crossTeachers.push(t);
+                  }
+                }
+              }
             }
-          }
-        }
-      }
-
-      // C. Day-to-Day start in Period 1:
-      if (activeRules.enableDayToDayProgression && period === 1 && !assignment) {
-        const dayCandidates = availableTeachers.filter((t) => {
-          if (busyTeachersInPeriod.has(t.id)) return false;
-          if (!isTeacherAllowedInRoomBuilding(t, roomBuilding)) return false;
-          const target = teacherTargetRoomIndex.get(t.id) || 1;
-          if (target !== roomIndex) return false;
-          const prefPaperId = teacherPreferredPaper.get(t.id) || t.primaryPaperIds[0] || 'P01';
-          if (!canPaperBeScheduledInRoom(prefPaperId, room.id, period, lastPaperIdInRoom)) return false;
-          const canFitPriority = !isPlannedPeriodPriority || prefPaperId === plan[period - 1].id;
-          return canFitPriority;
-        });
-
-        if (dayCandidates.length > 0) {
-          const dayCandidate = sortCandidatesByProgressionAndLoad(dayCandidates, roomIndex, false)[0];
-          const prefPaperId = teacherPreferredPaper.get(dayCandidate.id) || dayCandidate.primaryPaperIds[0] || 'P01';
-          const p = paperMap.get(prefPaperId);
-          if (p) {
-            const isPrimary = dayCandidate.primaryPaperIds.includes(prefPaperId);
-            chosenPaper = p;
-            assignment = {
-              teacherId: dayCandidate.id,
-              isSubstitute: !isPrimary,
-              originalTeacherId: isPrimary ? undefined : p.primaryTeacherIds[0],
-              substituteReason: isPrimary ? undefined : 'Subject rotation continued across days',
-            };
-          }
-        }
-      }
-
-      // If no incoming rotation was applicable, use standard planned paper & candidate assignment
-      if (!chosenPaper || !assignment) {
-        let pCandidate = plan[period - 1];
-
-        const satisfiesAllRoomConstraints =
-          canPaperBeScheduledInRoom(pCandidate.id, room.id, period, lastPaperIdInRoom) &&
-          canTeachInPeriod(pCandidate, busyTeachersInPeriod, room, period);
-
-        if (!satisfiesAllRoomConstraints) {
-          let swapped = false;
-          for (let futureIdx = period; futureIdx < 5; futureIdx++) {
-            const candidatePaper = plan[futureIdx];
-            if (
-              canPaperBeScheduledInRoom(candidatePaper.id, room.id, period, lastPaperIdInRoom) &&
-              canTeachInPeriod(candidatePaper, busyTeachersInPeriod, room, period)
-            ) {
-              plan[futureIdx] = pCandidate;
-              plan[period - 1] = candidatePaper;
-              pCandidate = candidatePaper;
-              swapped = true;
-              break;
+            if (crossTeachers.length > 0) {
+              const sorted = sortCandidatesByFairWorkload(crossTeachers, room.id, roomIndex);
+              selectedTeacherId = sorted[0].id;
+              isSubstitute = true;
+              originalTeacherId = preferredOriginalId;
+              substituteReason = `${crossBackup.pairLabel} appointed (${sorted[0].name})`;
             }
           }
 
-          if (!swapped) {
-            pCandidate = pickBestPaperForRoom(room.id, period, busyTeachersInPeriod, room, lastPaperIdInRoom);
+          // B. Designated Backup Instructors
+          if (activeRules.enableDesignatedBackup && !selectedTeacherId) {
+            const freeBackups = availableTeachers.filter((t) => {
+              const isBackup =
+                (t.backupPaperIds && t.backupPaperIds.includes(paper.id)) ||
+                (t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id));
+              return isBackup && isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod);
+            });
+
+            if (freeBackups.length > 0) {
+              const sorted = sortCandidatesByFairWorkload(freeBackups, room.id, roomIndex);
+              selectedTeacherId = sorted[0].id;
+              isSubstitute = true;
+              originalTeacherId = preferredOriginalId;
+              substituteReason = `Designated Backup Instructor appointed (${sorted[0].name})`;
+            }
+          }
+
+          // C. Nearest Subject Papers
+          if (!selectedTeacherId) {
+            const nearestTeachers: Teacher[] = [];
+            for (const nid of paper.nearestPaperIds) {
+              const nPaper = paperMap.get(nid);
+              if (!nPaper) continue;
+              for (const tid of nPaper.primaryTeacherIds) {
+                if (isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)) {
+                  const t = teacherMap.get(tid);
+                  if (t && !nearestTeachers.some((nt) => nt.id === t.id)) nearestTeachers.push(t);
+                }
+              }
+            }
+            if (nearestTeachers.length > 0) {
+              const sorted = sortCandidatesByFairWorkload(nearestTeachers, room.id, roomIndex);
+              selectedTeacherId = sorted[0].id;
+              isSubstitute = true;
+              originalTeacherId = preferredOriginalId;
+              substituteReason = `Nearest related subject substitute appointed (${sorted[0].name})`;
+            }
+          }
+
+          // D. Secondary Qualified Teachers
+          if (!selectedTeacherId) {
+            const secondaryTeachers = availableTeachers.filter(
+              (t) =>
+                t.secondaryPaperIds.includes(paper.id) &&
+                isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
+            );
+            if (secondaryTeachers.length > 0) {
+              const sorted = sortCandidatesByFairWorkload(secondaryTeachers, room.id, roomIndex);
+              selectedTeacherId = sorted[0].id;
+              isSubstitute = true;
+              originalTeacherId = preferredOriginalId;
+              substituteReason = `Secondary qualified substitute appointed (${sorted[0].name})`;
+            }
+          }
+
+          // E. Emergency Reserve: Any free instructor in this building under cap & with transit gap
+          if (!selectedTeacherId) {
+            const emergencyFree = availableTeachers.filter((t) =>
+              isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
+            );
+            if (emergencyFree.length > 0) {
+              const sorted = sortCandidatesByFairWorkload(emergencyFree, room.id, roomIndex);
+              selectedTeacherId = sorted[0].id;
+              isSubstitute = true;
+              originalTeacherId = preferredOriginalId;
+              substituteReason = `Emergency reserve instructor appointed (${sorted[0].name})`;
+            }
+          }
+
+          if (!selectedTeacherId) {
+            selectedTeacherId = '';
+            isSubstitute = false;
+            substituteReason = 'No instructor available under operational constraints';
+            noInstructorCount++;
           }
         }
-
-        chosenPaper = pCandidate;
-        assignment = assignTeacherForPaperInPeriod(chosenPaper, period, busyTeachersInPeriod, room);
       }
 
-      if ((assignment as any)?.alternatePaperId) {
-        const alt = paperMap.get((assignment as any).alternatePaperId);
-        if (alt) chosenPaper = alt;
-      }
+      // Commit teacher state if assigned
+      if (selectedTeacherId) {
+        busyTeachersInPeriod.add(selectedTeacherId);
+        const currentDaily = teacherDailyLoad.get(selectedTeacherId) || 0;
+        teacherDailyLoad.set(selectedTeacherId, currentDaily + 1);
 
-      if (assignment.teacherId) {
-        // Mark teacher busy in this period
-        busyTeachersInPeriod.add(assignment.teacherId);
-
-        // Increment teacher daily workload
-        const currentLoad = teacherDailyLoad.get(assignment.teacherId) || 0;
-        teacherDailyLoad.set(assignment.teacherId, currentLoad + 1);
-
-        // Record room & building for teacher to enforce building gap & room progression
-        teacherLastSlot.set(assignment.teacherId, {
+        teacherLastSlot.set(selectedTeacherId, {
           period,
-          building: roomBuilding,
+          building: room.building,
           roomIndex,
         });
 
-        // User Rule: "fir next period pe room 3 milega" -> advances (roomIndex % 15) + 1
-        teacherTargetRoomIndex.set(assignment.teacherId, (roomIndex % classrooms.length) + 1);
-        teacherPreferredPaper.set(assignment.teacherId, chosenPaper.id);
+        teacherTargetRoomIndex.set(selectedTeacherId, (roomIndex % classrooms.length) + 1);
 
-        // Live update to Teacher Deployment Tracker for this classroom
-        if (teacherRoomDeploymentCount.has(assignment.teacherId)) {
-          const rMap = teacherRoomDeploymentCount.get(assignment.teacherId)!;
+        if (teacherRoomDeploymentCount.has(selectedTeacherId)) {
+          const rMap = teacherRoomDeploymentCount.get(selectedTeacherId)!;
           rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
         }
       }
-
-      // Record paper in room
-      roomCounts.set(chosenPaper.id, (roomCounts.get(chosenPaper.id) || 0) + 1);
 
       const slot: ClassSlot = {
         id: `slot-${targetDayNumber}-${room.id}-P${period}`,
         roomId: room.id,
         period,
-        paperId: chosenPaper.id,
-        teacherId: assignment.teacherId || '',
-        isSubstitute: assignment.isSubstitute,
-        originalTeacherId: assignment.originalTeacherId,
-        substituteReason: assignment.substituteReason,
-        isPriority: roomPrioIds.includes(chosenPaper.id),
+        paperId: paper.id,
+        teacherId: selectedTeacherId,
+        isSubstitute,
+        originalTeacherId,
+        substituteReason,
+        isPriority: priorityPaperIds.includes(paper.id) || (subjectPriorityTiers[paper.id] === 'HIGH'),
       };
 
       generatedSlots.push(slot);
     }
   }
 
-  // -------------------------------------------------------------------------------------
-  // Post-Generation Priority Guarantee Pass (USER RULE: enableGuaranteedPriorityPeriods)
-  // "new rule add karo. wo priority ka h.. agar routine creation me kisi subject k upar
-  // priority lagakar create karta hu.. to.. jitne minimum period dene h.. wo dena hoga..
-  // utilising.. remaining all rules"
-  // -------------------------------------------------------------------------------------
-  if (activeRules.enableGuaranteedPriorityPeriods) {
-    const priorityTargets = new Map<string, number>();
-    for (const p of schedulingPapers) {
-      const minP = getGuaranteedMinPeriods(p.id);
-      if (minP > 0) {
-        priorityTargets.set(p.id, minP);
-      }
-    }
+  // 8. Part L: Final Tier 1 Validation and Audit Report Creation
+  const tier1Validation = validateRoutine(
+    generatedSlots,
+    teachers,
+    classrooms,
+    absentTeacherIds,
+    activeRules,
+    papers
+  );
 
-    const sortedPriorityPids = Array.from(priorityTargets.keys()).sort(
-      (a, b) => (priorityTargets.get(b) || 0) - (priorityTargets.get(a) || 0)
-    );
+  const teacherWorkloadList = teachers.map((t) => ({
+    teacherId: t.id,
+    teacherName: t.name,
+    initialLoad: teacherHistoricalSessions.get(t.id) || 0,
+    todayLoad: teacherDailyLoad.get(t.id) || 0,
+    totalLoad: getTeacherTotalLoad(t.id),
+  }));
 
-    for (const prioPid of sortedPriorityPids) {
-      const targetMin = priorityTargets.get(prioPid) || 0;
-      let currentSlots = generatedSlots.filter((s) => s.paperId === prioPid);
-      if (currentSlots.length >= targetMin) continue;
+  const activeWorkloads = teacherWorkloadList
+    .filter((w) => !normalizedAbsentSet.has(normalizeTeacherId(w.teacherId)))
+    .map((w) => w.totalLoad);
 
-      const prioPaper = paperMap.get(prioPid);
-      if (!prioPaper) continue;
+  const maxTeacherLoad = activeWorkloads.length > 0 ? Math.max(...activeWorkloads) : 0;
+  const minTeacherLoad = activeWorkloads.length > 0 ? Math.min(...activeWorkloads) : 0;
+  const workloadDifference = maxTeacherLoad - minTeacherLoad;
 
-      let deficit = targetMin - currentSlots.length;
-
-      // Candidate slots currently occupied by non-priority papers or priority papers with surplus
-      const candidateSlots = generatedSlots
-        .filter((s) => {
-          if (s.paperId === prioPid) return false;
-          // Protect room quota: strictly exclude rooms where prioPid has reached 100% target quota
-          if (isPaperRoomQuotaCompleted(s.roomId, prioPid)) return false;
-          // Protect other priority papers that are at or below their guaranteed minimum
-          const otherMin = priorityTargets.get(s.paperId) || 0;
-          if (otherMin > 0) {
-            const countOfOther = generatedSlots.filter((x) => x.paperId === s.paperId).length;
-            if (countOfOther <= otherMin) return false;
-          }
-          // Check room frequency cap & Moto (II) constraints for prioPid
-          const countInRoom = generatedSlots.filter(
-            (x) => x.roomId === s.roomId && x.paperId === prioPid
-          ).length;
-          if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && countInRoom >= 1) return false;
-          if (activeRules.enableMaxRoomDailyLimit && countInRoom >= 2) return false;
-
-          // Moto (II): Strictly never consecutive in the same room
-          if (activeRules.enableNonConsecutiveGapForSameSubject) {
-            const prevPeriodSlot = generatedSlots.find((x) => x.roomId === s.roomId && x.period === s.period - 1);
-            if (prevPeriodSlot && prevPeriodSlot.paperId === prioPid) return false;
-            const nextPeriodSlot = generatedSlots.find((x) => x.roomId === s.roomId && x.period === s.period + 1);
-            if (nextPeriodSlot && nextPeriodSlot.paperId === prioPid) return false;
-          }
-
-          return true;
-        })
-        .sort((a, b) => {
-          // Prefer classrooms that do not have prioPid scheduled yet
-          const hasInA = generatedSlots.some((x) => x.roomId === a.roomId && x.paperId === prioPid) ? 1 : 0;
-          const hasInB = generatedSlots.some((x) => x.roomId === b.roomId && x.paperId === prioPid) ? 1 : 0;
-          if (hasInA !== hasInB) return hasInA - hasInB;
-          return a.period - b.period;
-        });
-
-      for (const slot of candidateSlots) {
-        if (deficit <= 0) break;
-        const room = classroomMap.get(slot.roomId);
-        if (!room) continue;
-
-        // Dynamic constraint check to prevent duplicate subject in same room if another slot was already updated
-        const dynamicRoomCount = generatedSlots.filter((x) => x.roomId === slot.roomId && x.paperId === prioPid).length;
-        if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && dynamicRoomCount >= 1) continue;
-        if (activeRules.enableMaxRoomDailyLimit && dynamicRoomCount >= 2) continue;
-        if (activeRules.enableNonConsecutiveGapForSameSubject) {
-          const prevPeriodSlot = generatedSlots.find((x) => x.roomId === slot.roomId && x.period === slot.period - 1);
-          if (prevPeriodSlot && prevPeriodSlot.paperId === prioPid) continue;
-          const nextPeriodSlot = generatedSlots.find((x) => x.roomId === slot.roomId && x.period === slot.period + 1);
-          if (nextPeriodSlot && nextPeriodSlot.paperId === prioPid) continue;
-        }
-
-        // Option 1: Can the instructor already assigned to this slot teach prioPid?
-        const currTeacher = teacherMap.get(slot.teacherId);
-        const currTeacherCanTeach =
-          currTeacher &&
-          (currTeacher.primaryPaperIds.includes(prioPid) ||
-            (currTeacher.backupPaperIds || []).includes(prioPid) ||
-            (currTeacher.crossSubjectBackupPaperIds || []).includes(prioPid) ||
-            (currTeacher.secondaryPaperIds || []).includes(prioPid) ||
-            prioPid === 'P13');
-
-        if (currTeacherCanTeach) {
-          slot.paperId = prioPid;
-          slot.isSubstitute = !currTeacher.primaryPaperIds.includes(prioPid);
-          slot.originalTeacherId = currTeacher.primaryPaperIds.includes(prioPid)
-            ? undefined
-            : prioPaper.primaryTeacherIds[0];
-          slot.substituteReason = slot.isSubstitute
-            ? 'Guaranteed priority minimum periods fulfillment'
-            : undefined;
-          slot.isPriority = true;
-          deficit--;
-          continue;
-        }
-
-        // Option 2: Find a qualified instructor free in slot.period without double-booking or transit conflict
-        const busyInPeriod = new Set(
-          generatedSlots
-            .filter((s) => s.period === slot.period && s.id !== slot.id)
-            .map((s) => s.teacherId)
-        );
-
-        const qualifiedFreeTeachers = availableTeachers.filter((t) => {
-          if (busyInPeriod.has(t.id)) return false;
-          if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
-
-          // Enforce 1-period building change transit gap
-          if (activeRules.enableBuildingChangeGap) {
-            const prevSlot = generatedSlots.find(
-              (s) => s.period === slot.period - 1 && s.teacherId === t.id
-            );
-            if (prevSlot) {
-              const prevRoom = classroomMap.get(prevSlot.roomId);
-              if (prevRoom && prevRoom.building !== room.building) return false;
-            }
-            const nextSlot = generatedSlots.find(
-              (s) => s.period === slot.period + 1 && s.teacherId === t.id
-            );
-            if (nextSlot) {
-              const nextRoom = classroomMap.get(nextSlot.roomId);
-              if (nextRoom && nextRoom.building !== room.building) return false;
-            }
-          }
-
-          // Enforce daily load limit
-          const currentLoad = generatedSlots.filter(
-            (s) => s.teacherId === t.id && s.id !== slot.id
-          ).length;
-          if (currentLoad >= (t.maxDailyPeriods || 4)) return false;
-          if (activeRules.enableDailyWorkloadSoftCap && currentLoad >= 3) return false;
-
-          // Qualifications check
-          if (t.primaryPaperIds.includes(prioPid)) return true;
-          if (activeRules.enableDesignatedBackup && (t.backupPaperIds || []).includes(prioPid)) return true;
-          const crossCfg = CROSS_SUBJECT_BACKUP_MAP[prioPid];
-          if (activeRules.enableCrossMutualBackup && crossCfg && crossCfg.backupPaperIds.some((bpid) => t.primaryPaperIds.includes(bpid))) return true;
-          if (prioPaper.nearestPaperIds.some((nid) => t.primaryPaperIds.includes(nid))) return true;
-          if ((t.secondaryPaperIds || []).includes(prioPid)) return true;
-          if (prioPid === 'P13') return true;
-          return false;
-        });
-
-        if (qualifiedFreeTeachers.length > 0) {
-          // Sort qualified instructors: primary first, backup second, lowest workload third
-          qualifiedFreeTeachers.sort((a, b) => {
-            const aPrim = a.primaryPaperIds.includes(prioPid) ? 1 : 0;
-            const bPrim = b.primaryPaperIds.includes(prioPid) ? 1 : 0;
-            if (aPrim !== bPrim) return bPrim - aPrim;
-            const aBack = (a.backupPaperIds || []).includes(prioPid) ? 1 : 0;
-            const bBack = (b.backupPaperIds || []).includes(prioPid) ? 1 : 0;
-            if (aBack !== bBack) return bBack - aBack;
-            const loadA = generatedSlots.filter((s) => s.teacherId === a.id).length;
-            const loadB = generatedSlots.filter((s) => s.teacherId === b.id).length;
-            return loadA - loadB;
-          });
-
-          const chosenTeacher = qualifiedFreeTeachers[0];
-          const isPrimary = chosenTeacher.primaryPaperIds.includes(prioPid);
-          slot.paperId = prioPid;
-          slot.teacherId = chosenTeacher.id;
-          slot.isSubstitute = !isPrimary;
-          slot.originalTeacherId = isPrimary ? undefined : prioPaper.primaryTeacherIds[0];
-          slot.substituteReason = isPrimary ? undefined : 'Guaranteed priority minimum periods fulfillment';
-          slot.isPriority = true;
-          deficit--;
-        }
-      }
-    }
-  }
+  const generationAudit: RoutineGenerationAudit = {
+    totalCapacity: totalDailySlots,
+    totalRemainingDemand: curriculumPlan.totalRemainingDemand,
+    totalAdjustedDemand: curriculumPlan.totalAdjustedDemand,
+    allocations: Array.from(curriculumPlan.allocations.values()),
+    teacherWorkloads: teacherWorkloadList,
+    maxTeacherLoad,
+    minTeacherLoad,
+    workloadDifference,
+    vacanciesFilledCount,
+    replacementsCount,
+    noInstructorCount,
+    tier1Validation,
+  };
 
   const now = new Date().toISOString();
 
@@ -1933,17 +1229,53 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     date: targetDate,
     absentTeacherIds,
     priorityPaperIds,
-    roomPriorityPaperIds: resolvedRoomPriorityMap,
+    roomPriorityPaperIds,
     subjectPriorityTiers,
     prioritySubjectMinPeriods,
     excludedPaperIds: Array.from(combinedExcludedSet),
     slots: generatedSlots,
     createdAt: now,
     updatedAt: now,
-    isLocked: false, // current routine starts unlocked!
+    isLocked: false,
     status: 'published',
     notes:
       notes ||
-      `Day ${targetDayNumber} Indoor Routine generated with 15 classrooms & ${availableTeachers.length} active instructors`,
+      `Day ${targetDayNumber} Indoor Routine generated with 15 classrooms & ${availableTeachers.length} active instructors (Tier 1 Passed: ${tier1Validation.tier1Passed})`,
+    generationAudit,
   };
+}
+
+/**
+ * Generates continuous multiple-day routines in chronological sequence.
+ * Part K of Master Prompt.
+ */
+export function generateMultipleDaysRoutines(
+  options: Omit<SchedulerOptions, 'targetDayNumber' | 'targetDate'> & {
+    startDayNumber: number;
+    startDate: string;
+    numberOfDays: number;
+  }
+): DailyRoutine[] {
+  const { startDayNumber, startDate, numberOfDays, historicalRoutines, ...baseOptions } = options;
+  const generated: DailyRoutine[] = [];
+  const cumulativeHistory = [...historicalRoutines];
+
+  for (let d = 0; d < numberOfDays; d++) {
+    const currentDayNumber = startDayNumber + d;
+    const dateObj = new Date(startDate);
+    dateObj.setDate(dateObj.getDate() + d);
+    const currentDateStr = dateObj.toISOString().split('T')[0];
+
+    const routine = generateDailyRoutine({
+      ...baseOptions,
+      historicalRoutines: cumulativeHistory,
+      targetDayNumber: currentDayNumber,
+      targetDate: currentDateStr,
+    });
+
+    generated.push(routine);
+    cumulativeHistory.push(routine);
+  }
+
+  return generated;
 }
