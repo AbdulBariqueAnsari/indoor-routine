@@ -64,6 +64,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
   const [buildingFilter, setBuildingFilter] = useState<'ALL' | 'OLD' | 'NEW' | 'FLOATING'>('ALL');
   const [sortBy, setSortBy] = useState<'total' | 'today' | 'code' | 'name'>('total');
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   const paperMap = useMemo(() => new Map(papers.map((p) => [p.id, p])), [papers]);
   const classroomMap = useMemo(() => new Map(classrooms.map((c) => [c.id, c])), [classrooms]);
@@ -363,66 +364,227 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
               {sortDirection === 'desc' ? '↓ Desc' : '↑ Asc'}
             </button>
           </div>
+
+          {/* View Mode Toggle (Mobile / Responsive: Cards vs Table) */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-2.5 py-1 rounded font-semibold text-[11px] transition-all flex items-center gap-1 ${
+                viewMode === 'table' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Table</span>
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-2.5 py-1 rounded font-semibold text-[11px] transition-all flex items-center gap-1 ${
+                viewMode === 'cards' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Cards</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Ledger Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                <th className="p-3 w-16 text-center border-r border-slate-200">Code</th>
-                <th className="p-3 border-r border-slate-200 min-w-44">Instructor Name & Role</th>
-                <th className="p-3 border-r border-slate-200 w-32">Campus Role</th>
-                <th className="p-3 text-right border-r border-slate-200 w-28">Past Sessions</th>
-                <th className="p-3 text-right border-r border-slate-200 w-28">Conducted Today</th>
-                <th className="p-3 text-right border-r border-slate-200 w-32 bg-indigo-50/50 font-extrabold text-indigo-900">
-                  Total Sessions
-                </th>
-                <th className="p-3 text-center border-r border-slate-200 w-28">Substitutions</th>
-                <th className="p-3 min-w-72">Subject-Wise Sessions Breakdown</th>
-                <th className="p-3 w-28 text-center">Today's Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filteredAndSortedStats.map((item) => {
-                const t = item.teacher;
-                return (
-                  <tr
-                    key={t.id}
-                    className={`hover:bg-slate-50 transition-colors ${
-                      item.isOnLeaveToday ? 'bg-rose-50/20' : ''
-                    }`}
-                  >
-                    {/* Instructor Code */}
-                    <td className="p-3 text-center border-r border-slate-200 align-top">
-                      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 font-mono font-bold text-indigo-700 text-xs">
+      {/* Main Ledger Content: Cards View OR Table View */}
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredAndSortedStats.map((item) => {
+            const t = item.teacher;
+            return (
+              <div
+                key={t.id}
+                className={`bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 flex flex-col justify-between transition-all hover:border-slate-300 ${
+                  item.isOnLeaveToday ? 'bg-rose-50/20' : ''
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 font-mono font-bold text-indigo-700 text-xs shrink-0">
                         {t.code}
                       </span>
-                    </td>
-
-                    {/* Instructor Name & Designation */}
-                    <td className="p-3 border-r border-slate-200 align-top">
-                      <div className="font-bold text-slate-900 text-sm">{t.name}</div>
-                      <div className="text-[11px] text-slate-500">{t.designation}</div>
-                      {/* Primary Subject Badges */}
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {t.primaryPaperIds.map((pid) => {
-                          const p = paperMap.get(pid);
-                          return (
-                            <span
-                              key={pid}
-                              className="px-1.5 py-0.2 rounded text-[9px] font-bold text-white font-mono"
-                              style={{ backgroundColor: p?.color || '#4F46E5' }}
-                              title={p?.title}
-                            >
-                              {p?.code || pid}
-                            </span>
-                          );
-                        })}
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 text-sm truncate">{t.name}</div>
+                        <div className="text-[11px] text-slate-500 truncate">{t.designation}</div>
                       </div>
-                    </td>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        t.assignedBuilding === 'OLD'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : t.assignedBuilding === 'NEW'
+                          ? 'bg-sky-100 text-sky-900 border border-sky-300'
+                          : 'bg-purple-100 text-purple-900 border border-purple-300'
+                      }`}
+                    >
+                      {t.assignedBuilding === 'OLD' ? 'Old Bldg' : t.assignedBuilding === 'NEW' ? 'New Bldg' : 'Floating'}
+                    </span>
+                  </div>
+
+                  {/* Primary subjects */}
+                  <div className="flex flex-wrap gap-1 mt-2.5">
+                    {t.primaryPaperIds.map((pid) => {
+                      const p = paperMap.get(pid);
+                      return (
+                        <span
+                          key={pid}
+                          className="px-1.5 py-0.5 rounded text-[9px] font-bold text-white font-mono"
+                          style={{ backgroundColor: p?.color || '#4F46E5' }}
+                        >
+                          {p?.code || pid}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* Session Metrics */}
+                  <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                      <div className="text-[10px] text-slate-500 font-medium">Past</div>
+                      <div className="font-mono font-bold text-slate-800 text-sm mt-0.5">{item.pastSessions}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                      <div className="text-[10px] text-slate-500 font-medium">Today</div>
+                      <div className={`font-mono font-bold text-sm mt-0.5 ${item.todaySessions > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+                        {item.todaySessions}
+                      </div>
+                    </div>
+                    <div className="bg-indigo-50 rounded-lg p-2 border border-indigo-100">
+                      <div className="text-[10px] text-indigo-700 font-bold">Total</div>
+                      <div className="font-mono font-extrabold text-indigo-900 text-sm mt-0.5">{item.totalSessions}</div>
+                    </div>
+                  </div>
+
+                  {/* Subject breakdown */}
+                  {item.paperBreakdown.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-100">
+                      <div className="text-[10px] text-slate-400 font-medium mb-1.5">Subject Breakdown:</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.paperBreakdown.map((pb) => (
+                          <span
+                            key={pb.paperId}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-100 border border-slate-200"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: pb.paperColor }}></span>
+                            <span className="font-mono font-bold text-slate-800">{pb.paperCode}</span>
+                            <span className="text-slate-500">×{pb.count}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Today's periods */}
+                  {item.todayPeriods.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 text-[10px] flex flex-wrap items-center gap-1">
+                      <span className="font-semibold text-slate-700">Today:</span>
+                      {item.todayPeriods.map((tp, idx) => (
+                        <span
+                          key={idx}
+                          className={`px-1.5 py-0.2 rounded font-mono ${
+                            tp.isSubstitute
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200 font-bold'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          P{tp.period} ({tp.roomName})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 text-[10px]">
+                    {item.substituteSessions > 0 ? `${item.substituteSessions} substitutions` : 'Regular sessions'}
+                  </span>
+                  {item.isOnLeaveToday ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      On Leave Today
+                    </span>
+                  ) : item.todaySessions > 0 ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Active ({item.todaySessions}P)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                      No Class Today
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Main Ledger Table with Mobile Sticky Anchor */
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+          {/* Mobile Swipe Guidance */}
+          <div className="sm:hidden flex items-center justify-between text-[11px] text-slate-600 bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+            <span>👉 Swipe horizontally for all ledger stats</span>
+            <span className="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px]">
+              Instructor Fixed
+            </span>
+          </div>
+          <div className="overflow-x-auto touch-pan-x">
+            <table className="w-full text-left border-collapse text-xs min-w-[700px] sm:min-w-full">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
+                  <th className="p-3 w-16 text-center border-r border-slate-200 sticky left-0 z-20 bg-slate-100">Code</th>
+                  <th className="p-3 border-r border-slate-200 min-w-44 sticky left-16 z-20 bg-slate-100 shadow-xs">Instructor Name & Role</th>
+                  <th className="p-3 border-r border-slate-200 w-32">Campus Role</th>
+                  <th className="p-3 text-right border-r border-slate-200 w-24 sm:w-28">Past</th>
+                  <th className="p-3 text-right border-r border-slate-200 w-24 sm:w-28">Today</th>
+                  <th className="p-3 text-right border-r border-slate-200 w-28 sm:w-32 bg-indigo-50/50 font-extrabold text-indigo-900">
+                    Total
+                  </th>
+                  <th className="p-3 text-center border-r border-slate-200 w-24 sm:w-28">Subs</th>
+                  <th className="p-3 min-w-56 sm:min-w-72">Subject-Wise Breakdown</th>
+                  <th className="p-3 w-28 text-center">Today's Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredAndSortedStats.map((item) => {
+                  const t = item.teacher;
+                  return (
+                    <tr
+                      key={t.id}
+                      className={`hover:bg-slate-50 transition-colors ${
+                        item.isOnLeaveToday ? 'bg-rose-50/20' : ''
+                      }`}
+                    >
+                      {/* Instructor Code (Sticky) */}
+                      <td className="p-3 text-center border-r border-slate-200 align-top sticky left-0 z-10 bg-white">
+                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 font-mono font-bold text-indigo-700 text-xs">
+                          {t.code}
+                        </span>
+                      </td>
+
+                      {/* Instructor Name & Designation (Sticky) */}
+                      <td className="p-3 border-r border-slate-200 align-top sticky left-16 z-10 bg-white shadow-xs">
+                        <div className="font-bold text-slate-900 text-sm">{t.name}</div>
+                        <div className="text-[11px] text-slate-500">{t.designation}</div>
+                        {/* Primary Subject Badges */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {t.primaryPaperIds.map((pid) => {
+                            const p = paperMap.get(pid);
+                            return (
+                              <span
+                                key={pid}
+                                className="px-1.5 py-0.2 rounded text-[9px] font-bold text-white font-mono"
+                                style={{ backgroundColor: p?.color || '#4F46E5' }}
+                                title={p?.title}
+                              >
+                                {p?.code || pid}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
 
                     {/* Assigned Campus Building */}
                     <td className="p-3 border-r border-slate-200 align-top">
@@ -551,6 +713,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
           </span>
         </div>
       </div>
+      )}
     </div>
   );
 };

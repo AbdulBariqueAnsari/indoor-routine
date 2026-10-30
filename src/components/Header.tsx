@@ -133,17 +133,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Action Tools (Right Zone) - Responsive & Non-Overflowing */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Day Selector */}
             {allRoutines.length > 0 && currentRoutine && (
-              <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 text-xs">
-                <span className="font-semibold text-slate-500 hidden sm:inline">
+              <div className="flex items-center gap-1 bg-slate-100 px-1.5 sm:px-2 py-1 rounded-lg border border-slate-200 text-xs">
+                <span className="font-semibold text-slate-500 hidden md:inline">
                   Day:
                 </span>
                 <select
                   value={currentRoutine.id}
                   onChange={(e) => onSelectRoutine(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-hidden cursor-pointer max-w-[130px] sm:max-w-none truncate"
+                  className="bg-transparent text-xs font-bold text-slate-900 focus:outline-hidden cursor-pointer max-w-[100px] sm:max-w-[160px] truncate"
                   aria-label="Select Routine Day"
                 >
                   {allRoutines
@@ -191,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Print Action */}
             <button
               onClick={onPrint}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-colors"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-colors"
               title="Print Timetable Sheet / Save PDF"
             >
               <Printer className="w-3.5 h-3.5 text-slate-600" />
@@ -204,18 +204,19 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Primary Action: New Routine */}
                 <button
                   onClick={onOpenGenerator}
-                  className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-xs transition-colors shrink-0"
+                  className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-xs transition-colors shrink-0"
                   title="Generate New Daily Routine"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>New Routine</span>
+                  <span className="hidden sm:inline">New Routine</span>
+                  <span className="sm:hidden">New</span>
                 </button>
 
                 {/* Collapsible Admin Tools Menu */}
                 <div className="relative" ref={adminMenuRef}>
                   <button
                     onClick={() => setIsAdminMenuOpen((prev) => !prev)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors shadow-2xs ${
+                    className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors shadow-2xs ${
                       isAdminMenuOpen
                         ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
                         : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
@@ -328,11 +329,12 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors shadow-2xs shrink-0"
                 title="Login with administrator credentials to make modifications"
               >
                 <LogIn className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Admin Login</span>
+                <span className="hidden sm:inline">Admin Login</span>
+                <span className="sm:hidden">Login</span>
               </button>
             )}
           </div>

@@ -3,28 +3,26 @@
     "id": "T1",
     "code": "T1",
     "name": "SI(UB) Md Jalaluddin",
-    "designation": "Senior Law Instructor",
-    "assignedBuilding": "OLD",
+    "designation": "Law Instructor",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P01"
     ],
     "backupPaperIds": [
-      "P02",
-      "P03"
+      "P02"
     ],
     "secondaryPaperIds": [
-      "P02",
-      "P03"
+      "P02"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10001"
+    "phone": "+91 99334 52921"
   },
   {
     "id": "T2",
     "code": "T2",
     "name": "SI(AB) Hazrat Belal",
     "designation": "Procedural Law Instructor",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P01"
     ],
@@ -37,7 +35,7 @@
       "P08"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10002"
+    "phone": "+91 98006 20487"
   },
   {
     "id": "T3",
@@ -57,14 +55,14 @@
       "P09"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10003"
+    "phone": "+91 96142 17484"
   },
   {
     "id": "T4",
     "code": "T4",
     "name": "ASI(AB) Prabir Sarkar",
     "designation": "Substantive Law Specialist",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P02"
     ],
@@ -77,14 +75,14 @@
       "P04"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10004"
+    "phone": "+91 89006 74916"
   },
   {
     "id": "T5",
     "code": "T5",
     "name": "SI(UB) Kaushik Sarkar",
     "designation": "Substantive Law Master",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P02"
     ],
@@ -97,14 +95,14 @@
       "P04"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10005"
+    "phone": "+91 97352 80252"
   },
   {
     "id": "T6",
     "code": "T6",
     "name": "SI(UB) Biswajit Saha",
     "designation": "BNS Senior Instructor",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P02"
     ],
@@ -117,14 +115,14 @@
       "P08"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10006"
+    "phone": "+91 79082 77110"
   },
   {
     "id": "T7",
     "code": "T7",
     "name": "SI(UB) Sadhan Kr Roy",
     "designation": "BNS Instructor Specialist",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P02"
     ],
@@ -137,14 +135,14 @@
       "P01"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10007"
+    "phone": "+91 76021 44180"
   },
   {
     "id": "T8",
     "code": "T8",
-    "name": "SI(UB) Ebadul Ali Hossain",
+    "name": "SI(UB) Ebadul Ali Mondal",
     "designation": "Central & Local Laws Instructor",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P03"
     ],
@@ -157,14 +155,14 @@
       "P07"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10008"
+    "phone": "+91 861 786 1981"
   },
   {
     "id": "T9",
     "code": "T9",
     "name": "SI(UB) Tika Kr. Damai",
     "designation": "Special Acts Specialist",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P03"
     ],
@@ -177,7 +175,7 @@
       "P02"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10009"
+    "phone": "+91 891 844 1326"
   },
   {
     "id": "T10",
@@ -197,7 +195,7 @@
       "P02"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10010"
+    "phone": "+91 97332 18259"
   },
   {
     "id": "T11",
@@ -217,14 +215,14 @@
       "P02"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10011"
+    "phone": "+91 94345 18447"
   },
   {
     "id": "T12",
     "code": "T12",
     "name": "SI(UB) Abdul Samad",
     "designation": "Sub Inspector",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P05"
     ],
@@ -237,14 +235,14 @@
       "P12"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10012"
+    "phone": "+91 83378 00950"
   },
   {
     "id": "T13",
     "code": "T13",
     "name": "SI(UB) Rassel Hossain",
     "designation": "Ballistics & Forensics Expert",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P05"
     ],
@@ -257,14 +255,14 @@
       "P07"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10013"
+    "phone": "+91 94757 68133"
   },
   {
     "id": "T14",
     "code": "T14",
     "name": "ASI(W) Noor Alam",
     "designation": "Cyber Investigation Master",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P06"
     ],
@@ -277,14 +275,14 @@
       "P10"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10014"
+    "phone": "+91 81458 48041"
   },
   {
     "id": "T15",
     "code": "T15",
     "name": "ASI(UB) Nripen Ch Roy",
     "designation": "Cyber Investigation Trainer",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P06"
     ],
@@ -297,7 +295,7 @@
       "P09"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10015"
+    "phone": "+91 98323 86930"
   },
   {
     "id": "T16",
@@ -317,7 +315,7 @@
       "P09"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10016"
+    "phone": "+91 70312 35687"
   },
   {
     "id": "T17",
@@ -337,14 +335,14 @@
       "P12"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10017"
+    "phone": "+91 79087 52229"
   },
   {
     "id": "T18",
     "code": "T18",
     "name": "SI(UB) Parimal Saha",
     "designation": "Station Administration Instructor",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P09"
     ],
@@ -357,14 +355,14 @@
       "P03"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10018"
+    "phone": "+91 90029 43499"
   },
   {
     "id": "T19",
     "code": "T19",
     "name": "ASI(UB) Bisu Benjamin Mardi",
     "designation": "Station Records & Investigation Instructor",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P09"
     ],
@@ -377,14 +375,14 @@
       "P11"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10019"
+    "phone": "+91 70013 37008"
   },
   {
     "id": "T20",
     "code": "T20",
     "name": "SI(UB) Sankar Bhowmick",
     "designation": "Personal Development Counselor",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P10"
     ],
@@ -397,14 +395,14 @@
       "P07"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10020"
+    "phone": "+91 70018 83069"
   },
   {
     "id": "T21",
     "code": "T21",
     "name": "SI(UB) Sanjay Majumdar",
     "designation": "Behavioral Skills & Leadership Counselor",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P10"
     ],
@@ -417,14 +415,14 @@
       "P12"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10021"
+    "phone": "+91 83482 65787"
   },
   {
     "id": "T22",
     "code": "T22",
     "name": "SI(UB) Biman Ghosh",
     "designation": "Internal Security & Public Order Master",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P11"
     ],
@@ -437,14 +435,14 @@
       "P10"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10022"
+    "phone": "+91 70010 05530"
   },
   {
     "id": "T23",
     "code": "T23",
     "name": "SI(AB) Debashis Ray",
     "designation": "Internal Security & Tactical Head",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P11"
     ],
@@ -457,14 +455,14 @@
       "P09"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10023"
+    "phone": "+91 98327 36256"
   },
   {
     "id": "T24",
     "code": "T24",
     "name": "SI(UB) Krishnapada Barman",
     "designation": "Ethics & Police Accountability Instructor",
-    "assignedBuilding": "NEW",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P12"
     ],
@@ -477,14 +475,14 @@
       "P09"
     ],
     "maxDailyPeriods": 3,
-    "phone": "+91 94120 10024"
+    "phone": "+91 94344 58547"
   },
   {
     "id": "T25",
     "code": "T25",
     "name": "SI(UB) Chandan Kr. Siddhanta",
     "designation": "Ethics, Integrity & Values Trainer",
-    "assignedBuilding": "OLD",
+    "assignedBuilding": "FLOATING",
     "primaryPaperIds": [
       "P12"
     ],
@@ -497,7 +495,7 @@
       "P07"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10025"
+    "phone": "+91 97332 91300"
   },
   {
     "id": "T26",
@@ -517,6 +515,6 @@
       "P11"
     ],
     "maxDailyPeriods": 4,
-    "phone": "+91 94120 10026"
+    "phone": "+91 747 914 2044"
   }
 ]

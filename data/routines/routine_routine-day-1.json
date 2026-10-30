@@ -134,12 +134,10 @@
       "id": "slot-1-NB-3-P1",
       "roomId": "NB-3",
       "period": 1,
-      "paperId": "P03",
+      "paperId": "P04",
       "teacherId": "T11",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T8",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-12-1793034850769-P1",
@@ -203,12 +201,10 @@
       "id": "slot-1-OB-3-P2",
       "roomId": "OB-3",
       "period": 2,
-      "paperId": "P02",
+      "paperId": "P01",
       "teacherId": "T1",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T4",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-OB-4-P2",
@@ -232,12 +228,10 @@
       "id": "slot-1-OB-6-P2",
       "roomId": "OB-6",
       "period": 2,
-      "paperId": "P10",
+      "paperId": "P01",
       "teacherId": "T2",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T20",
-      "substituteReason": "Emergency / Qualified Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-OB-7-P2",
@@ -252,12 +246,10 @@
       "id": "slot-1-OB-8-P2",
       "roomId": "OB-8",
       "period": 2,
-      "paperId": "P01",
+      "paperId": "P03",
       "teacherId": "T8",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T1",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-NB-1-P2",
@@ -272,12 +264,10 @@
       "id": "slot-1-NB-2-P2",
       "roomId": "NB-2",
       "period": 2,
-      "paperId": "P06",
+      "paperId": "P05",
       "teacherId": "T12",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T14",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-NB-3-P2",
@@ -370,12 +360,10 @@
       "id": "slot-1-OB-5-P3",
       "roomId": "OB-5",
       "period": 3,
-      "paperId": "P10",
+      "paperId": "P12",
       "teacherId": "T24",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T20",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-OB-6-P3",
@@ -390,23 +378,19 @@
       "id": "slot-1-OB-7-P3",
       "roomId": "OB-7",
       "period": 3,
-      "paperId": "P10",
-      "teacherId": "T2",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T20",
-      "substituteReason": "Emergency / Qualified Substitute Instructor"
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-OB-8-P3",
       "roomId": "OB-8",
       "period": 3,
-      "paperId": "P02",
+      "paperId": "P03",
       "teacherId": "T8",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T4",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-NB-1-P3",
@@ -439,12 +423,10 @@
       "id": "slot-1-CR-NB-12-1793034850769-P3",
       "roomId": "CR-NB-12-1793034850769",
       "period": 3,
-      "paperId": "P05",
+      "paperId": "P06",
       "teacherId": "T15",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T12",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-13-1793034866049-P3",
@@ -515,12 +497,10 @@
       "id": "slot-1-OB-5-P4",
       "roomId": "OB-5",
       "period": 4,
-      "paperId": "P05",
+      "paperId": "P11",
       "teacherId": "T22",
-      "isSubstitute": true,
-      "substituteReason": "Substituted with alternate available subject [Paper-9] Police Station Management because primary instructor of Paper-3 was unavailable",
-      "isPriority": false,
-      "originalTeacherId": "T12"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-OB-6-P4",
@@ -741,12 +721,10 @@
       "id": "slot-1-CR-NB-12-1793034850769-P5",
       "roomId": "CR-NB-12-1793034850769",
       "period": 5,
-      "paperId": "P01",
+      "paperId": "P02",
       "teacherId": "T4",
-      "isSubstitute": true,
-      "isPriority": false,
-      "originalTeacherId": "T1",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "isSubstitute": false,
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-13-1793034866049-P5",
@@ -781,8 +759,8 @@
     }
   ],
   "createdAt": "2026-10-28T17:33:51.558Z",
-  "updatedAt": "2026-10-29T10:16:43.537Z",
-  "isLocked": true,
+  "updatedAt": "2026-10-30T17:16:25.441Z",
+  "isLocked": false,
   "status": "published",
   "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
   "unavailableTeachers": []

@@ -249,11 +249,19 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            {/* Mobile Horizontal Swipe Guidance */}
+            <div className="sm:hidden flex items-center justify-between text-[11px] text-slate-600 bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+              <span>👉 Swipe horizontally for all quota metrics</span>
+              <span className="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px]">
+                Subject Fixed
+              </span>
+            </div>
+
+            <div className="overflow-x-auto touch-pan-x">
+              <table className="w-full text-left border-collapse text-xs min-w-[750px] sm:min-w-full">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-700">
-                    <th className="p-3 w-64 border-r border-slate-200">Paper & Title</th>
+                    <th className="p-3 w-48 sm:w-64 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">Paper & Title</th>
                     <th className="p-3 text-center border-r border-slate-200">Per Room Target</th>
                     <th className="p-3 text-right border-r border-slate-200 font-bold text-indigo-900 bg-indigo-50/50">
                       All 15 Rooms Target (15×)
@@ -265,7 +273,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                     </th>
                     <th className="p-3 text-right border-r border-slate-200">Remaining</th>
                     <th className="p-3 w-44 border-r border-slate-200">Consolidated Progress</th>
-                    <th className="p-3 text-left">Primary Instructors Assigned</th>
+                    <th className="p-3 text-left min-w-44">Primary Instructors Assigned</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -280,7 +288,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
 
                     return (
                       <tr key={item.paperId} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 border-r border-slate-200">
+                        <td className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-white shadow-xs">
                           <div className="flex items-center gap-2">
                             <span
                               className="w-2.5 h-2.5 rounded-full shrink-0"

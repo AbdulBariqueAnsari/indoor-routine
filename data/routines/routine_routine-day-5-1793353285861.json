@@ -1,0 +1,690 @@
+{
+  "id": "routine-day-5-1793353285861",
+  "dayNumber": 5,
+  "date": "2026-10-31",
+  "absentTeacherIds": [],
+  "unavailableTeachers": [],
+  "priorityPaperIds": [],
+  "slots": [
+    {
+      "id": "slot-5-OB-1-P1",
+      "roomId": "OB-1",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-1-P2",
+      "roomId": "OB-1",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-1-P3",
+      "roomId": "OB-1",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-1-P4",
+      "roomId": "OB-1",
+      "period": 4,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-1-P5",
+      "roomId": "OB-1",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-2-P1",
+      "roomId": "OB-2",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-2-P2",
+      "roomId": "OB-2",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-2-P3",
+      "roomId": "OB-2",
+      "period": 3,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-2-P4",
+      "roomId": "OB-2",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-2-P5",
+      "roomId": "OB-2",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-3-P1",
+      "roomId": "OB-3",
+      "period": 1,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-3-P2",
+      "roomId": "OB-3",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-3-P3",
+      "roomId": "OB-3",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-3-P4",
+      "roomId": "OB-3",
+      "period": 4,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-3-P5",
+      "roomId": "OB-3",
+      "period": 5,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-4-P1",
+      "roomId": "OB-4",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-4-P2",
+      "roomId": "OB-4",
+      "period": 2,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-4-P3",
+      "roomId": "OB-4",
+      "period": 3,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-4-P4",
+      "roomId": "OB-4",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-4-P5",
+      "roomId": "OB-4",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-5-P1",
+      "roomId": "OB-5",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-5-P2",
+      "roomId": "OB-5",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-5-P3",
+      "roomId": "OB-5",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-5-P4",
+      "roomId": "OB-5",
+      "period": 4,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-5-P5",
+      "roomId": "OB-5",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-6-P1",
+      "roomId": "OB-6",
+      "period": 1,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-6-P2",
+      "roomId": "OB-6",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-6-P3",
+      "roomId": "OB-6",
+      "period": 3,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-6-P4",
+      "roomId": "OB-6",
+      "period": 4,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-6-P5",
+      "roomId": "OB-6",
+      "period": 5,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-7-P1",
+      "roomId": "OB-7",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-7-P2",
+      "roomId": "OB-7",
+      "period": 2,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-7-P3",
+      "roomId": "OB-7",
+      "period": 3,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-7-P4",
+      "roomId": "OB-7",
+      "period": 4,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-7-P5",
+      "roomId": "OB-7",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-8-P1",
+      "roomId": "OB-8",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-8-P2",
+      "roomId": "OB-8",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-8-P3",
+      "roomId": "OB-8",
+      "period": 3,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-8-P4",
+      "roomId": "OB-8",
+      "period": 4,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-OB-8-P5",
+      "roomId": "OB-8",
+      "period": 5,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-1-P1",
+      "roomId": "NB-1",
+      "period": 1,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-1-P2",
+      "roomId": "NB-1",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-1-P3",
+      "roomId": "NB-1",
+      "period": 3,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-1-P4",
+      "roomId": "NB-1",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-1-P5",
+      "roomId": "NB-1",
+      "period": 5,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-2-P1",
+      "roomId": "NB-2",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-2-P2",
+      "roomId": "NB-2",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-2-P3",
+      "roomId": "NB-2",
+      "period": 3,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-2-P4",
+      "roomId": "NB-2",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-2-P5",
+      "roomId": "NB-2",
+      "period": 5,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-3-P1",
+      "roomId": "NB-3",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-3-P2",
+      "roomId": "NB-3",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-3-P3",
+      "roomId": "NB-3",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-3-P4",
+      "roomId": "NB-3",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-NB-3-P5",
+      "roomId": "NB-3",
+      "period": 5,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-12-1793034850769-P1",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 1,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-12-1793034850769-P2",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-12-1793034850769-P3",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 3,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-12-1793034850769-P4",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 4,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-12-1793034850769-P5",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-13-1793034866049-P1",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 1,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-13-1793034866049-P2",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 2,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-13-1793034866049-P3",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-13-1793034866049-P4",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 4,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-13-1793034866049-P5",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-14-1793034895859-P1",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 1,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-14-1793034895859-P2",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-14-1793034895859-P3",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 3,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-14-1793034895859-P4",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-14-1793034895859-P5",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 5,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-15-1793034922650-P1",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-15-1793034922650-P2",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-15-1793034922650-P3",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-15-1793034922650-P4",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-5-CR-NB-15-1793034922650-P5",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    }
+  ],
+  "createdAt": "2026-10-30T09:41:25.861Z",
+  "updatedAt": "2026-10-30T10:55:32.043Z",
+  "isLocked": true,
+  "status": "draft",
+  "notes": "Manual Blank Routine for Day 5 (2026-10-31) - ready for slot assignment"
+}

@@ -591,6 +591,10 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     }
   }
 
+  const isHighPriorityPaper = (pid: string): boolean => {
+    return subjectPriorityTiers[pid] === 'HIGH' || priorityPaperIds.includes(pid);
+  };
+
   // Helper to check if paper can fit in room based on Rules 5, 6, 6A
   const canAddPaperToRoom = (paperId: string, roomId: string): boolean => {
     if (combinedExcludedSet.has(paperId)) return false;
@@ -609,6 +613,23 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       return false;
     }
 
+    // Reserve room slots for High Priority / Guaranteed papers that still need this classroom
+    if (!isHighPriorityPaper(paperId)) {
+      let highPriorityNeeded = 0;
+      for (const hp of schedulingPapers) {
+        if (isHighPriorityPaper(hp.id) && !currentInRoom.some((p) => p.id === hp.id)) {
+          const alloc = curriculumPlan.allocations.get(hp.id);
+          const target = alloc ? alloc.integerTarget : 0;
+          if (target >= classrooms.length && !isPaperRoomQuotaCompleted(roomId, hp.id)) {
+            highPriorityNeeded++;
+          }
+        }
+      }
+      if (currentInRoom.length + highPriorityNeeded >= 5) {
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -621,39 +642,55 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return target > 0 ? (remaining / target) * 100 : 0;
   };
 
-  // Begin filling from Paper 1, Paper 2, ... Paper 13 in configured paper order
-  for (const paper of schedulingPapers) {
-    const alloc = curriculumPlan.allocations.get(paper.id);
-    let targetSessions = alloc ? alloc.integerTarget : 0;
+  // 3. Subject Room Distribution: Round-robin by paper (Paper 1 -> Paper 2 -> ... -> Paper 13 -> repeat)
+  // "perhle paper 1 ka koi v. ek count filling hoga.. fir paper 2 ka ek count fir paper 3 so on.. aur firse paper 13 k baad repeat hoga.. jab tak distribution alloted subjects complete na ho.. and rooms are ranked b remaining demand percentage.. for indivusual subject"
+  let addedInRound = true;
+  while (addedInRound) {
+    addedInRound = false;
+    for (const paper of schedulingPapers) {
+      const alloc = curriculumPlan.allocations.get(paper.id);
+      let targetSessions = alloc ? alloc.integerTarget : 0;
 
-    // If explicit minimum periods configured in options, ensure target respects it
-    if (prioritySubjectMinPeriods[paper.id] && prioritySubjectMinPeriods[paper.id] > targetSessions) {
-      targetSessions = prioritySubjectMinPeriods[paper.id];
-    }
+      // If explicit minimum periods configured in options, ensure target respects it
+      if (prioritySubjectMinPeriods[paper.id] && prioritySubjectMinPeriods[paper.id] > targetSessions) {
+        targetSessions = prioritySubjectMinPeriods[paper.id];
+      }
 
-    if (targetSessions <= 0) continue;
+      if (targetSessions <= 0) continue;
+      const currentAssigned = paperAllocatedCount.get(paper.id) || 0;
+      if (currentAssigned >= targetSessions) continue;
 
-    // Rank eligible classrooms for this subject: highest remaining demand % first
-    const eligibleRooms = classrooms
-      .filter((r) => canAddPaperToRoom(paper.id, r.id))
-      .sort((a, b) => {
-        const hasA = (roomAssignedPapers.get(a.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
-        const hasB = (roomAssignedPapers.get(b.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
-        if (hasA !== hasB) return hasA - hasB; // Classrooms without this paper yet get it first!
-        const pctA = getClassRemainingPercentage(paper.id, a.id);
-        const pctB = getClassRemainingPercentage(paper.id, b.id);
-        if (Math.abs(pctA - pctB) > 0.001) return pctB - pctA; // Highest remaining % first!
-        const remA = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(a.id)?.get(paper.id) || 0));
-        const remB = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(b.id)?.get(paper.id) || 0));
-        if (remA !== remB) return remB - remA;
-        return a.id.localeCompare(b.id);
-      });
+      // Rank eligible classrooms for this individual subject: highest remaining demand % first
+      const eligibleRooms = classrooms
+        .filter((r) => canAddPaperToRoom(paper.id, r.id))
+        .sort((a, b) => {
+          // Classrooms without this paper yet get it first
+          const hasA = (roomAssignedPapers.get(a.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
+          const hasB = (roomAssignedPapers.get(b.id) || []).some((item) => item.id === paper.id) ? 1 : 0;
+          if (hasA !== hasB) return hasA - hasB;
 
-    for (const room of eligibleRooms) {
-      if (paperAllocatedCount.get(paper.id)! >= targetSessions) break;
-      if (canAddPaperToRoom(paper.id, room.id)) {
+          // Highest remaining demand % for this individual paper in this room
+          const pctA = getClassRemainingPercentage(paper.id, a.id);
+          const pctB = getClassRemainingPercentage(paper.id, b.id);
+          if (Math.abs(pctA - pctB) > 0.001) return pctB - pctA;
+
+          // Classrooms with fewer periods assigned so far
+          const loadA = roomAssignedPapers.get(a.id)?.length || 0;
+          const loadB = roomAssignedPapers.get(b.id)?.length || 0;
+          if (loadA !== loadB) return loadA - loadB;
+
+          const remA = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(a.id)?.get(paper.id) || 0));
+          const remB = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(b.id)?.get(paper.id) || 0));
+          if (remA !== remB) return remB - remA;
+
+          return a.id.localeCompare(b.id);
+        });
+
+      if (eligibleRooms.length > 0) {
+        const room = eligibleRooms[0];
         roomAssignedPapers.get(room.id)!.push(paper);
-        paperAllocatedCount.set(paper.id, (paperAllocatedCount.get(paper.id) || 0) + 1);
+        paperAllocatedCount.set(paper.id, currentAssigned + 1);
+        addedInRound = true;
       }
     }
   }
@@ -882,7 +919,19 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         if (cappedA !== cappedB) return cappedA - cappedB;
       }
 
-      // Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+      // 1. Equalize Daily Workload: Always prefer teacher with fewer periods today
+      if (loadA !== loadB) {
+        return loadA - loadB;
+      }
+
+      // 2. Cumulative Workload Balancing: prefer teacher with fewer total historical sessions
+      const totalA = getTeacherTotalLoad(a.id);
+      const totalB = getTeacherTotalLoad(b.id);
+      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
+        return totalA - totalB;
+      }
+
+      // 3. Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
       if (activeRules.enableUnvisitedRoomTeacherPrioritization) {
         const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
         const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
@@ -890,12 +939,12 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         const isUnvisitedA = visitsA === 0;
         const isUnvisitedB = visitsB === 0;
 
-        // 1. Highest priority to instructor who has NEVER taught in this room (0 visits)
+        // Highest priority to instructor who has NEVER taught in this room (0 visits)
         if (isUnvisitedA !== isUnvisitedB) {
           return isUnvisitedA ? -1 : 1;
         }
 
-        // 2. If both are unvisited (0 visits), check building-specific affinity
+        // If both are unvisited (0 visits), check building-specific affinity
         if (isUnvisitedA && isUnvisitedB && roomBuilding) {
           const matchA = a.assignedBuilding === roomBuilding ? 1 : 0;
           const matchB = b.assignedBuilding === roomBuilding ? 1 : 0;
@@ -905,24 +954,12 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           }
         }
 
-        // 3. Lowest previous visits to this room first
+        // Lowest previous visits to this room first
         if (visitsA !== visitsB) return visitsA - visitsB;
       } else {
         const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
         const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
         if (visitsA !== visitsB) return visitsA - visitsB;
-      }
-
-      // Cumulative Workload Balancing: minimize Max - Min projected workload
-      const totalA = getTeacherTotalLoad(a.id);
-      const totalB = getTeacherTotalLoad(b.id);
-      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
-        return totalA - totalB;
-      }
-
-      // Daily load difference
-      if (Math.abs(loadA - loadB) >= 2) {
-        return loadA - loadB;
       }
 
       // Room carousel circular distance

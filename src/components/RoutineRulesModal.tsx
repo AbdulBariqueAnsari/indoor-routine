@@ -86,65 +86,65 @@ export function RoutineRulesModal({ isOpen, onClose, rules, onSaveRules }: Routi
   const activeCount = MASTER_ROUTINE_RULES.filter((r) => Boolean(localRules[r.key])).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-5 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-              <Sliders className="w-5 h-5 text-blue-300" />
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-3.5 sm:p-5 flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0">
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5 text-blue-300" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold tracking-tight">Routine Generation Constraint Checks</h2>
-              <p className="text-xs text-blue-200/80">
-                Configure operational conditions for daily routine creation. Settings persist directly on server disk.
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold tracking-tight truncate">Routine Generation Constraint Checks</h2>
+              <p className="text-[11px] sm:text-xs text-blue-200/80 truncate">
+                Configure operational conditions for daily routine creation
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors shrink-0"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* Toolbar & Category Filters */}
-        <div className="bg-slate-50 border-b border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
               Active Checks:
             </span>
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
               {activeCount} of {MASTER_ROUTINE_RULES.length} Enabled
             </span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             <button
               onClick={handleEnableAll}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition"
+              className="text-[11px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition"
             >
               Enable All
             </button>
             <button
               onClick={handleDisableAll}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition"
+              className="text-[11px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition"
             >
               Disable All
             </button>
             <button
               onClick={handleResetDefaults}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center space-x-1 transition"
+              className="text-[11px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center space-x-1 transition"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Defaults</span>
+              <span className="hidden sm:inline">Reset Defaults</span>
             </button>
           </div>
         </div>
 
         {/* Priority Hierarchy Banner */}
-        <div className="mx-5 mt-3 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 text-amber-950 text-xs flex items-start gap-3 shadow-2xs">
+        <div className="mx-3 sm:mx-5 mt-3 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 text-amber-950 text-xs flex items-start gap-2.5 sm:gap-3 shadow-2xs">
           <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
           <div className="space-y-1">
             <div className="font-bold text-[11px] uppercase tracking-wider text-amber-900 flex items-center gap-1.5">

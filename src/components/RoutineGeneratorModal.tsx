@@ -413,24 +413,24 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white ${
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${
               isRecreating ? 'bg-amber-600' : 'bg-indigo-600'
             }`}>
               {isRecreating ? <RefreshCw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 {isRecreating
-                  ? `Recreate / Overwrite Routine for Day ${dayNumber}`
+                  ? `Recreate Routine for Day ${dayNumber}`
                   : `Generate Daily Routine for Day ${dayNumber}`}
               </h2>
-              <p className="text-xs text-slate-500">
-                STC, SAP 4th Bn · 15 Classrooms · 5 Periods × 40 min (75 Total Sessions)
+              <p className="text-[11px] sm:text-xs text-slate-500">
+                STC, SAP 4th Bn · 15 Classrooms · 5 Periods × 40 min
               </p>
             </div>
           </div>
@@ -444,7 +444,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto">
+        <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
           {/* Generation Mode Selector */}
           {!isRecreating && (
             <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">

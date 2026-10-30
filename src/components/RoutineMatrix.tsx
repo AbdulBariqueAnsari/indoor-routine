@@ -378,11 +378,21 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-          <table className="w-full border-collapse text-left min-w-[860px]">
+        {/* Mobile Horizontal Swipe Guidance */}
+        <div className="sm:hidden flex items-center justify-between text-[11px] text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg mb-2 border border-slate-200">
+          <span className="flex items-center gap-1 font-medium">
+            👉 Swipe horizontally for Periods 1–5
+          </span>
+          <span className="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px]">
+            Room Fixed
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs touch-pan-x">
+          <table className="w-full border-collapse text-left min-w-[760px] sm:min-w-[860px]">
             <thead>
-              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-xs font-semibold">
-                <th className="p-2.5 w-44 border-r border-slate-200">
+              <tr className="bg-slate-100/95 border-b border-slate-200 text-slate-700 text-xs font-semibold">
+                <th className="p-2 sm:p-2.5 w-32 sm:w-44 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">
                   Classroom / Capacity
                 </th>
                 {PERIOD_TIMINGS.map((p) => {
@@ -390,7 +400,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                   return (
                     <th
                       key={p.period}
-                      className={`p-2.5 border-r border-slate-200 last:border-r-0 transition-colors ${
+                      className={`p-2 sm:p-2.5 border-r border-slate-200 last:border-r-0 transition-colors ${
                         isPeriodSelected ? 'bg-amber-100/70 text-amber-950 font-bold' : ''
                       }`}
                     >
@@ -400,7 +410,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                           <span className="text-[10px] text-amber-700 font-normal">Filtered</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-500 font-normal font-mono tabular-nums">
+                      <div className="text-[10px] sm:text-[11px] text-slate-500 font-normal font-mono tabular-nums">
                         {p.time}
                       </div>
                     </th>
@@ -420,14 +430,14 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                     }`}
                   >
                     <td
-                      className={`p-2.5 border-r border-slate-200 text-xs transition-colors ${
+                      className={`p-2 sm:p-2.5 border-r border-slate-200 text-xs sticky left-0 z-10 shadow-xs transition-colors ${
                         selectedRoomHighlight === room.id
                           ? 'bg-amber-100 text-amber-950 font-bold border-l-4 border-l-amber-500'
-                          : 'bg-slate-50/80 text-slate-900'
+                          : 'bg-slate-50 text-slate-900'
                       }`}
                     >
-                      <div className="font-bold text-slate-900 text-sm">{room.name}</div>
-                      <div className="text-[11px] text-slate-600 mt-0.5 font-mono">
+                      <div className="font-bold text-slate-900 text-xs sm:text-sm">{room.name}</div>
+                      <div className="text-[10px] sm:text-[11px] text-slate-600 mt-0.5 font-mono">
                         Capacity: <span className="font-bold text-slate-800">{room.capacity}</span>
                       </div>
                     </td>
@@ -568,12 +578,12 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
         {/* Top Filter Controls: Building & Search Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
           {/* Building Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg shrink-0 w-full sm:w-auto justify-between sm:justify-start">
             <button
               onClick={() => setBuildingFilter('ALL')}
-              className={`px-3 py-1 font-semibold rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
                 buildingFilter === 'ALL'
-                  ? 'bg-white text-slate-900 shadow-2xs'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -581,32 +591,32 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             </button>
             <button
               onClick={() => setBuildingFilter('OLD')}
-              className={`px-3 py-1 font-semibold rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
                 buildingFilter === 'OLD'
-                  ? 'bg-white text-slate-900 shadow-2xs'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Old Building (8)
+              Old Bldg (8)
             </button>
             <button
               onClick={() => setBuildingFilter('NEW')}
-              className={`px-3 py-1 font-semibold rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
                 buildingFilter === 'NEW'
-                  ? 'bg-white text-slate-900 shadow-2xs'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              New Building (7)
+              New Bldg (7)
             </button>
           </div>
 
           {/* Quick Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 max-w-md w-full">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search by instructor, subject code, room number..."
+              placeholder="Search instructor, paper, room..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white text-slate-900"
@@ -625,24 +635,24 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           {onPrint && (
             <button
               onClick={onPrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs shrink-0"
               title="Open Printable Timetable Sheet"
             >
               <Printer className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Print Document / PDF</span>
+              <span>Print Timetable / PDF</span>
             </button>
           )}
         </div>
 
         {/* Second Row: Specific Dropdowns (Teacher, Classroom, Subject, Period, View Mode) */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2.5 text-xs">
+        <div className="pt-2 border-t border-slate-100 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
           {/* 1. Filter by Instructor */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Instructor:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+            <span className="text-slate-500 font-medium text-[11px]">Instructor:</span>
             <select
               value={selectedTeacherHighlight}
               onChange={(e) => setSelectedTeacherHighlight(e.target.value)}
-              className={`border rounded-lg px-2.5 py-1 text-xs focus:outline-hidden ${
+              className={`w-full sm:w-auto border rounded-lg px-2 py-1 text-xs focus:outline-hidden ${
                 selectedTeacherHighlight !== 'ALL'
                   ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
                   : 'border-slate-300 bg-white text-slate-800'
@@ -659,12 +669,12 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           </div>
 
           {/* 2. Filter by Classroom */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Classroom:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+            <span className="text-slate-500 font-medium text-[11px]">Classroom:</span>
             <select
               value={selectedRoomHighlight}
               onChange={(e) => setSelectedRoomHighlight(e.target.value)}
-              className={`border rounded-lg px-2.5 py-1 text-xs focus:outline-hidden ${
+              className={`w-full sm:w-auto border rounded-lg px-2 py-1 text-xs focus:outline-hidden ${
                 selectedRoomHighlight !== 'ALL'
                   ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
                   : 'border-slate-300 bg-white text-slate-800'
@@ -674,19 +684,19 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
               <option value="ALL">All 15 Rooms</option>
               {classrooms.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.building === 'OLD' ? 'Old Bldg' : 'New Bldg'}: {r.name}
+                  {r.building === 'OLD' ? 'Old' : 'New'}: {r.name}
                 </option>
               ))}
             </select>
           </div>
 
           {/* 3. Filter by Subject / Paper */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Subject:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+            <span className="text-slate-500 font-medium text-[11px]">Subject:</span>
             <select
               value={selectedPaperHighlight}
               onChange={(e) => setSelectedPaperHighlight(e.target.value)}
-              className={`border rounded-lg px-2.5 py-1 text-xs focus:outline-hidden ${
+              className={`w-full sm:w-auto border rounded-lg px-2 py-1 text-xs focus:outline-hidden ${
                 selectedPaperHighlight !== 'ALL'
                   ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
                   : 'border-slate-300 bg-white text-slate-800'
@@ -703,12 +713,12 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           </div>
 
           {/* 4. Filter by Period */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Period:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+            <span className="text-slate-500 font-medium text-[11px]">Period:</span>
             <select
               value={selectedPeriodFilter}
               onChange={(e) => setSelectedPeriodFilter(e.target.value)}
-              className={`border rounded-lg px-2.5 py-1 text-xs focus:outline-hidden ${
+              className={`w-full sm:w-auto border rounded-lg px-2 py-1 text-xs focus:outline-hidden ${
                 selectedPeriodFilter !== 'ALL'
                   ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
                   : 'border-slate-300 bg-white text-slate-800'
@@ -725,29 +735,32 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           </div>
 
           {/* 5. View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-            <button
-              onClick={() => setFilterDisplayMode('highlight')}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
-                filterDisplayMode === 'highlight'
-                  ? 'bg-white text-slate-800 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Highlight matching slots across the full timetable"
-            >
-              Highlight Mode
-            </button>
-            <button
-              onClick={() => setFilterDisplayMode('matched_only')}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
-                filterDisplayMode === 'matched_only'
-                  ? 'bg-white text-slate-800 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Only show classrooms and slots that match filters"
-            >
-              Filter Only
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 col-span-2 sm:col-span-1">
+            <span className="text-slate-500 font-medium text-[11px]">Mode:</span>
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                onClick={() => setFilterDisplayMode('highlight')}
+                className={`flex-1 sm:flex-none px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                  filterDisplayMode === 'highlight'
+                    ? 'bg-white text-slate-800 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Highlight matching slots across the full timetable"
+              >
+                Highlight
+              </button>
+              <button
+                onClick={() => setFilterDisplayMode('matched_only')}
+                className={`flex-1 sm:flex-none px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                  filterDisplayMode === 'matched_only'
+                    ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Only show classrooms and slots that match filters"
+              >
+                Filter Only
+              </button>
+            </div>
           </div>
 
           {/* Reset Filters */}
