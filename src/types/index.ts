@@ -51,7 +51,8 @@ export interface RoutineRuleConfig {
   enableNoSubstituteAllotment: boolean; // Rule 19: Strict main teacher only: no substitute allotted, slot left blank if primary unavailable
   replaceWithAvailableSubjectIfNoPrimary: boolean; // Rule 20: Sub-rule of No Substitute: replace with alternate available subject if primary unavailable
   enableDesignatedBackup: boolean; // Rule 21: Designated backup instructors (when substitution is permitted)
-  enableCrossMutualBackup: boolean; // Rule 22: Cross-subject mutual backup (Forensics <-> ICT, Police Admin <-> Criminology)
+  enableUnvisitedRoomTeacherPrioritization: boolean; // Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+  enableCrossMutualBackup?: boolean; // Deprecated Rule 22 (removed by user request; preserved for legacy JSON compatibility)
   enablePracticalFlexible: boolean; // Rule 23: Practical (Paper-13) flexible staffing across campus
   enableCaravanFlow: boolean; // Rule 24: Instructor-bound caravan flow (default OFF in favor of Subject Rotation)
 }

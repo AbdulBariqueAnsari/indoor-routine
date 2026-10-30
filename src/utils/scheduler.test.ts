@@ -239,48 +239,88 @@ test('Paper codes strictly formatted as Paper-1 through Paper-13', () => {
   });
 });
 
-test('Cross-subject mutual backup: Forensic Science (Paper-5) gets ICT instructor (Paper-6) in absence', () => {
-  // Forensics (P05) primary teachers: T12, T13. Mark both absent!
-  const routine = generateDailyRoutine({
+test('Rule 22: Unvisited Classroom Instructor Prioritization assigns teachers to classrooms with 0 prior visits first', () => {
+  // Mock a Day 1 routine where T1 (Paper 1, Old Building) only taught in OB-1
+  const day1Routine: DailyRoutine = {
+    id: 'day-1',
+    dayNumber: 1,
+    date: '2026-10-24',
+    isLocked: true,
+    status: 'published',
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    createdAt: '2026-10-24T00:00:00Z',
+    updatedAt: '2026-10-24T00:00:00Z',
+    slots: [
+      { id: 's1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+      { id: 's2', roomId: 'OB-1', period: 2, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+    ],
+  };
+
+  // On Day 2, generate routine with Rule 22 active
+  const day2Routine = generateDailyRoutine({
     classrooms: INITIAL_CLASSROOMS,
     papers: INITIAL_PAPERS,
     teachers: INITIAL_TEACHERS,
-    absentTeacherIds: ['T12', 'T13'],
-    priorityPaperIds: ['P05'],
-    historicalRoutines: [],
-    targetDayNumber: 1,
-    targetDate: '2026-10-24',
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [day1Routine],
+    targetDayNumber: 2,
+    targetDate: '2026-10-25',
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableUnvisitedRoomTeacherPrioritization: true,
+    },
   });
 
-  const p05Slots = routine.slots.filter(s => s.paperId === 'P05');
-  assert.ok(p05Slots.length > 0, 'P05 should have slots scheduled');
-
-  // Verify that an ICT teacher (T14 or T15) took the substitute role
-  const ictTeacherIds = ['T14', 'T15'];
-  const hasIctSubstitute = p05Slots.some(s => s.isSubstitute && ictTeacherIds.includes(s.teacherId));
-  assert.ok(hasIctSubstitute, 'P05 should receive cross-backup from ICT instructor (T14 or T15)');
+  // Verify that T1 is assigned to classrooms other than OB-1 (unvisited classrooms in Old Building: OB-2 to OB-8)
+  const t1Slots = day2Routine.slots.filter((s) => s.teacherId === 'T1');
+  assert.ok(t1Slots.length > 0, 'T1 should be assigned slots on Day 2');
+  const t1AssignedToUnvisitedRooms = t1Slots.some((s) => s.roomId !== 'OB-1');
+  assert.ok(
+    t1AssignedToUnvisitedRooms,
+    'T1 must be prioritized for unvisited classrooms (OB-2 to OB-8) rather than repeating in OB-1'
+  );
 });
 
-test('Cross-subject mutual backup: Police Admin (Paper-8) gets Criminology instructor (Paper-7) in absence', () => {
-  // Police Admin (P08) primary teacher: T17. Mark absent!
-  const routine = generateDailyRoutine({
+test('Rule 22: Building-specific teachers rotate across classrooms in their home building to achieve broad exposure', () => {
+  // Generate multi-day routines across 6 days
+  const multiDayRoutines = generateMultipleDaysRoutines({
     classrooms: INITIAL_CLASSROOMS,
     papers: INITIAL_PAPERS,
     teachers: INITIAL_TEACHERS,
-    absentTeacherIds: ['T17'],
-    priorityPaperIds: ['P08'],
+    absentTeacherIds: [],
+    priorityPaperIds: [],
     historicalRoutines: [],
-    targetDayNumber: 1,
-    targetDate: '2026-10-24',
+    startDayNumber: 1,
+    numberOfDays: 6,
+    startDate: '2026-10-24',
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableUnvisitedRoomTeacherPrioritization: true,
+    },
   });
 
-  const p08Slots = routine.slots.filter(s => s.paperId === 'P08');
-  assert.ok(p08Slots.length > 0, 'P08 should have slots scheduled');
+  // For building-specific teachers (e.g. T4 and T5 in Old Building),
+  // verify they teach in multiple distinct classrooms in their assigned building
+  const t4Rooms = new Set<string>();
+  const t5Rooms = new Set<string>();
 
-  // Verify that Criminology teacher (T16) or station mgmt (T18/T19) stepped in
-  const criminologyOrStationIds = ['T16', 'T18', 'T19'];
-  const hasCrossSubstitute = p08Slots.some(s => s.isSubstitute && criminologyOrStationIds.includes(s.teacherId));
-  assert.ok(hasCrossSubstitute, 'P08 should receive cross-backup from Criminology/Station instructor');
+  multiDayRoutines.forEach((routine) => {
+    routine.slots.forEach((s) => {
+      if (s.teacherId === 'T4') t4Rooms.add(s.roomId);
+      if (s.teacherId === 'T5') t5Rooms.add(s.roomId);
+    });
+  });
+
+  assert.ok(
+    t4Rooms.size >= 4,
+    `T4 should visit at least 4 distinct Old Building rooms over 6 days, visited ${t4Rooms.size}`
+  );
+  assert.ok(
+    t5Rooms.size >= 4,
+    `T5 should visit at least 4 distinct Old Building rooms over 6 days, visited ${t5Rooms.size}`
+  );
 });
 
 test('26 Teachers distributed strictly across 12 Theory Papers (Paper-1 to Paper-12) by session ratio', () => {
@@ -934,7 +974,7 @@ test('Guaranteed Priority Subject Minimum Periods: Prioritized subjects strictly
       enableZeroDoubleBooking: true,
       enableBuildingChangeGap: true,
       enableDesignatedBackup: true,
-      enableCrossMutualBackup: true,
+      enableUnvisitedRoomTeacherPrioritization: true,
     },
     historicalRoutines: [],
     targetDayNumber: 1,

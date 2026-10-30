@@ -262,14 +262,14 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
       'When substitution is allowed: Automatically appoints designated Backup Slot 1 and Backup Slot 2 instructors (acting 100% Floating across campus) when primary instructor is absent.',
   },
   {
-    key: 'enableCrossMutualBackup',
+    key: 'enableUnvisitedRoomTeacherPrioritization',
     ruleNumber: 22,
-    title: '22. Cross-Subject Mutual Instructor Backup',
+    title: '22. Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)',
     category: 'Tier 3: Staffing & Substitution (Moto III)',
-    badge: 'Subject Pairings',
+    badge: 'Room Coverage',
     tierNumber: 3,
     description:
-      'Enforces mutual cross-backup pairs: Forensics (Paper-5) <-> ICT Cyber (Paper-6) and Police Admin (Paper-8/9) <-> Criminology (Paper-7).',
+      'Teacher ko subject par assign karne se pehle check karein ki kya unhone us room me pehle class li hai. Building-specific instructors ke liye, unke building ke jin rooms me unhone kabhi class nahi li (0 visits), unhe highest priority par fillup kiya jaye taaki har classroom ko sabhi teachers ki classes mil sakein.',
   },
   {
     key: 'enablePracticalFlexible',
@@ -320,7 +320,7 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableNoSubstituteAllotment: false,
   replaceWithAvailableSubjectIfNoPrimary: false,
   enableDesignatedBackup: true,
-  enableCrossMutualBackup: true,
+  enableUnvisitedRoomTeacherPrioritization: true,
   enablePracticalFlexible: true,
   enableCaravanFlow: false,
 };
@@ -379,10 +379,13 @@ export function migrateLegacyRules(stored: any): RoutineRuleConfig {
   if (!stored || typeof stored !== 'object') {
     return { ...DEFAULT_ROUTINE_RULES };
   }
-  const result: RoutineRuleConfig = {
+  const result: any = {
     ...DEFAULT_ROUTINE_RULES,
     ...stored,
   };
+  if (result.enableUnvisitedRoomTeacherPrioritization === undefined) {
+    result.enableUnvisitedRoomTeacherPrioritization = true;
+  }
   return normalizeRuleConfig(result);
 }
 

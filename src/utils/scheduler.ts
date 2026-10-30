@@ -22,14 +22,14 @@ export interface SchedulerOptions {
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
-  absentTeacherIds: string[];
-  priorityPaperIds: string[];
+  absentTeacherIds?: string[];
+  priorityPaperIds?: string[];
   roomPriorityPaperIds?: Record<string, string[]>; // room-wise priority papers
   subjectPriorityTiers?: Record<string, SubjectPriorityTier>; // paperId -> HIGH | MEDIUM | LOW | NORMAL | EXCLUDE
   prioritySubjectMinPeriods?: Record<string, number>; // paperId -> guaranteed minimum periods
   excludedPaperIds?: string[]; // subjects explicitly omitted/removed from this routine
   rules?: Partial<RoutineRuleConfig>; // Toggleable routine preparation constraints
-  historicalRoutines: DailyRoutine[];
+  historicalRoutines?: DailyRoutine[];
   targetDayNumber: number;
   targetDate: string;
   notes?: string;
@@ -496,14 +496,14 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     classrooms,
     papers,
     teachers,
-    absentTeacherIds,
+    absentTeacherIds = [],
     priorityPaperIds = [],
     roomPriorityPaperIds = {},
     subjectPriorityTiers = {},
     prioritySubjectMinPeriods = {},
     excludedPaperIds = [],
     rules,
-    historicalRoutines,
+    historicalRoutines = [],
     targetDayNumber,
     targetDate,
     notes,
@@ -864,11 +864,12 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return t.assignedBuilding === rBuilding;
   };
 
-  // Sort candidate teachers to minimize workload difference (Part H & I)
+  // Sort candidate teachers to minimize workload difference and prioritize unvisited classrooms (Part H & I, Rule 22)
   const sortCandidatesByFairWorkload = (
     candidates: Teacher[],
     roomId: string,
-    roomIndex: number
+    roomIndex: number,
+    roomBuilding?: string
   ): Teacher[] => {
     return [...candidates].sort((a, b) => {
       const loadA = teacherDailyLoad.get(a.id) || 0;
@@ -881,12 +882,38 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         if (cappedA !== cappedB) return cappedA - cappedB;
       }
 
-      // 1. Teacher Deployment Tracker: lowest previous visits to this room first
-      const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
-      const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
-      if (visitsA !== visitsB) return visitsA - visitsB;
+      // Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+      if (activeRules.enableUnvisitedRoomTeacherPrioritization) {
+        const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
+        const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
 
-      // 2. Cumulative Workload Balancing: minimize Max - Min projected workload
+        const isUnvisitedA = visitsA === 0;
+        const isUnvisitedB = visitsB === 0;
+
+        // 1. Highest priority to instructor who has NEVER taught in this room (0 visits)
+        if (isUnvisitedA !== isUnvisitedB) {
+          return isUnvisitedA ? -1 : 1;
+        }
+
+        // 2. If both are unvisited (0 visits), check building-specific affinity
+        if (isUnvisitedA && isUnvisitedB && roomBuilding) {
+          const matchA = a.assignedBuilding === roomBuilding ? 1 : 0;
+          const matchB = b.assignedBuilding === roomBuilding ? 1 : 0;
+          if (matchA !== matchB) {
+            // Prioritize building-specific instructor over floating to ensure home-building coverage
+            return matchB - matchA;
+          }
+        }
+
+        // 3. Lowest previous visits to this room first
+        if (visitsA !== visitsB) return visitsA - visitsB;
+      } else {
+        const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
+        const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
+        if (visitsA !== visitsB) return visitsA - visitsB;
+      }
+
+      // Cumulative Workload Balancing: minimize Max - Min projected workload
       const totalA = getTeacherTotalLoad(a.id);
       const totalB = getTeacherTotalLoad(b.id);
       if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
@@ -940,7 +967,45 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   for (let period = 1; period <= 5; period++) {
     const busyTeachersInPeriod = new Set<string>();
 
-    for (const room of orderedRooms) {
+    // Determine room processing order for this period:
+    // When Rule 22 (enableUnvisitedRoomTeacherPrioritization) is active, prioritize classrooms
+    // where candidate primary teachers have NEVER taught (0 prior visits), ensuring unvisited
+    // rooms are filled first ("uss building me jis room me kabhi koi class nahi kiya hai.. use pehle priority diya jaye.. uss wale room me pehle fillup ho")
+    let periodRooms = [...orderedRooms];
+    if (activeRules.enableUnvisitedRoomTeacherPrioritization) {
+      periodRooms.sort((roomA, roomB) => {
+        const planA = roomDailyPlans.get(roomA.id) || [];
+        const paperA = planA[period - 1] || schedulingPapers[0] || papers[0];
+        const planB = roomDailyPlans.get(roomB.id) || [];
+        const paperB = planB[period - 1] || schedulingPapers[0] || papers[0];
+
+        // Check if roomA has available primary teachers with 0 visits in roomA
+        const unvisitedA = (paperA.primaryTeacherIds || []).some((tid) => {
+          const t = teacherMap.get(tid);
+          if (!t || !availableTeacherIds.has(tid)) return false;
+          if (!isTeacherAllowedInRoomBuilding(t, roomA.building)) return false;
+          const visits = teacherRoomDeploymentCount.get(tid)?.get(roomA.id) || 0;
+          return visits === 0;
+        });
+
+        // Check if roomB has available primary teachers with 0 visits in roomB
+        const unvisitedB = (paperB.primaryTeacherIds || []).some((tid) => {
+          const t = teacherMap.get(tid);
+          if (!t || !availableTeacherIds.has(tid)) return false;
+          if (!isTeacherAllowedInRoomBuilding(t, roomB.building)) return false;
+          const visits = teacherRoomDeploymentCount.get(tid)?.get(roomB.id) || 0;
+          return visits === 0;
+        });
+
+        if (unvisitedA !== unvisitedB) {
+          return unvisitedA ? -1 : 1;
+        }
+
+        return (classroomIndexMap.get(roomA.id) || 0) - (classroomIndexMap.get(roomB.id) || 0);
+      });
+    }
+
+    for (const room of periodRooms) {
       const roomIndex = classroomIndexMap.get(room.id) || 1;
       const roomPlan = roomDailyPlans.get(room.id) || [];
       let paper = roomPlan[period - 1] || schedulingPapers[0] || papers[0];
@@ -956,7 +1021,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
         );
         if (freeForPractical.length > 0) {
-          const sorted = sortCandidatesByFairWorkload(freeForPractical, room.id, roomIndex);
+          const sorted = sortCandidatesByFairWorkload(freeForPractical, room.id, roomIndex, room.building);
           selectedTeacherId = sorted[0].id;
           isSubstitute = false;
         }
@@ -970,7 +1035,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           .filter(Boolean);
 
         if (freePrimaries.length > 0) {
-          const sorted = sortCandidatesByFairWorkload(freePrimaries, room.id, roomIndex);
+          const sorted = sortCandidatesByFairWorkload(freePrimaries, room.id, roomIndex, room.building);
           selectedTeacherId = sorted[0].id;
           isSubstitute = false;
         }
@@ -1019,7 +1084,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
                 .filter(Boolean);
 
               if (eligiblePrimaries.length > 0) {
-                const sorted = sortCandidatesByFairWorkload(eligiblePrimaries, room.id, roomIndex);
+                const sorted = sortCandidatesByFairWorkload(eligiblePrimaries, room.id, roomIndex, room.building);
                 selectedTeacherId = sorted[0].id;
                 originalTeacherId = paper.primaryTeacherIds[0];
                 substituteReason = `Replaced ${paper.code} with alternate available subject ${replacementPaper.code} (${replacementPaper.title}) due to primary instructor unavailability`;
@@ -1040,32 +1105,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           // Substitution is permitted (No Substitution is OFF)
           const preferredOriginalId = paper.primaryTeacherIds[0] || 'T1';
 
-          // A. Cross-Subject Mutual Backup Pairs (Forensics <-> ICT, Police Admin <-> Criminology)
-          const crossBackup = CROSS_SUBJECT_BACKUP_MAP[paper.id];
-          if (activeRules.enableCrossMutualBackup && crossBackup && !selectedTeacherId) {
-            const crossTeachers: Teacher[] = [];
-            for (const bpid of crossBackup.backupPaperIds) {
-              const bPaper = paperMap.get(bpid);
-              if (!bPaper) continue;
-              for (const tid of bPaper.primaryTeacherIds) {
-                if (isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)) {
-                  const t = teacherMap.get(tid);
-                  if (t && !crossTeachers.some((ct) => ct.id === t.id)) {
-                    crossTeachers.push(t);
-                  }
-                }
-              }
-            }
-            if (crossTeachers.length > 0) {
-              const sorted = sortCandidatesByFairWorkload(crossTeachers, room.id, roomIndex);
-              selectedTeacherId = sorted[0].id;
-              isSubstitute = true;
-              originalTeacherId = preferredOriginalId;
-              substituteReason = `${crossBackup.pairLabel} appointed (${sorted[0].name})`;
-            }
-          }
-
-          // B. Designated Backup Instructors
+          // A. Designated Backup Instructors (Rule 21)
           if (activeRules.enableDesignatedBackup && !selectedTeacherId) {
             const freeBackups = availableTeachers.filter((t) => {
               const isBackup =
@@ -1075,7 +1115,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             });
 
             if (freeBackups.length > 0) {
-              const sorted = sortCandidatesByFairWorkload(freeBackups, room.id, roomIndex);
+              const sorted = sortCandidatesByFairWorkload(freeBackups, room.id, roomIndex, room.building);
               selectedTeacherId = sorted[0].id;
               isSubstitute = true;
               originalTeacherId = preferredOriginalId;
@@ -1083,7 +1123,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             }
           }
 
-          // C. Nearest Subject Papers
+          // B. Nearest Subject Papers
           if (!selectedTeacherId) {
             const nearestTeachers: Teacher[] = [];
             for (const nid of paper.nearestPaperIds) {
@@ -1097,7 +1137,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
               }
             }
             if (nearestTeachers.length > 0) {
-              const sorted = sortCandidatesByFairWorkload(nearestTeachers, room.id, roomIndex);
+              const sorted = sortCandidatesByFairWorkload(nearestTeachers, room.id, roomIndex, room.building);
               selectedTeacherId = sorted[0].id;
               isSubstitute = true;
               originalTeacherId = preferredOriginalId;
@@ -1105,7 +1145,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             }
           }
 
-          // D. Secondary Qualified Teachers
+          // C. Secondary Qualified Teachers
           if (!selectedTeacherId) {
             const secondaryTeachers = availableTeachers.filter(
               (t) =>
@@ -1113,7 +1153,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
                 isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
             );
             if (secondaryTeachers.length > 0) {
-              const sorted = sortCandidatesByFairWorkload(secondaryTeachers, room.id, roomIndex);
+              const sorted = sortCandidatesByFairWorkload(secondaryTeachers, room.id, roomIndex, room.building);
               selectedTeacherId = sorted[0].id;
               isSubstitute = true;
               originalTeacherId = preferredOriginalId;
@@ -1121,13 +1161,13 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             }
           }
 
-          // E. Emergency Reserve: Any free instructor in this building under cap & with transit gap
+          // D. Emergency Reserve: Any free instructor in this building under cap & with transit gap
           if (!selectedTeacherId) {
             const emergencyFree = availableTeachers.filter((t) =>
               isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
             );
             if (emergencyFree.length > 0) {
-              const sorted = sortCandidatesByFairWorkload(emergencyFree, room.id, roomIndex);
+              const sorted = sortCandidatesByFairWorkload(emergencyFree, room.id, roomIndex, room.building);
               selectedTeacherId = sorted[0].id;
               isSubstitute = true;
               originalTeacherId = preferredOriginalId;
@@ -1256,7 +1296,7 @@ export function generateMultipleDaysRoutines(
     numberOfDays: number;
   }
 ): DailyRoutine[] {
-  const { startDayNumber, startDate, numberOfDays, historicalRoutines, ...baseOptions } = options;
+  const { startDayNumber, startDate, numberOfDays, historicalRoutines = [], ...baseOptions } = options;
   const generated: DailyRoutine[] = [];
   const cumulativeHistory = [...historicalRoutines];
 
