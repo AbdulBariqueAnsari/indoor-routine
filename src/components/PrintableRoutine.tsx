@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { AppSettings, Classroom, DailyRoutine, Paper, Teacher } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import { FileText, Files, Printer, X } from 'lucide-react';
 
@@ -13,6 +13,7 @@ interface PrintableRoutineProps {
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
+  settings?: AppSettings;
   language?: 'hi' | 'en';
   isModalPreview?: boolean;
   printLayoutMode?: '1-page' | '2-page';
@@ -25,6 +26,7 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   classrooms,
   papers,
   teachers,
+  settings,
   isModalPreview = false,
   printLayoutMode: propLayoutMode,
   onChangePrintLayoutMode,
@@ -153,14 +155,20 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
       {/* Official Academy Header */}
       <div className="text-center border-b-2 border-black pb-2 mb-3">
         <h1 className="text-base sm:text-lg font-extrabold uppercase tracking-wider text-black">
-          STC, SAP 4TH BN
+          {settings?.institutionName || 'STC, SAP 4TH BN'}
         </h1>
+        {settings?.trainingCenterName && (
+          <div className="text-[10px] sm:text-[11px] font-bold text-slate-900 uppercase tracking-wider -mt-0.5 mb-0.5">
+            {settings.trainingCenterName}
+          </div>
+        )}
         <h2 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wide">
-          DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET
+          {settings?.subTitle || 'DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET'}
         </h2>
         <div className="flex flex-wrap justify-between text-[10px] mt-1.5 font-mono border-t border-black pt-1">
           <span>TRAINING DAY: <strong>DAY {routine.dayNumber}</strong></span>
           <span>DATE: <strong>{routine.date}</strong></span>
+          <span>LOCATION: <strong>{settings?.location || 'SAP 4TH BN CAMPUS'}</strong></span>
           <span>ROOMS: <strong>15 CLASSROOMS (8 OLD + 7 NEW)</strong></span>
           <span>PERIOD DURATION: <strong>40 MIN EACH (09:40 - 13:30)</strong></span>
           <span>TOTAL SESSIONS: <strong>75 DAILY SLOTS</strong></span>
@@ -302,17 +310,17 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
         )}
       </div>
 
-      {/* Official Signature: O/C STC (Indoor) only */}
+      {/* Official Signature: Authority & Institution only */}
       <div className="mt-4 pt-2 border-t-2 border-black flex justify-end break-inside-avoid">
         <div className="text-center font-bold text-xs text-black min-w-[200px]">
           <div className="border-b border-black mb-1 pb-6">
             {/* Space for physical signature / seal */}
           </div>
           <div className="uppercase tracking-wider font-extrabold text-[11px]">
-            O/C STC (Indoor)
+            {settings?.signatoryDesignation || 'O/C STC (Indoor)'}
           </div>
           <div className="text-[10px] font-semibold text-slate-800">
-            STC, SAP 4th Bn
+            {settings?.institutionName || 'STC, SAP 4th Bn'}
           </div>
         </div>
       </div>
@@ -330,7 +338,7 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
               <Printer className="w-5 h-5 text-indigo-600 shrink-0" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  STC, SAP 4th Bn - Print Timetable Sheet (Day {routine.dayNumber})
+                  {settings?.institutionName || 'STC, SAP 4th Bn'} - Print Timetable Sheet (Day {routine.dayNumber})
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Unified master timetable with period-wise reserve instructor roster

@@ -4,6 +4,7 @@
  */
 
 import {
+  AppSettings,
   BuildingInfo,
   Classroom,
   DailyRoutine,
@@ -13,11 +14,7 @@ import {
   UnavailableInstructor,
 } from '../types';
 
-export interface AppSettings {
-  institutionName: string;
-  activeRoutineId: string;
-  language?: string;
-}
+export type { AppSettings };
 
 export interface FullServerData {
   buildings: BuildingInfo[];

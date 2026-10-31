@@ -209,3 +209,16 @@ export interface TeacherDailyDuty {
   }[];
   totalPeriods: number;
 }
+
+export interface AppSettings {
+  institutionName: string;
+  battalionUnit?: string;
+  trainingCenterName?: string;
+  subTitle?: string;
+  location?: string;
+  signatoryDesignation?: string;
+  tagline?: string;
+  activeRoutineId: string;
+  language?: string;
+}
+

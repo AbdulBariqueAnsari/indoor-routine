@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BuildingInfo, Classroom, Paper, RoutineRuleConfig, Teacher } from '../types/index.ts';
+import { AppSettings, BuildingInfo, Classroom, Paper, RoutineRuleConfig, Teacher } from '../types/index.ts';
 
 export const INITIAL_BUILDINGS: BuildingInfo[] = [
   {
@@ -915,3 +915,17 @@ export const PERIOD_TIMINGS = [
   { period: 4, label: 'Period 4', time: '12:05 - 12:45', duration: '40 min' },
   { period: 5, label: 'Period 5', time: '12:50 - 13:30', duration: '40 min' },
 ];
+
+export const APP_DEVELOPER_MAINTAINER = 'Abdul Barique Ansari';
+
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  institutionName: 'STC, SAP 4th Bn',
+  battalionUnit: 'Special Armed Police 4th Battalion',
+  trainingCenterName: 'Specialised Training Centre',
+  subTitle: 'Daily Indoor Class Routine & Instructor Assignment Master Sheet',
+  location: 'SAP 4th Bn Campus',
+  signatoryDesignation: 'O/C STC (Indoor)',
+  tagline: 'Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors',
+  activeRoutineId: '',
+  language: 'en',
+};

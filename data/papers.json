@@ -37,7 +37,7 @@
       "P04",
       "P03"
     ],
-    "color": "#0284C7",
+    "color": "#19c502",
     "description": "Offences against body, property, state, public tranquility under BNS 2023"
   },
   {
@@ -57,7 +57,7 @@
       "P02",
       "P04"
     ],
-    "color": "#6366F1",
+    "color": "#e164f2",
     "description": "NDPS Act, POCSO Act, Arms Act, Motor Vehicles Act, Excise & Local Acts"
   },
   {
@@ -94,7 +94,7 @@
       "P13",
       "P07"
     ],
-    "color": "#EC4899",
+    "color": "#ec4646",
     "description": "Crime scene examination, ballistics, biology, DNA, fingerprint science, toxicology"
   },
   {
@@ -148,7 +148,7 @@
       "P09",
       "P10"
     ],
-    "color": "#EAB308",
+    "color": "#809806",
     "description": "Organizational hierarchy, command structure, police manuals, disciplinary regulations"
   },
   {
@@ -186,7 +186,7 @@
       "P11",
       "P08"
     ],
-    "color": "#14B8A6",
+    "color": "#11646a",
     "description": "Leadership, stress management, public speaking, conflict resolution, mental fitness"
   },
   {
@@ -205,7 +205,7 @@
       "P13",
       "P07"
     ],
-    "color": "#D97706",
+    "color": "#471372",
     "description": "Riot control tactics, mob dispersal, VIP security, intelligence collection, counter-insurgency"
   },
   {
@@ -240,7 +240,7 @@
       "P06",
       "P11"
     ],
-    "color": "#84CC16",
+    "color": "#570531",
     "description": "Moot courts, crime scene simulations, CCTNS live entry, mob control drills, case diary drafting"
   }
 ]

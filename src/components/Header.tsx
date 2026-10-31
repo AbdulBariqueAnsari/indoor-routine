@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Database,
   Eye,
+  LayoutTemplate,
   Lock,
   LogIn,
   LogOut,
@@ -38,9 +39,12 @@ interface HeaderProps {
   onOpenMasterData?: () => void;
   onOpenLeaveManager?: () => void;
   onOpenRulesModal?: () => void;
+  onOpenPageSetup?: () => void;
   onPrint: () => void;
   isCurrentEditable: boolean;
   onToggleLockRoutine?: (routineId: string) => void;
+  institutionName?: string;
+  tagline?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -57,9 +61,12 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMasterData,
   onOpenLeaveManager,
   onOpenRulesModal,
+  onOpenPageSetup,
   onPrint,
   isCurrentEditable,
   onToggleLockRoutine,
+  institutionName,
+  tagline,
 }) => {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
@@ -108,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-tight truncate">
-                  STC, SAP 4th Bn
+                  {institutionName || 'STC, SAP 4th Bn'}
                 </h1>
                 {!isAdmin ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
@@ -127,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium hidden lg:block truncate">
-                Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors
+                {tagline || 'Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors'}
               </p>
             </div>
           </div>
@@ -309,6 +316,23 @@ export const Header: React.FC<HeaderProps> = ({
                           <div>
                             <div className="font-bold text-slate-900">Rules & Checks</div>
                             <div className="text-[10px] text-slate-500">24 Rules in 3 Priority Tiers</div>
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Page Setup */}
+                      {onOpenPageSetup && (
+                        <button
+                          onClick={() => {
+                            setIsAdminMenuOpen(false);
+                            onOpenPageSetup();
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-indigo-50/70 text-slate-800 transition-colors border-t border-slate-100"
+                        >
+                          <LayoutTemplate className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-900">Page Setup</div>
+                            <div className="text-[10px] text-slate-500">STC SAP Bn & Training Centre details</div>
                           </div>
                         </button>
                       )}

@@ -4,9 +4,9 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { BuildingInfo, Classroom, ClassSlot, DailyRoutine, Paper, RoutineRuleConfig, Teacher } from './types';
+import { AppSettings, BuildingInfo, Classroom, ClassSlot, DailyRoutine, Paper, RoutineRuleConfig, Teacher } from './types';
 import { api } from './utils/api';
-import { DEFAULT_ROUTINE_RULES, INITIAL_BUILDINGS } from './data/initialData';
+import { APP_DEVELOPER_MAINTAINER, DEFAULT_APP_SETTINGS, DEFAULT_ROUTINE_RULES, INITIAL_BUILDINGS } from './data/initialData';
 import { isRoutineEditable, validateRoutine } from './utils/routineValidator';
 import { Header } from './components/Header';
 import { ConflictBanner } from './components/ConflictBanner';
@@ -21,6 +21,7 @@ import { SlotEditModal } from './components/SlotEditModal';
 import { RoutineGeneratorModal } from './components/RoutineGeneratorModal';
 import { RoutineRulesModal } from './components/RoutineRulesModal';
 import { MasterDataModal } from './components/MasterDataModal';
+import { PageSetupModal } from './components/PageSetupModal';
 import { PrintableRoutine } from './components/PrintableRoutine';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
@@ -34,6 +35,7 @@ export default function App() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [allRoutines, setAllRoutines] = useState<DailyRoutine[]>([]);
   const [rules, setRules] = useState<RoutineRuleConfig>(DEFAULT_ROUTINE_RULES);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [activeRoutineId, setActiveRoutineId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('matrix');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -49,6 +51,7 @@ export default function App() {
   const [recreatingRoutine, setRecreatingRoutine] = useState<DailyRoutine | null>(null);
   const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [isPageSetupOpen, setIsPageSetupOpen] = useState(false);
   const [isLeaveManagerOpen, setIsLeaveManagerOpen] = useState(false);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [printLayoutMode, setPrintLayoutMode] = useState<'1-page' | '2-page'>('1-page');
@@ -66,6 +69,9 @@ export default function App() {
         setTeachers(data.teachers || []);
         setAllRoutines(data.routines || []);
         setRules(data.rules || DEFAULT_ROUTINE_RULES);
+        if (data.settings) {
+          setSettings((prev) => ({ ...prev, ...data.settings }));
+        }
         setActiveRoutineId(data.settings?.activeRoutineId || data.routines?.[data.routines.length - 1]?.id || '');
         // Sync into separated discrete localStorage keys
         modularLocalStorage.syncFromServer(data);
@@ -79,6 +85,9 @@ export default function App() {
           setTeachers(localData.teachers || []);
           setAllRoutines(localData.routines || []);
           setRules(localData.rules || DEFAULT_ROUTINE_RULES);
+          if (localData.settings) {
+            setSettings((prev) => ({ ...prev, ...localData.settings }));
+          }
           setActiveRoutineId(localData.settings?.activeRoutineId || localData.routines?.[localData.routines.length - 1]?.id || '');
         }
       } finally {
@@ -324,6 +333,19 @@ export default function App() {
     }
   };
 
+  // Handle application page setup / presentation settings save (saved to server & local)
+  const handleSaveSettings = async (updated: Partial<AppSettings>) => {
+    const merged: AppSettings = { ...settings, ...updated };
+    setSettings(merged);
+    modularLocalStorage.saveSettings(merged);
+    try {
+      await api.saveSettings(merged);
+    } catch (err) {
+      console.error('Error saving page setup settings to server:', err);
+      throw err;
+    }
+  };
+
   // Handle routine selection
   const handleSelectRoutine = (routineId: string) => {
     setActiveRoutineId(routineId);
@@ -356,6 +378,9 @@ export default function App() {
       setTeachers(store.teachers);
       setAllRoutines(store.routines);
       setRules(store.rules);
+      if (store.settings) {
+        setSettings(store.settings);
+      }
       setActiveRoutineId(store.settings.activeRoutineId);
       setActiveTab('matrix');
     } catch (err) {
@@ -399,9 +424,12 @@ export default function App() {
           onOpenMasterData={() => setIsMasterDataOpen(true)}
           onOpenLeaveManager={() => setIsLeaveManagerOpen(true)}
           onOpenRulesModal={() => setIsRulesModalOpen(true)}
+          onOpenPageSetup={() => setIsPageSetupOpen(true)}
           onPrint={handlePrint}
           isCurrentEditable={isCurrentEditable}
           onToggleLockRoutine={handleToggleLockRoutine}
+          institutionName={settings.institutionName}
+          tagline={settings.tagline}
         />
 
         {/* Main Content Area */}
@@ -619,19 +647,29 @@ export default function App() {
           }}
         />
 
+        {/* Page Setup Modal (Admin only) */}
+        {isAdmin && isPageSetupOpen && (
+          <PageSetupModal
+            isOpen={isPageSetupOpen}
+            onClose={() => setIsPageSetupOpen(false)}
+            settings={settings}
+            onSaveSettings={handleSaveSettings}
+          />
+        )}
+
         {/* Clean Footer */}
         <footer className="border-t border-slate-200 bg-white py-4 mt-8 no-print">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <div>
               <span>
-                STC, SAP 4th Bn · {classrooms.length} Classrooms · {teachers.length} Instructors · {papers.length} Subject Papers · 40 min / Period
+                {settings.institutionName || 'STC, SAP 4th Bn'} · {classrooms.length} Classrooms · {teachers.length} Instructors · {papers.length} Subject Papers · 40 min / Period
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <span className="flex items-center gap-1.5 text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 font-medium">
                 <User className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Developer & Maintainer: <strong className="text-slate-900 font-bold">Abdul Barique Ansari</strong></span>
+                <span>Developer & Maintainer: <strong className="text-slate-900 font-bold">{APP_DEVELOPER_MAINTAINER}</strong></span>
               </span>
               <span className="flex items-center gap-1 text-blue-700 font-medium">
                 <Database className="w-3.5 h-3.5" />
@@ -653,6 +691,7 @@ export default function App() {
           classrooms={classrooms}
           papers={papers}
           teachers={teachers}
+          settings={settings}
           language="en"
           isModalPreview={true}
           printLayoutMode={printLayoutMode}
@@ -668,6 +707,7 @@ export default function App() {
           classrooms={classrooms}
           papers={papers}
           teachers={teachers}
+          settings={settings}
           language="en"
           isModalPreview={false}
           printLayoutMode={printLayoutMode}

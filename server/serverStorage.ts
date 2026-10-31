@@ -25,6 +25,12 @@ import { generateDailyRoutine } from '../src/utils/scheduler.ts';
 
 export interface ServerSettings {
   institutionName: string;
+  battalionUnit?: string;
+  trainingCenterName?: string;
+  subTitle?: string;
+  location?: string;
+  signatoryDesignation?: string;
+  tagline?: string;
   activeRoutineId: string;
   language: string;
 }
