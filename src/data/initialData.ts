@@ -924,6 +924,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   trainingCenterName: 'Specialised Training Centre',
   subTitle: 'Daily Indoor Class Routine & Instructor Assignment Master Sheet',
   location: 'SAP 4th Bn Campus',
+  address: 'Kasba, Purnea, Bihar - 854330',
   signatoryDesignation: 'O/C STC (Indoor)',
   tagline: 'Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors',
   activeRoutineId: '',

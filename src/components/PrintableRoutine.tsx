@@ -154,17 +154,27 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
     <div className="p-4 sm:p-6 bg-white text-black font-sans w-full max-w-6xl mx-auto">
       {/* Official Academy Header */}
       <div className="text-center border-b-2 border-black pb-2 mb-3">
-        <h1 className="text-base sm:text-lg font-extrabold uppercase tracking-wider text-black">
-          {settings?.institutionName || 'STC, SAP 4TH BN'}
+        {/* 1. Training Centre Name (Bada karke / Large Heading) */}
+        <h1 className="text-lg sm:text-xl font-black uppercase tracking-wider text-black">
+          {settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE'}
         </h1>
-        {settings?.trainingCenterName && (
-          <div className="text-[10px] sm:text-[11px] font-bold text-slate-900 uppercase tracking-wider -mt-0.5 mb-0.5">
-            {settings.trainingCenterName}
-          </div>
-        )}
-        <h2 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wide">
+
+        {/* 2. STC, SAP 4th Bn (Next Line) */}
+        <div className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-900 mt-0.5">
+          {settings?.institutionName || 'STC, SAP 4TH BN'}
+        </div>
+
+        {/* 3. Address (Next Line) */}
+        <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 mt-0.5">
+          {settings?.address || 'Kasba, Raiganj, Uttar Dinajpur'}
+        </div>
+
+        {/* 4. Routine Document Subtitle */}
+        <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1 border-t border-black/40">
           {settings?.subTitle || 'DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET'}
         </h2>
+
+        {/* 5. Metadata Bar */}
         <div className="flex flex-wrap justify-between text-[10px] mt-1.5 font-mono border-t border-black pt-1">
           <span>TRAINING DAY: <strong>DAY {routine.dayNumber}</strong></span>
           <span>DATE: <strong>{routine.date}</strong></span>
@@ -338,7 +348,7 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
               <Printer className="w-5 h-5 text-indigo-600 shrink-0" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  {settings?.institutionName || 'STC, SAP 4th Bn'} - Print Timetable Sheet (Day {routine.dayNumber})
+                  {settings?.trainingCenterName || 'Subsidiary Training Centre'} · {settings?.institutionName || 'STC, SAP 4th Bn'} (Day {routine.dayNumber})
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Unified master timetable with period-wise reserve instructor roster

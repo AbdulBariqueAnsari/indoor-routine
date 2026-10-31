@@ -9,6 +9,7 @@ import {
   Calendar,
   ChevronDown,
   Database,
+  Download,
   Eye,
   LayoutTemplate,
   Lock,
@@ -40,6 +41,7 @@ interface HeaderProps {
   onOpenLeaveManager?: () => void;
   onOpenRulesModal?: () => void;
   onOpenPageSetup?: () => void;
+  onOpenDownloads?: () => void;
   onPrint: () => void;
   isCurrentEditable: boolean;
   onToggleLockRoutine?: (routineId: string) => void;
@@ -62,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLeaveManager,
   onOpenRulesModal,
   onOpenPageSetup,
+  onOpenDownloads,
   onPrint,
   isCurrentEditable,
   onToggleLockRoutine,
@@ -205,6 +208,18 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Print</span>
             </button>
 
+            {/* Quick Downloads Hub Button for Admin */}
+            {isAdmin && onOpenDownloads && (
+              <button
+                onClick={onOpenDownloads}
+                className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 shadow-2xs transition-colors"
+                title="Downloads & Reports Export Hub (PDF & Excel)"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Downloads</span>
+              </button>
+            )}
+
             {/* Admin Actions */}
             {isAdmin ? (
               <>
@@ -333,6 +348,23 @@ export const Header: React.FC<HeaderProps> = ({
                           <div>
                             <div className="font-bold text-slate-900">Page Setup</div>
                             <div className="text-[10px] text-slate-500">STC SAP Bn & Training Centre details</div>
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Downloads & Reports Export Hub */}
+                      {onOpenDownloads && (
+                        <button
+                          onClick={() => {
+                            setIsAdminMenuOpen(false);
+                            onOpenDownloads();
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-emerald-50/70 text-slate-800 transition-colors border-t border-slate-100"
+                        >
+                          <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-900">Downloads & Reports</div>
+                            <div className="text-[10px] text-slate-500">PDF & Excel exports for all 8 registers</div>
                           </div>
                         </button>
                       )}

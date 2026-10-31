@@ -22,6 +22,7 @@ import { RoutineGeneratorModal } from './components/RoutineGeneratorModal';
 import { RoutineRulesModal } from './components/RoutineRulesModal';
 import { MasterDataModal } from './components/MasterDataModal';
 import { PageSetupModal } from './components/PageSetupModal';
+import { DownloadsModal } from './components/DownloadsModal';
 import { PrintableRoutine } from './components/PrintableRoutine';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
@@ -52,6 +53,7 @@ export default function App() {
   const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isPageSetupOpen, setIsPageSetupOpen] = useState(false);
+  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
   const [isLeaveManagerOpen, setIsLeaveManagerOpen] = useState(false);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [printLayoutMode, setPrintLayoutMode] = useState<'1-page' | '2-page'>('1-page');
@@ -425,6 +427,7 @@ export default function App() {
           onOpenLeaveManager={() => setIsLeaveManagerOpen(true)}
           onOpenRulesModal={() => setIsRulesModalOpen(true)}
           onOpenPageSetup={() => setIsPageSetupOpen(true)}
+          onOpenDownloads={() => setIsDownloadsOpen(true)}
           onPrint={handlePrint}
           isCurrentEditable={isCurrentEditable}
           onToggleLockRoutine={handleToggleLockRoutine}
@@ -654,6 +657,20 @@ export default function App() {
             onClose={() => setIsPageSetupOpen(false)}
             settings={settings}
             onSaveSettings={handleSaveSettings}
+          />
+        )}
+
+        {/* Downloads & Reports Export Hub (Admin only) */}
+        {isAdmin && isDownloadsOpen && (
+          <DownloadsModal
+            isOpen={isDownloadsOpen}
+            onClose={() => setIsDownloadsOpen(false)}
+            teachers={teachers}
+            papers={papers}
+            classrooms={classrooms}
+            allRoutines={allRoutines}
+            currentRoutine={currentRoutine}
+            settings={settings}
           />
         )}
 

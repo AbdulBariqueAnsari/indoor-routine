@@ -44,6 +44,7 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
     trainingCenterName: settings.trainingCenterName || DEFAULT_APP_SETTINGS.trainingCenterName,
     subTitle: settings.subTitle || DEFAULT_APP_SETTINGS.subTitle,
     location: settings.location || DEFAULT_APP_SETTINGS.location,
+    address: settings.address || DEFAULT_APP_SETTINGS.address || '',
     signatoryDesignation: settings.signatoryDesignation || DEFAULT_APP_SETTINGS.signatoryDesignation,
     tagline: settings.tagline || DEFAULT_APP_SETTINGS.tagline,
     activeRoutineId: settings.activeRoutineId || '',
@@ -67,6 +68,7 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
       trainingCenterName: DEFAULT_APP_SETTINGS.trainingCenterName,
       subTitle: DEFAULT_APP_SETTINGS.subTitle,
       location: DEFAULT_APP_SETTINGS.location,
+      address: DEFAULT_APP_SETTINGS.address,
       signatoryDesignation: DEFAULT_APP_SETTINGS.signatoryDesignation,
       tagline: DEFAULT_APP_SETTINGS.tagline,
       activeRoutineId: settings.activeRoutineId,
@@ -86,6 +88,7 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
         trainingCenterName: formData.trainingCenterName?.trim() || DEFAULT_APP_SETTINGS.trainingCenterName,
         subTitle: formData.subTitle?.trim() || DEFAULT_APP_SETTINGS.subTitle,
         location: formData.location?.trim() || DEFAULT_APP_SETTINGS.location,
+        address: formData.address?.trim() || DEFAULT_APP_SETTINGS.address,
         signatoryDesignation: formData.signatoryDesignation?.trim() || DEFAULT_APP_SETTINGS.signatoryDesignation,
         tagline: formData.tagline?.trim() || DEFAULT_APP_SETTINGS.tagline,
       });
@@ -235,6 +238,22 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
 
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Institutional / Campus Address (Printed on PDF 3rd line)
+                </label>
+                <input
+                  type="text"
+                  value={formData.address || ''}
+                  onChange={(e) => handleChange('address', e.target.value)}
+                  placeholder="e.g. Kasba, Raiganj, Uttar Dinajpur"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400 font-medium"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Physical address printed directly under STC, SAP 4th Bn in PDF routine and official report headers.
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Routine Sheet Subtitle / Heading
                 </label>
                 <input
@@ -332,17 +351,26 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
             </div>
 
             <div className="text-center py-2 space-y-1">
-              <div className="text-sm sm:text-base font-extrabold tracking-wide uppercase text-white">
+              {/* 1. Training Centre Name (Large & Bold) */}
+              <div className="text-base sm:text-lg font-black tracking-wide uppercase text-white">
+                {formData.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE'}
+              </div>
+
+              {/* 2. STC, SAP 4th Bn */}
+              <div className="text-xs sm:text-sm font-bold tracking-wide uppercase text-indigo-300">
                 {formData.institutionName || 'STC, SAP 4TH BN'}
               </div>
-              {formData.trainingCenterName && (
-                <div className="text-xs font-semibold text-indigo-300 uppercase tracking-wide">
-                  {formData.trainingCenterName}
-                </div>
-              )}
-              <div className="text-[11px] font-medium text-slate-300 max-w-xl mx-auto">
+
+              {/* 3. Address */}
+              <div className="text-[11px] font-medium text-slate-300">
+                {formData.address || 'Kasba, Raiganj, Uttar Dinajpur'}
+              </div>
+
+              {/* 4. Routine Document Subtitle */}
+              <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wide pt-1 border-t border-slate-800 max-w-xl mx-auto">
                 {formData.subTitle || 'Daily Indoor Class Routine & Instructor Assignment Master Sheet'}
               </div>
+
               <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] text-slate-400 pt-1 font-mono">
                 <span>Location: <strong className="text-slate-200">{formData.location || 'SAP 4th Bn Campus'}</strong></span>
                 <span>•</span>

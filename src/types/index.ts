@@ -216,6 +216,7 @@ export interface AppSettings {
   trainingCenterName?: string;
   subTitle?: string;
   location?: string;
+  address?: string;
   signatoryDesignation?: string;
   tagline?: string;
   activeRoutineId: string;
