@@ -217,14 +217,14 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                 Instructor Workload Ledger
               </span>
               <span className="text-xs text-indigo-200">
-                Official Session Tracker · T1 through T26
+                Official Session Tracker · T1 through T{teachers.length}
               </span>
             </div>
             <h2 className="text-lg font-bold text-white mt-1">
               Instructor Session Ledger & Duty Tracker
             </h2>
             <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
-              Real-time calculation of total sessions conducted by each instructor (T1–T26) across generated daily routines. Tracks past completed sessions, today's schedule, substitute duties, and per-subject breakdown.
+              Real-time calculation of total sessions conducted by each instructor (T1–T{teachers.length}) across generated daily routines. Tracks past completed sessions, today's schedule, substitute duties, and per-subject breakdown.
             </p>
           </div>
 
@@ -309,7 +309,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All (26)
+              All ({teachers.length})
             </button>
             <button
               onClick={() => setBuildingFilter('OLD')}
@@ -353,7 +353,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
             >
               <option value="total">Total Sessions</option>
               <option value="today">Today's Sessions</option>
-              <option value="code">Instructor Code (T1..T26)</option>
+              <option value="code">Instructor Code (T1..T{teachers.length})</option>
               <option value="name">Name</option>
             </select>
             <button
@@ -706,7 +706,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
         {/* Footer info bar */}
         <div className="p-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <span>
-            Displaying <strong>{filteredAndSortedStats.length}</strong> of <strong>26</strong> instructors. Showing completed sessions from all generated routines.
+            Displaying <strong>{filteredAndSortedStats.length}</strong> of <strong>{teachers.length}</strong> instructors. Showing completed sessions from all generated routines.
           </span>
           <span className="font-mono text-[11px] text-slate-600">
             STC, SAP 4th Bn · Official Academic Record

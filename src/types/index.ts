@@ -15,11 +15,11 @@ export interface BuildingInfo {
 
 export type SubjectPriorityTier = 'HIGH' | 'MEDIUM' | 'LOW' | 'NORMAL' | 'EXCLUDE';
 
-export type UnavailabilityType = 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK';
+export type UnavailabilityType = 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK' | 'REST';
 
 export interface UnavailableInstructor {
   teacherId: string;
-  type: UnavailabilityType; // 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK'
+  type: UnavailabilityType; // 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK' | 'REST'
   remark?: string;
   date?: string;
 }
@@ -30,11 +30,13 @@ export interface RoutineRuleConfig {
   enableStrictAbsenteeExclusion: boolean; // Rule 2: Strict Absentee/Leave Exclusion: Absent/Leave/Duty/Sick teachers strictly excluded
   enableStrictBuildingBinding: boolean; // Rule 3: Strict Building Binding (Old strictly in OB, New strictly in NB; only Floating can cross)
   enableBuildingChangeGap: boolean; // Rule 4: Mandatory 1-Period Transit Gap on Floating Building Transition
+  enableBuildingChangeGapPeriod3To4Exemption: boolean; // Rule 4A: Exclude Period 3 to Period 4 Transit from Mandatory Gap (Recess Break)
   enableRoomQuotaCompletionLock: boolean; // Rule 5: 100% Quota Lockout: Room cannot receive paper once reaching 100% target quota
   enableMaxOnePeriodPerSubjectPerRoomDaily: boolean; // Rule 6: Single Period per Subject per Room per Day (5 different subjects/day)
   enableMaxRoomDailyLimit: boolean; // Rule 6A: Maximum Two Periods per Subject per Class/Room per Day (available when Rule 6 is OFF)
   enableNonConsecutiveGapForSameSubject: boolean; // Rule 6B: Prevent Consecutive Periods of the Same Subject (available when Rule 6A is ON)
   enableDailyWorkloadMaxCap: boolean; // Rule 7: Strict Hard-Cap: Max 4 Periods/Day per Instructor (formerly Rule 9)
+  enableTeacherLoadEqualizationPriority: boolean; // Rule 8: Teacher Load Equalization Priority (Teacher-First Detailment)
 
   // === TIER 2: Curriculum Progression & Subject Placement (Moto I & IV: Priority Tier 2) ===
   enableClassroomSubjectEqualization: boolean; // Rule 10: Moto I: Equalize subject completion % across all rooms (lowest % first)
@@ -104,7 +106,7 @@ export interface Teacher {
   maxDailyPeriods: number; // default 3 or 4
   phone?: string;
   email?: string;
-  status?: 'ACTIVE' | 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK';
+  status?: 'ACTIVE' | 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK' | 'REST';
   qualification?: string;
   remarks?: string;
 }
@@ -221,5 +223,6 @@ export interface AppSettings {
   tagline?: string;
   activeRoutineId: string;
   language?: string;
+  adminPassword?: string;
 }
 

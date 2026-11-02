@@ -34,6 +34,7 @@ export interface ServerSettings {
   tagline?: string;
   activeRoutineId: string;
   language: string;
+  adminPassword?: string;
 }
 
 export interface RoutineIndexItem {
@@ -260,6 +261,36 @@ function persistSeparateStore(store: ServerStore): void {
 /**
  * Load store from separate files on disk, or auto-migrate legacy monolithic routine_store.json
  */
+function syncPapersWithTeachers(papers: Paper[], teachers: Teacher[]): Paper[] {
+  return papers.map((p) => {
+    const matchingTeachers = teachers.filter((t) => {
+      if (!t.primaryPaperIds || t.primaryPaperIds.length === 0) return false;
+      return t.primaryPaperIds.some((pid) => {
+        if (!pid) return false;
+        const cleanPid = pid.trim().toLowerCase();
+        const pId = p.id.trim().toLowerCase();
+        const pCode = p.code.trim().toLowerCase();
+        const pTitle = p.title.trim().toLowerCase();
+        return (
+          cleanPid === pId ||
+          cleanPid === pCode ||
+          cleanPid === pTitle ||
+          pCode.replace(/[^a-z0-9]/g, '') === cleanPid.replace(/[^a-z0-9]/g, '') ||
+          (cleanPid.length > 3 && pTitle.includes(cleanPid))
+        );
+      });
+    });
+
+    if (matchingTeachers.length > 0) {
+      return {
+        ...p,
+        primaryTeacherIds: matchingTeachers.map((t) => t.id),
+      };
+    }
+    return p;
+  });
+}
+
 function readStoreFromDisk(): ServerStore {
   ensureDirectories();
 
@@ -335,9 +366,10 @@ function readStoreFromDisk(): ServerStore {
       settings.activeRoutineId = routines[routines.length - 1].id;
     }
 
+    const syncedPapers = syncPapersWithTeachers(papers, teachers);
     const store: ServerStore = {
       teachers,
-      papers,
+      papers: syncedPapers,
       classrooms,
       buildings,
       routines,
@@ -365,7 +397,9 @@ export const serverStorage = {
   saveTeachers(teachers: Teacher[]): ServerStore {
     const store = this.getStore();
     store.teachers = teachers;
+    store.papers = syncPapersWithTeachers(store.papers, teachers);
     writeJsonSafely(TEACHERS_FILE, teachers);
+    writeJsonSafely(PAPERS_FILE, store.papers);
     inMemoryCache = store;
     return store;
   },
@@ -373,8 +407,8 @@ export const serverStorage = {
   // 2. Subjects / Papers
   savePapers(papers: Paper[]): ServerStore {
     const store = this.getStore();
-    store.papers = papers;
-    writeJsonSafely(PAPERS_FILE, papers);
+    store.papers = syncPapersWithTeachers(papers, store.teachers);
+    writeJsonSafely(PAPERS_FILE, store.papers);
     inMemoryCache = store;
     return store;
   },

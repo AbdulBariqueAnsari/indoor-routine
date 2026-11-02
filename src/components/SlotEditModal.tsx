@@ -68,7 +68,11 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
   const isSelectedAbsent = routine.absentTeacherIds.includes(selectedTeacherId);
 
   // Check if chosen teacher is primary or nearest
-  const isPrimary = selectedPaper?.primaryTeacherIds.includes(selectedTeacherId) ?? false;
+  const isPrimary =
+    (selectedPaper &&
+      (selectedPaper.primaryTeacherIds.includes(selectedTeacherId) ||
+        teachers.find((t) => t.id === selectedTeacherId)?.primaryPaperIds.includes(selectedPaper.id))) ??
+    false;
   const isNearest =
     !isPrimary &&
     (selectedPaper?.nearestPaperIds.some((npId) => {
@@ -163,10 +167,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
                 const newPaperId = e.target.value;
                 setSelectedPaperId(newPaperId);
                 const p = papers.find((x) => x.id === newPaperId);
-                if (p && p.primaryTeacherIds.length > 0) {
+                const primaryTeacherIds = teachers
+                  .filter((t) => p?.primaryTeacherIds.includes(t.id) || (p && t.primaryPaperIds.includes(p.id)))
+                  .map((t) => t.id);
+                if (primaryTeacherIds.length > 0) {
                   // Prefer a primary teacher who is free
-                  const freePrimary = p.primaryTeacherIds.find((tId) => !busyTeacherToRoom.has(tId));
-                  setSelectedTeacherId(freePrimary || p.primaryTeacherIds[0]);
+                  const freePrimary = primaryTeacherIds.find((tId) => !busyTeacherToRoom.has(tId));
+                  setSelectedTeacherId(freePrimary || primaryTeacherIds[0]);
                 } else if (!newPaperId) {
                   setSelectedTeacherId('');
                 }
@@ -175,10 +182,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
             >
               <option value="">-- No Subject (Blank / Clear Slot) --</option>
               {papers.map((p) => {
-                const teacherCodes = p.primaryTeacherIds.map((tid) => teachers.find((t) => t.id === tid)?.code || tid).join(', ');
+                const pTeacherCodes = teachers
+                  .filter((t) => p.primaryTeacherIds.includes(t.id) || t.primaryPaperIds.includes(p.id))
+                  .map((t) => t.code)
+                  .join(', ');
                 return (
                   <option key={p.id} value={p.id}>
-                    {p.code} - {p.title} {teacherCodes ? `(Main: ${teacherCodes})` : ''}
+                    {p.code} - {p.title} {pTeacherCodes ? `(Main: ${pTeacherCodes})` : ''}
                   </option>
                 );
               })}
@@ -226,7 +236,11 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
               <option value="">-- No Instructor (Leave Blank / Vacant) --</option>
               <optgroup label="Primary Instructors for this Paper">
                 {teachers
-                  .filter((t) => selectedPaper?.primaryTeacherIds.includes(t.id))
+                  .filter((t) =>
+                    selectedPaper &&
+                    (selectedPaper.primaryTeacherIds.includes(t.id) ||
+                      t.primaryPaperIds.includes(selectedPaper.id))
+                  )
                   .map((t) => {
                     const isBusy = busyTeacherToRoom.has(t.id);
                     const bRoom = isBusy ? classrooms.find((c) => c.id === busyTeacherToRoom.get(t.id)) : null;
@@ -238,9 +252,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
                   })}
               </optgroup>
 
-              <optgroup label="All Other Available Instructors (T1–T26)">
+              <optgroup label={`All Other Available Instructors (T1–T${teachers.length})`}>
                 {teachers
-                  .filter((t) => !selectedPaper?.primaryTeacherIds.includes(t.id))
+                  .filter((t) =>
+                    !selectedPaper ||
+                    (!selectedPaper.primaryTeacherIds.includes(t.id) &&
+                      !t.primaryPaperIds.includes(selectedPaper.id))
+                  )
                   .map((t) => {
                     const isBusy = busyTeacherToRoom.has(t.id);
                     const bRoom = isBusy ? classrooms.find((c) => c.id === busyTeacherToRoom.get(t.id)) : null;

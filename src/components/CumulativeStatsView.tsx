@@ -362,7 +362,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                         <td className="p-3 text-slate-600 text-[11px]">
                           {instructorNames || (
                             <span className="italic text-emerald-700 font-semibold">
-                              All 26 Instructors Available (Practical)
+                              All {teachers.length} Instructors Available (Practical)
                             </span>
                           )}
                         </td>
@@ -530,7 +530,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                         <td className="p-3 text-slate-600 text-[11px]">
                           {instructorNames || (
                             <span className="italic text-emerald-700 font-semibold">
-                              All 26 Instructors Available (Practical)
+                              All {teachers.length} Instructors Available (Practical)
                             </span>
                           )}
                         </td>

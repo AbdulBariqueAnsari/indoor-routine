@@ -2,7 +2,9 @@
   "id": "routine-day-1",
   "dayNumber": 1,
   "date": "2026-10-27",
-  "absentTeacherIds": [],
+  "absentTeacherIds": [
+    "T19"
+  ],
   "priorityPaperIds": [],
   "roomPriorityPaperIds": {
     "OB-1": [],
@@ -274,11 +276,11 @@
       "roomId": "NB-3",
       "period": 2,
       "paperId": "P10",
-      "teacherId": "T19",
+      "teacherId": "T20",
       "isSubstitute": true,
       "isPriority": false,
-      "originalTeacherId": "T20",
-      "substituteReason": "Nearest Related Subject Substitute Instructor"
+      "originalTeacherId": "T19",
+      "substituteReason": "Reassigned from T19 (DUTY): Co-primary instructor [T20] SI(UB) Sankar Bhowmick"
     },
     {
       "id": "slot-1-CR-NB-12-1793034850769-P2",
@@ -525,11 +527,11 @@
       "roomId": "OB-8",
       "period": 4,
       "paperId": "P12",
-      "teacherId": "T19",
+      "teacherId": "T25",
       "isSubstitute": true,
       "isPriority": false,
-      "originalTeacherId": "T24",
-      "substituteReason": "Emergency / Qualified Substitute Instructor"
+      "originalTeacherId": "T19",
+      "substituteReason": "Reassigned from T19 (DUTY): Co-primary instructor [T25] SI(UB) Chandan Kr. Siddhanta"
     },
     {
       "id": "slot-1-NB-1-P4",
@@ -759,9 +761,16 @@
     }
   ],
   "createdAt": "2026-10-28T17:33:51.558Z",
-  "updatedAt": "2026-10-31T16:37:38.968Z",
+  "updatedAt": "2026-11-01T13:11:23.236Z",
   "isLocked": true,
   "status": "published",
   "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
-  "unavailableTeachers": []
+  "unavailableTeachers": [
+    {
+      "teacherId": "T19",
+      "type": "DUTY",
+      "remark": "Special / Law & Order / Campus Duty",
+      "date": "2026-10-27"
+    }
+  ]
 }

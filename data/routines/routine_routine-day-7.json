@@ -1,0 +1,1093 @@
+{
+  "id": "routine-day-7",
+  "dayNumber": 7,
+  "date": "2026-11-03",
+  "absentTeacherIds": [
+    "T17"
+  ],
+  "priorityPaperIds": [],
+  "roomPriorityPaperIds": {},
+  "subjectPriorityTiers": {
+    "P13": "EXCLUDE"
+  },
+  "prioritySubjectMinPeriods": {},
+  "excludedPaperIds": [
+    "P13"
+  ],
+  "slots": [
+    {
+      "id": "slot-7-OB-1-P1",
+      "roomId": "OB-1",
+      "period": 1,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-2-P1",
+      "roomId": "OB-2",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-3-P1",
+      "roomId": "OB-3",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-4-P1",
+      "roomId": "OB-4",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-5-P1",
+      "roomId": "OB-5",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-6-P1",
+      "roomId": "OB-6",
+      "period": 1,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-7-P1",
+      "roomId": "OB-7",
+      "period": 1,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-8-P1",
+      "roomId": "OB-8",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-1-P1",
+      "roomId": "NB-1",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-2-P1",
+      "roomId": "NB-2",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-3-P1",
+      "roomId": "NB-3",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-12-1793034850769-P1",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-13-1793034866049-P1",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-14-1793034895859-P1",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-15-1793034922650-P1",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 1,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-1-P2",
+      "roomId": "OB-1",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-2-P2",
+      "roomId": "OB-2",
+      "period": 2,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-3-P2",
+      "roomId": "OB-3",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-4-P2",
+      "roomId": "OB-4",
+      "period": 2,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-5-P2",
+      "roomId": "OB-5",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-6-P2",
+      "roomId": "OB-6",
+      "period": 2,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-7-P2",
+      "roomId": "OB-7",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-8-P2",
+      "roomId": "OB-8",
+      "period": 2,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-1-P2",
+      "roomId": "NB-1",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-2-P2",
+      "roomId": "NB-2",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-3-P2",
+      "roomId": "NB-3",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-12-1793034850769-P2",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 2,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-13-1793034866049-P2",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 2,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-14-1793034895859-P2",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-15-1793034922650-P2",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-1-P3",
+      "roomId": "OB-1",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-2-P3",
+      "roomId": "OB-2",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-3-P3",
+      "roomId": "OB-3",
+      "period": 3,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-4-P3",
+      "roomId": "OB-4",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-5-P3",
+      "roomId": "OB-5",
+      "period": 3,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-6-P3",
+      "roomId": "OB-6",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-7-P3",
+      "roomId": "OB-7",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-8-P3",
+      "roomId": "OB-8",
+      "period": 3,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-1-P3",
+      "roomId": "NB-1",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-2-P3",
+      "roomId": "NB-2",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-3-P3",
+      "roomId": "NB-3",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-12-1793034850769-P3",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-13-1793034866049-P3",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-14-1793034895859-P3",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-15-1793034922650-P3",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 3,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-1-P4",
+      "roomId": "OB-1",
+      "period": 4,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-2-P4",
+      "roomId": "OB-2",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-3-P4",
+      "roomId": "OB-3",
+      "period": 4,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-4-P4",
+      "roomId": "OB-4",
+      "period": 4,
+      "paperId": "P09",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-5-P4",
+      "roomId": "OB-5",
+      "period": 4,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-6-P4",
+      "roomId": "OB-6",
+      "period": 4,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-7-P4",
+      "roomId": "OB-7",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-8-P4",
+      "roomId": "OB-8",
+      "period": 4,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-1-P4",
+      "roomId": "NB-1",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-2-P4",
+      "roomId": "NB-2",
+      "period": 4,
+      "paperId": "P11",
+      "teacherId": "T23",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-3-P4",
+      "roomId": "NB-3",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-12-1793034850769-P4",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 4,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-13-1793034866049-P4",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 4,
+      "paperId": "P11",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-14-1793034895859-P4",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-15-1793034922650-P4",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-1-P5",
+      "roomId": "OB-1",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-2-P5",
+      "roomId": "OB-2",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T6",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-3-P5",
+      "roomId": "OB-3",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-4-P5",
+      "roomId": "OB-4",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-5-P5",
+      "roomId": "OB-5",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-6-P5",
+      "roomId": "OB-6",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-7-P5",
+      "roomId": "OB-7",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-OB-8-P5",
+      "roomId": "OB-8",
+      "period": 5,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-1-P5",
+      "roomId": "NB-1",
+      "period": 5,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-2-P5",
+      "roomId": "NB-2",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-NB-3-P5",
+      "roomId": "NB-3",
+      "period": 5,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-12-1793034850769-P5",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 5,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-13-1793034866049-P5",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 5,
+      "paperId": "P06",
+      "teacherId": "T15",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-14-1793034895859-P5",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 5,
+      "paperId": "P10",
+      "teacherId": "T20",
+      "isSubstitute": false,
+      "isPriority": false
+    },
+    {
+      "id": "slot-7-CR-NB-15-1793034922650-P5",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 5,
+      "paperId": "P10",
+      "teacherId": "T21",
+      "isSubstitute": false,
+      "isPriority": false
+    }
+  ],
+  "createdAt": "2026-11-01T18:08:07.261Z",
+  "updatedAt": "2026-11-01T18:08:29.631Z",
+  "isLocked": true,
+  "status": "published",
+  "notes": "CATEGORY 1 – WEEK 1 (27.10.2026 to 31.10.2026)\nPaper 1 – BNSS: Introduction (Sections 1–3), Chapter 1 (Sections 1–5) – Definitions, Chapter 2 (Sections 6, 8, 14), Chapter 3 (Sections 21–23) – Constitution of Criminal Courts and Offices, Structure of Criminal Courts, Public Prosecutor (PP) and District Public Prosecutor (DOP).\n\nPaper 2 – BNS: Introduction (Chapter 1, Sections 1–3), Chapter 2 (Sections 4, 9), Chapter 3 (Sections 14–44), Familiarization – Introduction Module (Knowledge, Intention, Motive, Actus Reus, Mens Rea and Object), Definition of Jurisprudence, Meaning of Legal Theory, Concept and Principle of Natural Justice, Legal Concepts (Mens Rea, Burden of Proof, Benefit of Doubt, Evidence and Proof), Theories of Justice, Administration of Justice, Civil and Criminal Justice Systems, Introduction to General Explanations, General Exceptions and Punishment.\n\nPaper 3 – Central Minor Acts and Special Laws: The Protection of Women from Domestic Violence Act, 2005 (Sections 1–9, 24, 27, 31 and 35), Dowry Prohibition Act, 1961 (Sections 1–4), Indecent Representation of Women (Prohibition) Act, 1986 (Sections 3, 4, 6 and 8), Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013 (Sections 1–10) and Immoral Traffic (Prevention) Act, 1956 (Sections 1–9, 14 and 15).\n\nPaper 8 – Police Organisation and Administration: Origin, History and Evolution of Police in India, Relation with Neighbouring Countries and Border Issues, Central Police Organisations (I.B., C.B.I., C.R.P.F., B.S.F., I.T.B.P., R.P.F., C.I.S.F., N.C.B., N.C.R.B., N.I.A., S.S.B., R.A.W., Assam Rifles, B.P.R. and D., N.P.A., C.D.T.S., N.I.C.F.S., Central Forensic Science Laboratory, Central Finger Print Bureau, Army, Navy, Air Force, N.C.C., Rashtriya Raksha Shakti University and National Forensic Science University), Organisational Structure of State Police (D.G.P., Range, Commissionerate, District, Sub-Division, Circle, Police Station, Chowki and Outpost), Functioning of Various Branches of Police (C.P./S.P. Office, Reader Branch, Special Branch/L.I.B., P.C.B., D.C.B./L.C.B., Police Headquarter, Traffic Police, Women Police Station, Coastal Police Station, Wireless, M.O.B., M.T. and S.O.G.) and Modification as per State Police Organisation/Structure.\n\nPaper 12 – B. Accountability: Constitutional Values, Rule of Law and Role of Police, Preamble of Indian Constitution, Democratic Republic, Sovereign, Socialist, Secular and Federal State of India, Spirit of Indian Constitution – Part III (Articles 12–35) and Fundamental Rights.\n\nCATEGORY 2 – WEEK 2 (02.11.2026 to 07.11.2026)\nPaper 1 – BNSS: Chapter 1, Module A-1 – Introduction to Laws, BNSS Sections 14–20 (Executive Magistrates, Jurisdiction, Public Prosecutors and Directorate of Prosecution), Sections 30–34 (Power of Superior Officers of Police and Power of Police Officers to Aid Magistrate) and Sections 35–62 (Arrest of Person).\n\nPaper 2 – BNS: Chapter 1, Module A-1 – Introduction to Laws, Chapter 2, Module A-4 – Private Defence of Body and Property (Sections 34–44), Module A-5 – Criminal Conspiracy and Attempt (Sections 45–62) and Chapter 7, Module A-06 – Crime Against Women (Rape, Gang Rape and Punishment, Sections 63–73).\n\nPaper 3 – Central Minor Acts and Special Laws: Chapter 5, Module A-04 – Missing Children and Anti-Trafficking, Protection of Children from Sexual Offences (POCSO) Act, 2012 (Sections 1–12 and 20–25), Child Labour (Prohibition and Regulation) Act, 1986 (Sections 1–3 and 13–14, Hazardous Jobs), Child Marriage Prohibition Act, 2006 (Sections 2, 9, 10, 11 and 13) and Right to Information (RTI) Act, 2005 (Sections 1–4, 6, 12, 15, 20 and 21).\n\nPaper 8 – Police Organisation and Administration: Chapter 16, Module A-15 – Police Organisation and Administration, Allied Units (SCRB, Fingerprint Bureau, CID, Crime, SIT and Other Allied Units), State Police Setup (Coastal Police, Commando, Home Guard and Civil Defence), Operating in a Democratic Society, Various Activities for Police Welfare, Police Welfare and Police Co-operative Society and Study of Neighbouring State Police Setup/Organisation.",
+  "generationAudit": {
+    "totalCapacity": 75,
+    "totalRemainingDemand": 6075,
+    "totalAdjustedDemand": 6075,
+    "allocations": [
+      {
+        "paperId": "P01",
+        "paperCode": "Paper-1",
+        "title": "Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS)",
+        "remainingSessions": 638,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 638,
+        "allocationPercentage": 10.502057613168725,
+        "idealSessions": 7.8765432098765435,
+        "integerTarget": 8,
+        "assignedCount": 8
+      },
+      {
+        "paperId": "P02",
+        "paperCode": "Paper-2",
+        "title": "Bharatiya Nyaya Sanhita 2023 (BNS)",
+        "remainingSessions": 773,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 773,
+        "allocationPercentage": 12.724279835390947,
+        "idealSessions": 9.54320987654321,
+        "integerTarget": 9,
+        "assignedCount": 9
+      },
+      {
+        "paperId": "P03",
+        "paperCode": "Paper-3",
+        "title": "Central Minor Acts and Special Laws",
+        "remainingSessions": 694,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 694,
+        "allocationPercentage": 11.423868312757202,
+        "idealSessions": 8.567901234567902,
+        "integerTarget": 9,
+        "assignedCount": 9
+      },
+      {
+        "paperId": "P04",
+        "paperCode": "Paper-4",
+        "title": "Bharatiya Sakshya Adhiniyam 2023 (BSA)",
+        "remainingSessions": 326,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 326,
+        "allocationPercentage": 5.366255144032922,
+        "idealSessions": 4.0246913580246915,
+        "integerTarget": 4,
+        "assignedCount": 4
+      },
+      {
+        "paperId": "P05",
+        "paperCode": "Paper-5",
+        "title": "Forensics",
+        "remainingSessions": 477,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 477,
+        "allocationPercentage": 7.851851851851851,
+        "idealSessions": 5.888888888888888,
+        "integerTarget": 6,
+        "assignedCount": 6
+      },
+      {
+        "paperId": "P06",
+        "paperCode": "Paper-6",
+        "title": "ICT and Cyber Investigation",
+        "remainingSessions": 549,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 549,
+        "allocationPercentage": 9.037037037037036,
+        "idealSessions": 6.777777777777777,
+        "integerTarget": 7,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P07",
+        "paperCode": "Paper-7",
+        "title": "Criminology and Crime Prevention",
+        "remainingSessions": 238,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 238,
+        "allocationPercentage": 3.9176954732510287,
+        "idealSessions": 2.9382716049382713,
+        "integerTarget": 3,
+        "assignedCount": 3
+      },
+      {
+        "paperId": "P08",
+        "paperCode": "Paper-8",
+        "title": "Police Organization and Administration",
+        "remainingSessions": 106,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 106,
+        "allocationPercentage": 1.7448559670781894,
+        "idealSessions": 1.308641975308642,
+        "integerTarget": 1,
+        "assignedCount": 1
+      },
+      {
+        "paperId": "P09",
+        "paperCode": "Paper-9",
+        "title": "Police Station Management",
+        "remainingSessions": 420,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 420,
+        "allocationPercentage": 6.91358024691358,
+        "idealSessions": 5.185185185185185,
+        "integerTarget": 5,
+        "assignedCount": 5
+      },
+      {
+        "paperId": "P10",
+        "paperCode": "Paper-10",
+        "title": "Personal Development",
+        "remainingSessions": 565,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 565,
+        "allocationPercentage": 9.300411522633745,
+        "idealSessions": 6.9753086419753085,
+        "integerTarget": 7,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P11",
+        "paperCode": "Paper-11",
+        "title": "Internal Security and Public Order",
+        "remainingSessions": 535,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 535,
+        "allocationPercentage": 8.806584362139917,
+        "idealSessions": 6.604938271604937,
+        "integerTarget": 7,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P12",
+        "paperCode": "Paper-12",
+        "title": "Ethics and Accountability",
+        "remainingSessions": 754,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 754,
+        "allocationPercentage": 12.411522633744857,
+        "idealSessions": 9.308641975308642,
+        "integerTarget": 9,
+        "assignedCount": 9
+      },
+      {
+        "paperId": "P13",
+        "paperCode": "Paper-13",
+        "title": "Practical (Hands on)",
+        "remainingSessions": 0,
+        "priorityTier": "EXCLUDE",
+        "priorityMultiplier": 0,
+        "adjustedDemand": 0,
+        "allocationPercentage": 0,
+        "idealSessions": 0,
+        "integerTarget": 0,
+        "assignedCount": 0
+      }
+    ],
+    "teacherWorkloads": [
+      {
+        "teacherId": "T1",
+        "teacherName": "SI(UB) Md Jalaluddin",
+        "initialLoad": 19,
+        "todayLoad": 2,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T2",
+        "teacherName": "SI(AB) Hazrat Belal",
+        "initialLoad": 14,
+        "todayLoad": 4,
+        "totalLoad": 18
+      },
+      {
+        "teacherId": "T3",
+        "teacherName": "ASI(UB) Surojit Kr. Das",
+        "initialLoad": 18,
+        "todayLoad": 2,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T4",
+        "teacherName": "ASI(AB) Prabir Sarkar",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T5",
+        "teacherName": "SI(UB) Kaushik Sarkar",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T6",
+        "teacherName": "SI(UB) Biswajit Saha",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T7",
+        "teacherName": "SI(UB) Sadhan Kr Roy",
+        "initialLoad": 19,
+        "todayLoad": 2,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T8",
+        "teacherName": "SI(UB) Ebadul Ali Mondal",
+        "initialLoad": 19,
+        "todayLoad": 2,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T9",
+        "teacherName": "SI(UB) Tika Kr. Damai",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T10",
+        "teacherName": "SI(UB) Bhudeb Ch. Ghosh",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T11",
+        "teacherName": "SI(UB) Ratan Sarkar",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T12",
+        "teacherName": "SI(UB) Abdul Samad",
+        "initialLoad": 15,
+        "todayLoad": 4,
+        "totalLoad": 19
+      },
+      {
+        "teacherId": "T13",
+        "teacherName": "SI(UB) Rassel Hossain",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T14",
+        "teacherName": "ASI(W) Noor Alam",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T15",
+        "teacherName": "ASI(UB) Nripen Ch Roy",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T16",
+        "teacherName": "SI(UB) Ghanashyam Mahato",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T17",
+        "teacherName": "SI(AB) Avijit Bala",
+        "initialLoad": 14,
+        "todayLoad": 0,
+        "totalLoad": 14
+      },
+      {
+        "teacherId": "T18",
+        "teacherName": "SI(UB) Parimal Saha",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T19",
+        "teacherName": "ASI(UB) Bisu Benjamin Mardi",
+        "initialLoad": 13,
+        "todayLoad": 4,
+        "totalLoad": 17
+      },
+      {
+        "teacherId": "T20",
+        "teacherName": "SI(UB) Sankar Bhowmick",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T21",
+        "teacherName": "SI(UB) Sanjay Majumdar",
+        "initialLoad": 18,
+        "todayLoad": 3,
+        "totalLoad": 21
+      },
+      {
+        "teacherId": "T22",
+        "teacherName": "SI(UB) Biman Ghosh",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T23",
+        "teacherName": "SI(AB) Debashis Ray",
+        "initialLoad": 18,
+        "todayLoad": 2,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T24",
+        "teacherName": "SI(UB) Krishnapada Barman",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T25",
+        "teacherName": "SI(UB) Chandan Kr. Siddhanta",
+        "initialLoad": 17,
+        "todayLoad": 3,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T26",
+        "teacherName": "ASI(UB) Shiben Hansda",
+        "initialLoad": 18,
+        "todayLoad": 2,
+        "totalLoad": 20
+      },
+      {
+        "teacherId": "T27",
+        "teacherName": "SI(AB) Biswajit Deb",
+        "initialLoad": 3,
+        "todayLoad": 3,
+        "totalLoad": 6
+      }
+    ],
+    "maxTeacherLoad": 21,
+    "minTeacherLoad": 6,
+    "workloadDifference": 15,
+    "vacanciesFilledCount": 0,
+    "replacementsCount": 0,
+    "noInstructorCount": 0,
+    "tier1Validation": {
+      "isValid": true,
+      "tier1Passed": true,
+      "conflicts": [],
+      "buildingConflicts": [],
+      "absentViolations": [],
+      "buildingBindingViolations": [],
+      "roomSubjectViolations": [],
+      "teacherMaxLoadViolations": [],
+      "missingSlotsCount": 0,
+      "totalSlots": 75,
+      "errorMessages": []
+    }
+  },
+  "unavailableTeachers": [
+    {
+      "teacherId": "T17",
+      "type": "REST",
+      "remark": "Rest (Standby Reserve in PDF)",
+      "date": "2026-11-03"
+    }
+  ]
+}

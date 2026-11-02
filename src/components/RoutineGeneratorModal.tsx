@@ -140,6 +140,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
           LEAVE: 'Sanctioned Leave',
           DUTY: 'Special Duty',
           SICK: 'Medical / Sick',
+          REST: 'Rest (Standby Reserve in PDF)',
         };
         setUnavailableRemarks((prev) => ({ ...prev, [teacherId]: defaultNotes[status] }));
       }
@@ -294,7 +295,12 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
     const unavailableTeachersList: UnavailableInstructor[] = absentTeacherIds.map((tid) => ({
       teacherId: tid,
       type: unavailableTypes[tid] || 'ABSENT',
-      remark: unavailableRemarks[tid] || (unavailableTypes[tid] === 'LEAVE' ? 'Sanctioned Leave' : unavailableTypes[tid] === 'DUTY' ? 'Special Duty' : unavailableTypes[tid] === 'SICK' ? 'Sick' : 'Absent'),
+      remark: unavailableRemarks[tid] || (
+        unavailableTypes[tid] === 'LEAVE' ? 'Sanctioned Leave' :
+        unavailableTypes[tid] === 'DUTY' ? 'Special Duty' :
+        unavailableTypes[tid] === 'SICK' ? 'Sick' :
+        unavailableTypes[tid] === 'REST' ? 'Rest / Standby Reserve' : 'Absent'
+      ),
       date,
     }));
 
@@ -564,7 +570,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                 </label>
               </div>
               <span className="text-[11px] font-semibold text-slate-600">
-                {availableTeachersCount}/26 Available · {absentTeacherIds.length} Unavailable
+                {availableTeachersCount}/{teachers.length} Available · {absentTeacherIds.length} Unavailable
               </span>
             </div>
 
@@ -596,7 +602,9 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                           ? 'bg-amber-50 border-amber-300 text-amber-900'
                           : currentType === 'DUTY'
                           ? 'bg-blue-50 border-blue-300 text-blue-900'
-                          : 'bg-purple-50 border-purple-300 text-purple-900'
+                          : currentType === 'SICK'
+                          ? 'bg-purple-50 border-purple-300 text-purple-900'
+                          : 'bg-teal-50 border-teal-300 text-teal-900'
                         : 'bg-white border-slate-200 text-slate-800'
                     }`}
                   >
@@ -662,6 +670,18 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                         }`}
                       >
                         Sick
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTeacherStatus(t.id, 'REST')}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
+                          isAbsent && currentType === 'REST'
+                            ? 'bg-teal-600 text-white font-bold'
+                            : 'bg-white text-slate-600 hover:bg-teal-50'
+                        }`}
+                        title="Rest: Excluded from routine, shown as available free/reserve in PDF"
+                      >
+                        Rest
                       </button>
                     </div>
                   </div>
@@ -1066,18 +1086,26 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             )}
           </div>
 
-          {/* Optional Directive Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Routine Reference / Directive (Optional):
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Special training routine, scenario drills, or firing range session..."
+          {/* Paper-Wise Syllabus Content & Directives (Multiline) */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-800">
+                Paper-Wise Syllabus Content / Lesson Topics / Directives:
+              </label>
+              <span className="text-[10px] text-indigo-600 font-semibold">
+                Appears at bottom of routine PDF
+              </span>
+            </div>
+            <textarea
+              rows={4}
+              placeholder={`Enter paper-wise syllabus contents to be taught during class sessions (multiline):\ne.g.\nPaper-01: BNSS Ch 2 (Constitution of Criminal Courts)\nPaper-02: BNS Sec 100-106 (Offences against Human Body)\nPaper-12: Police Ethics, Code of Conduct & Human Rights`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+              className="w-full text-xs rounded-lg border border-slate-300 p-2.5 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans leading-relaxed resize-y"
             />
+            <p className="text-[10px] text-slate-500 mt-1">
+              * In this multiline note, write the exact syllabus topics to be covered paper-wise. This exact text will appear at the bottom of the routine during PDF creation and printing.
+            </p>
           </div>
         </div>
 

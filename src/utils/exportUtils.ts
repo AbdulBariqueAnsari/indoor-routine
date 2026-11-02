@@ -345,7 +345,7 @@ export function generateDailyDutyData(
     if (currentRoutine.unavailableTeachers) {
       const u = currentRoutine.unavailableTeachers.find((x) => x.teacherId === t.id);
       if (u) {
-        statusText = u.type === 'LEAVE' ? 'ON LEAVE' : u.type === 'DUTY' ? 'ON DUTY' : u.type === 'SICK' ? 'SICK' : 'ABSENT';
+        statusText = u.type === 'LEAVE' ? 'ON LEAVE' : u.type === 'DUTY' ? 'ON DUTY' : u.type === 'SICK' ? 'SICK' : u.type === 'REST' ? 'REST / STANDBY' : 'ABSENT';
         if (u.remark) statusText += ` (${u.remark})`;
       }
     }

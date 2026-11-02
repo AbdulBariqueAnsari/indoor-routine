@@ -13,6 +13,7 @@ import {
   Eye,
   GraduationCap,
   Info,
+  KeyRound,
   LayoutTemplate,
   Loader2,
   Lock,
@@ -29,6 +30,7 @@ interface PageSetupModalProps {
   onClose: () => void;
   settings: AppSettings;
   onSaveSettings: (updated: Partial<AppSettings>) => Promise<void>;
+  onOpenChangePassword?: () => void;
 }
 
 export const PageSetupModal: React.FC<PageSetupModalProps> = ({
@@ -36,6 +38,7 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
   onClose,
   settings,
   onSaveSettings,
+  onOpenChangePassword,
 }) => {
   // Local form state initialized from current settings or defaults
   const [formData, setFormData] = useState<AppSettings>({
@@ -292,7 +295,7 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
                   type="text"
                   value={formData.tagline || ''}
                   onChange={(e) => handleChange('tagline', e.target.value)}
-                  placeholder="e.g. Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors"
+                  placeholder="e.g. Daily Indoor Class Routine Scheduler · 15 Rooms · Multi-Instructor Matrix"
                   className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
@@ -340,7 +343,34 @@ export const PageSetupModal: React.FC<PageSetupModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Live View Preview */}
+          {/* Section 4: Admin Access & Security Credentials */}
+          {onOpenChangePassword && (
+            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-4 sm:p-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">Admin Security Password</h4>
+                  <p className="text-[11px] text-slate-500">
+                    Update the master administrative password required to generate routines, edit slots, and manage faculty leaves.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenChangePassword();
+                }}
+                className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shadow-2xs shrink-0 transition-colors"
+              >
+                Change Password...
+              </button>
+            </div>
+          )}
+
+          {/* Section 5: Live View Preview */}
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-900 text-white space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-300 border-b border-slate-700 pb-1.5">
               <div className="flex items-center gap-1.5">

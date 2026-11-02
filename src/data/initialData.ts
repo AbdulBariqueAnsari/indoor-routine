@@ -80,6 +80,18 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
       'When a Floating instructor crosses between Old School Building and New School Building, a mandatory 1-period buffer is enforced to allow physical movement across campus.',
   },
   {
+    key: 'enableBuildingChangeGapPeriod3To4Exemption',
+    ruleNumber: '4A',
+    title: '4A. Exclude Period 3 to Period 4 Transit from Mandatory Gap (Recess Break)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'P3->P4 Recess Transit',
+    tierNumber: 1,
+    dependsOn: 'enableBuildingChangeGap',
+    disabledHint: 'Available only when Rule 4 is ON',
+    description:
+      'Available only when Rule 4 is ON. When enabled, instructors changing buildings between Period 3 and Period 4 are exempt from the mandatory 1-period gap because the 15-minute recess break (11:50 - 12:05) provides ample travel time across campus.',
+  },
+  {
     key: 'enableRoomQuotaCompletionLock',
     ruleNumber: 5,
     title: '5. Classroom 100% Syllabus Quota Lockout',
@@ -132,6 +144,16 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
     tierNumber: 1,
     description:
       'Kisi bhi instructor ko ek din me 4 se jyada period allot nahi hoga (Strict hard-cap of max 4 periods per day). No instructor will ever receive a 5th period.',
+  },
+  {
+    key: 'enableTeacherLoadEqualizationPriority',
+    ruleNumber: 8,
+    title: '8. Teacher Load Equalization Priority (Teacher-First Detailment)',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Teacher-First Equalizer',
+    tierNumber: 1,
+    description:
+      'Forces equal sessions across all instructors regardless of classroom/paper quotas. Detailment prioritizes instructors with fewer cumulative sessions. In any classroom, instructors of the same paper category will not repeat. Curriculum targets are bypassed, subject is filled by teacher primary paper, and teachers are placed in classrooms with lowest prior deployments.',
   },
 
   // ==========================================
@@ -299,11 +321,13 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableStrictAbsenteeExclusion: true,
   enableStrictBuildingBinding: true,
   enableBuildingChangeGap: true,
+  enableBuildingChangeGapPeriod3To4Exemption: false,
   enableRoomQuotaCompletionLock: true,
   enableMaxOnePeriodPerSubjectPerRoomDaily: true,
   enableMaxRoomDailyLimit: false,
   enableNonConsecutiveGapForSameSubject: false,
   enableDailyWorkloadMaxCap: true,
+  enableTeacherLoadEqualizationPriority: false,
 
   // Tier 2: Curriculum Progression (Moto I & IV)
   enableClassroomSubjectEqualization: true,
@@ -329,6 +353,10 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
  * Returns whether a given rule is currently disabled/locked based on its dependencies.
  */
 export function isRuleDisabled(key: keyof RoutineRuleConfig, rules: RoutineRuleConfig): boolean {
+  if (key === 'enableBuildingChangeGapPeriod3To4Exemption') {
+    // Rule 4A is disabled when Rule 4 is OFF
+    return !rules.enableBuildingChangeGap;
+  }
   if (key === 'enableMaxRoomDailyLimit') {
     // Rule 6A is disabled when Rule 6 is ON
     return Boolean(rules.enableMaxOnePeriodPerSubjectPerRoomDaily);
@@ -353,6 +381,11 @@ export function normalizeRuleConfig(rules: Partial<RoutineRuleConfig> = {}): Rou
     ...DEFAULT_ROUTINE_RULES,
     ...rules,
   };
+
+  // Rule 4 -> Rule 4A dependency
+  if (!merged.enableBuildingChangeGap) {
+    merged.enableBuildingChangeGapPeriod3To4Exemption = false;
+  }
 
   // Rule 6 -> Rule 6A -> Rule 6B dependency matrix
   if (merged.enableMaxOnePeriodPerSubjectPerRoomDaily) {
@@ -550,7 +583,7 @@ export const INITIAL_PAPERS: Paper[] = [
     category: 'Behavioral & Ethics',
     totalTargetSessions: 54, // Scaled for 5 sessions/day (Original 65 @ 6/day)
     originalTargetSessions: 65,
-    primaryTeacherIds: ['T24', 'T25', 'T26'], // 3 Teachers: T24 (Old), T25 (New), T26 (Floating backup)
+    primaryTeacherIds: ['T24', 'T25', 'T26', 'T27'], // 4 Teachers: T24 (New), T25 (Old), T26 (Floating), T27 (Floating)
     nearestPaperIds: ['P10', 'P08'],
     color: '#64748B', // Slate
     description: 'Police integrity, anti-corruption norms, human rights, custodial ethics, constitutional values'
@@ -906,6 +939,19 @@ export const INITIAL_TEACHERS: Teacher[] = [
     maxDailyPeriods: 4,
     phone: '+91 94120 10026'
   },
+  {
+    id: 'T27',
+    code: 'T27',
+    name: 'SI(AB) Biswajit Deb',
+    designation: 'Ethics',
+    assignedBuilding: 'FLOATING',
+    primaryPaperIds: ['P12'],
+    backupPaperIds: ['P10', 'P08'],
+    secondaryPaperIds: ['P10', 'P08'],
+    maxDailyPeriods: 3,
+    phone: '+91 747 914 2044',
+    status: 'ACTIVE'
+  },
 ];
 
 export const PERIOD_TIMINGS = [
@@ -926,7 +972,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   location: 'SAP 4th Bn Campus',
   address: 'Kasba, Purnea, Bihar - 854330',
   signatoryDesignation: 'O/C STC (Indoor)',
-  tagline: 'Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors',
+  tagline: 'Daily Indoor Class Routine Scheduler · 15 Rooms · Multi-Instructor Matrix',
   activeRoutineId: '',
   language: 'en',
+  adminPassword: 'admin123',
 };

@@ -15,6 +15,7 @@ interface ConflictBannerProps {
   absentViolations: { teacherId: string; teacherName: string; period: number; roomId: string }[];
   isEditable: boolean;
   isAdmin: boolean;
+  totalTeachers?: number;
   onOpenLeaveManager?: () => void;
   onPrint?: () => void;
 }
@@ -26,12 +27,13 @@ export const ConflictBanner: React.FC<ConflictBannerProps> = ({
   absentViolations,
   isEditable,
   isAdmin,
+  totalTeachers = 27,
   onOpenLeaveManager,
   onPrint,
 }) => {
   const hasErrors = conflicts.length > 0 || absentViolations.length > 0 || buildingConflicts.length > 0;
   const absentCount = routine.absentTeacherIds.length;
-  const activeCount = 26 - absentCount;
+  const activeCount = Math.max(0, totalTeachers - absentCount);
 
   return (
     <div className="space-y-2 mb-4">

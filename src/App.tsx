@@ -25,9 +25,40 @@ import { PageSetupModal } from './components/PageSetupModal';
 import { DownloadsModal } from './components/DownloadsModal';
 import { PrintableRoutine } from './components/PrintableRoutine';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
 import { modularLocalStorage } from './utils/storage';
 import { Clock, Database, Loader2, Shield, ShieldCheck, User } from 'lucide-react';
+
+function syncPapersWithTeachers(currentPapers: Paper[], currentTeachers: Teacher[]): Paper[] {
+  return currentPapers.map((p) => {
+    const matchingTeachers = currentTeachers.filter((t) => {
+      if (!t.primaryPaperIds || t.primaryPaperIds.length === 0) return false;
+      return t.primaryPaperIds.some((pid) => {
+        if (!pid) return false;
+        const cleanPid = pid.trim().toLowerCase();
+        const pId = p.id.trim().toLowerCase();
+        const pCode = p.code.trim().toLowerCase();
+        const pTitle = p.title.trim().toLowerCase();
+        return (
+          cleanPid === pId ||
+          cleanPid === pCode ||
+          cleanPid === pTitle ||
+          pCode.replace(/[^a-z0-9]/g, '') === cleanPid.replace(/[^a-z0-9]/g, '') ||
+          (cleanPid.length > 3 && pTitle.includes(cleanPid))
+        );
+      });
+    });
+
+    if (matchingTeachers.length > 0) {
+      return {
+        ...p,
+        primaryTeacherIds: matchingTeachers.map((t) => t.id),
+      };
+    }
+    return p;
+  });
+}
 
 export default function App() {
   const [buildings, setBuildings] = useState<BuildingInfo[]>(INITIAL_BUILDINGS);
@@ -54,6 +85,7 @@ export default function App() {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isPageSetupOpen, setIsPageSetupOpen] = useState(false);
   const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isLeaveManagerOpen, setIsLeaveManagerOpen] = useState(false);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [printLayoutMode, setPrintLayoutMode] = useState<'1-page' | '2-page'>('1-page');
@@ -65,10 +97,12 @@ export default function App() {
       try {
         setIsLoading(true);
         const data = await api.loadAllData();
+        const loadedTeachers = data.teachers || [];
+        const loadedPapers = syncPapersWithTeachers(data.papers || [], loadedTeachers);
         setBuildings(data.buildings || INITIAL_BUILDINGS);
         setClassrooms(data.classrooms || []);
-        setPapers(data.papers || []);
-        setTeachers(data.teachers || []);
+        setPapers(loadedPapers);
+        setTeachers(loadedTeachers);
         setAllRoutines(data.routines || []);
         setRules(data.rules || DEFAULT_ROUTINE_RULES);
         if (data.settings) {
@@ -76,15 +110,17 @@ export default function App() {
         }
         setActiveRoutineId(data.settings?.activeRoutineId || data.routines?.[data.routines.length - 1]?.id || '');
         // Sync into separated discrete localStorage keys
-        modularLocalStorage.syncFromServer(data);
+        modularLocalStorage.syncFromServer({ ...data, papers: loadedPapers, teachers: loadedTeachers });
       } catch (err) {
         console.error('Failed to load data from server backend, trying modular localStorage:', err);
         const localData = modularLocalStorage.loadFromLocal();
         if (localData) {
+          const loadedTeachers = localData.teachers || [];
+          const loadedPapers = syncPapersWithTeachers(localData.papers || [], loadedTeachers);
           setBuildings(localData.buildings || INITIAL_BUILDINGS);
           setClassrooms(localData.classrooms || []);
-          setPapers(localData.papers || []);
-          setTeachers(localData.teachers || []);
+          setPapers(loadedPapers);
+          setTeachers(loadedTeachers);
           setAllRoutines(localData.routines || []);
           setRules(localData.rules || DEFAULT_ROUTINE_RULES);
           if (localData.settings) {
@@ -306,9 +342,10 @@ export default function App() {
 
   // Handle paper updates (saved to server)
   const handleUpdatePapers = async (updatedPapers: Paper[]) => {
-    setPapers(updatedPapers);
+    const syncedPapers = syncPapersWithTeachers(updatedPapers, teachers);
+    setPapers(syncedPapers);
     try {
-      await api.savePapers(updatedPapers);
+      await api.savePapers(syncedPapers);
     } catch (err) {
       console.error('Error saving papers to server:', err);
     }
@@ -317,8 +354,11 @@ export default function App() {
   // Handle teacher assignments update (saved to server)
   const handleUpdateTeachers = async (updatedTeachers: Teacher[]) => {
     setTeachers(updatedTeachers);
+    const updatedPapers = syncPapersWithTeachers(papers, updatedTeachers);
+    setPapers(updatedPapers);
     try {
       await api.saveTeachers(updatedTeachers);
+      await api.savePapers(updatedPapers);
     } catch (err) {
       console.error('Error saving teachers to server:', err);
     }
@@ -428,6 +468,7 @@ export default function App() {
           onOpenRulesModal={() => setIsRulesModalOpen(true)}
           onOpenPageSetup={() => setIsPageSetupOpen(true)}
           onOpenDownloads={() => setIsDownloadsOpen(true)}
+          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
           onPrint={handlePrint}
           isCurrentEditable={isCurrentEditable}
           onToggleLockRoutine={handleToggleLockRoutine}
@@ -495,6 +536,15 @@ export default function App() {
               onRequireAdmin={() => setIsAdminLoginOpen(true)}
               onPrint={handlePrint}
               onToggleLockRoutine={handleToggleLockRoutine}
+              onUpdateNotes={async (newNotes) => {
+                if (!currentRoutine) return;
+                const updated: DailyRoutine = {
+                  ...currentRoutine,
+                  notes: newNotes,
+                  updatedAt: new Date().toISOString(),
+                };
+                await handleUpdateCurrentRoutine(updated);
+              }}
             />
           )}
 
@@ -575,6 +625,7 @@ export default function App() {
           isOpen={isAdminLoginOpen}
           onClose={() => setIsAdminLoginOpen(false)}
           onLoginSuccess={handleLoginSuccess}
+          adminPassword={settings.adminPassword || 'admin123'}
         />
 
         {/* Faculty Unavailability Register (Admin only) */}
@@ -657,6 +708,19 @@ export default function App() {
             onClose={() => setIsPageSetupOpen(false)}
             settings={settings}
             onSaveSettings={handleSaveSettings}
+            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+          />
+        )}
+
+        {/* Change Admin Password Modal (Admin only) */}
+        {isAdmin && isChangePasswordOpen && (
+          <ChangePasswordModal
+            isOpen={isChangePasswordOpen}
+            onClose={() => setIsChangePasswordOpen(false)}
+            currentAdminPassword={settings.adminPassword || 'admin123'}
+            onSavePassword={async (newPassword) => {
+              await handleSaveSettings({ adminPassword: newPassword });
+            }}
           />
         )}
 

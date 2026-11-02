@@ -78,7 +78,7 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
         <div className="flex items-center gap-4">
           <div>
             <span className="text-slate-500 font-medium">Active Instructors:</span>{' '}
-            <span className="font-bold text-slate-900 font-mono tabular-nums">{activeCount} / 26</span>
+            <span className="font-bold text-slate-900 font-mono tabular-nums">{activeCount} / {teachers.length}</span>
           </div>
           <div>
             <span className="text-slate-500 font-medium">On Leave:</span>{' '}
@@ -100,7 +100,7 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                 statusFilter === 'ALL' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
               }`}
             >
-              All 26
+              All ({teachers.length})
             </button>
             <button
               onClick={() => setStatusFilter('ACTIVE')}
@@ -203,7 +203,9 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                               ? 'text-amber-800 bg-amber-100 border-amber-200'
                               : item.unavailType === 'DUTY'
                               ? 'text-blue-800 bg-blue-100 border-blue-200'
-                              : 'text-purple-800 bg-purple-100 border-purple-200'
+                              : item.unavailType === 'SICK'
+                              ? 'text-purple-800 bg-purple-100 border-purple-200'
+                              : 'text-teal-800 bg-teal-100 border-teal-200'
                           }`}
                           title={item.unavailRemark || (item.unavailType as string)}
                         >
@@ -215,7 +217,9 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                               ? 'Leave'
                               : item.unavailType === 'DUTY'
                               ? 'Duty'
-                              : 'Sick'}
+                              : item.unavailType === 'SICK'
+                              ? 'Sick'
+                              : 'Rest'}
                           </span>
                         </span>
                       ) : (

@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_APP_SETTINGS,
   DEFAULT_ROUTINE_RULES,
   INITIAL_CLASSROOMS,
   INITIAL_PAPERS,
@@ -21,9 +22,10 @@ import {
   calculateClassroomCumulativeStats,
   calculateCurriculumAllocation,
   generateMultipleDaysRoutines,
+  getPaperPrimaryTeachers,
 } from './scheduler';
 import { validateRoutine, validateSlotAssignmentTier1, isRoutineEditable } from './routineValidator';
-import { DailyRoutine, SubjectPriorityTier } from '../types';
+import { AppSettings, ClassSlot, DailyRoutine, SubjectPriorityTier } from '../types';
 
 test('Routine generator produces exactly 75 slots for 15 classrooms and 5 periods', () => {
   const routine = generateDailyRoutine({
@@ -323,8 +325,8 @@ test('Rule 22: Building-specific teachers rotate across classrooms in their home
   );
 });
 
-test('26 Teachers distributed strictly across 12 Theory Papers (Paper-1 to Paper-12) by session ratio', () => {
-  assert.equal(INITIAL_TEACHERS.length, 26);
+test('Instructors distributed strictly across 12 Theory Papers (Paper-1 to Paper-12) by session ratio', () => {
+  assert.equal(INITIAL_TEACHERS.length, 27);
 
   // Collect all assigned primary teachers across P01 to P12
   const theoryAssigned = new Set<string>();
@@ -337,8 +339,8 @@ test('26 Teachers distributed strictly across 12 Theory Papers (Paper-1 to Paper
     paper.primaryTeacherIds.forEach(tId => theoryAssigned.add(tId));
   });
 
-  // Exactly 26 unique teachers
-  assert.equal(theoryAssigned.size, 26);
+  // Exactly 27 unique teachers including T27
+  assert.equal(theoryAssigned.size, 27);
 
   // Practical (Paper-13) has no fixed primary teachers
   const practicalPaper = INITIAL_PAPERS.find(p => p.id === 'P13');
@@ -1858,6 +1860,372 @@ test('Scenario 33: Multi-day generation respects all applicable Tier 1 constrain
     assert.equal(validation.tier1Passed, true, `Day ${routine.dayNumber} must pass all Tier 1 hard constraints`);
   }
 });
+
+test('T27 is assigned as primary teacher for Paper 12 based on instructor mapping', () => {
+  const teacher27 = {
+    id: 'T27',
+    code: 'T27',
+    name: 'SI(AB) Biswajit Deb',
+    designation: 'Ethics',
+    assignedBuilding: 'FLOATING' as const,
+    maxDailyPeriods: 4,
+    primaryPaperIds: ['P12'],
+    backupPaperIds: ['P10', 'P11'],
+    secondaryPaperIds: ['P10', 'P11'],
+    phone: '',
+    email: '',
+    status: 'ACTIVE' as const,
+  };
+
+  const teachersWithT27 = [...INITIAL_TEACHERS, teacher27];
+
+  // Verify getPaperPrimaryTeachers resolves T27 for P12
+  const p12 = INITIAL_PAPERS.find((p) => p.id === 'P12')!;
+  const primaryTeachersForP12 = getPaperPrimaryTeachers(p12, teachersWithT27);
+  assert.ok(
+    primaryTeachersForP12.some((t) => t.id === 'T27'),
+    'T27 must be resolved as primary teacher for Paper-12'
+  );
+
+  // Generate routine with P12 prioritized
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: teachersWithT27,
+    absentTeacherIds: [],
+    priorityPaperIds: ['P12'],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const p12Slots = routine.slots.filter((s) => s.paperId === 'P12');
+  assert.ok(p12Slots.length > 0, 'Paper 12 must have scheduled slots');
+
+  // Verify that T27 is assigned to Paper 12
+  const t27Slots = p12Slots.filter((s) => s.teacherId === 'T27');
+  assert.ok(
+    t27Slots.length > 0,
+    `T27 must be assigned to at least one Paper 12 slot, assigned ${t27Slots.length}`
+  );
+
+  // Rule verification: any assigned primary teacher for any subject must have that subject as main subject in instructor mapping
+  for (const slot of routine.slots) {
+    if (!slot.teacherId) continue;
+    const t = teachersWithT27.find((x) => x.id === slot.teacherId);
+    if (!t) continue;
+    if (slot.paperId === 'P13') continue; // practical is flexible
+    if (!slot.isSubstitute) {
+      assert.ok(
+        t.primaryPaperIds.includes(slot.paperId),
+        `Teacher ${t.code} assigned to ${slot.paperId} without substitute flag must have ${slot.paperId} as main subject`
+      );
+    }
+  }
+});
+
+test('Rule 4A: Exclude Period 3 to Period 4 building transition from mandatory gap', () => {
+  // 1. Test dependency: Rule 4A disabled when Rule 4 is OFF
+  const rulesWithRule4Off = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableBuildingChangeGap: false,
+    enableBuildingChangeGapPeriod3To4Exemption: true,
+  };
+  assert.equal(
+    isRuleDisabled('enableBuildingChangeGapPeriod3To4Exemption', rulesWithRule4Off),
+    true,
+    'Rule 4A must be disabled when Rule 4 is OFF'
+  );
+
+  const normalized = normalizeRuleConfig(rulesWithRule4Off);
+  assert.equal(
+    normalized.enableBuildingChangeGapPeriod3To4Exemption,
+    false,
+    'Rule 4A must be forced to false by normalizeRuleConfig when Rule 4 is OFF'
+  );
+
+  // 2. Test dependency: Rule 4A enabled when Rule 4 is ON
+  const rulesWithRule4On = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableBuildingChangeGap: true,
+    enableBuildingChangeGapPeriod3To4Exemption: false,
+  };
+  assert.equal(
+    isRuleDisabled('enableBuildingChangeGapPeriod3To4Exemption', rulesWithRule4On),
+    false,
+    'Rule 4A must be available when Rule 4 is ON'
+  );
+
+  // 3. Test validation: Floating teacher (e.g. T3) teaching P3 in OB-1 and P4 in NB-1
+  const testSlots: ClassSlot[] = [
+    { id: 's1', roomId: 'OB-1', period: 3, teacherId: 'T3', paperId: 'P01', isSubstitute: false },
+    { id: 's2', roomId: 'NB-1', period: 4, teacherId: 'T3', paperId: 'P01', isSubstitute: false },
+  ];
+
+  // When Rule 4 is ON and Rule 4A is OFF -> 1 building conflict
+  const validationWithRule4AOff = validateRoutine(
+    testSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    {
+      ...DEFAULT_ROUTINE_RULES,
+      enableBuildingChangeGap: true,
+      enableBuildingChangeGapPeriod3To4Exemption: false,
+    }
+  );
+  assert.equal(
+    validationWithRule4AOff.buildingConflicts.length,
+    1,
+    'Must have 1 building conflict when Rule 4A is OFF'
+  );
+
+  // When Rule 4 is ON and Rule 4A is ON -> 0 building conflicts (exempted because P3->P4 recess break)
+  const validationWithRule4AOn = validateRoutine(
+    testSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    {
+      ...DEFAULT_ROUTINE_RULES,
+      enableBuildingChangeGap: true,
+      enableBuildingChangeGapPeriod3To4Exemption: true,
+    }
+  );
+  assert.equal(
+    validationWithRule4AOn.buildingConflicts.length,
+    0,
+    'Must have 0 building conflicts for Period 3 -> Period 4 when Rule 4A is ON'
+  );
+
+  // Non P3->P4 transition (e.g. Period 1 in OB-1 and Period 2 in NB-1) must STILL be a conflict even when Rule 4A is ON!
+  const nonExemptSlots: ClassSlot[] = [
+    { id: 's3', roomId: 'OB-1', period: 1, teacherId: 'T3', paperId: 'P01', isSubstitute: false },
+    { id: 's4', roomId: 'NB-1', period: 2, teacherId: 'T3', paperId: 'P01', isSubstitute: false },
+  ];
+  const validationNonExempt = validateRoutine(
+    nonExemptSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    {
+      ...DEFAULT_ROUTINE_RULES,
+      enableBuildingChangeGap: true,
+      enableBuildingChangeGapPeriod3To4Exemption: true,
+    }
+  );
+  assert.equal(
+    validationNonExempt.buildingConflicts.length,
+    1,
+    'Period 1 -> Period 2 transit must still trigger building conflict even when Rule 4A is ON'
+  );
+});
+
+test('Scenario 34: Instructor marked with REST is excluded from class detailment in routine generation', () => {
+  // Marked T7 as REST
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: ['T7'],
+    priorityPaperIds: [],
+    rules: DEFAULT_ROUTINE_RULES,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  const t7Slots = routine.slots.filter((s) => s.teacherId === 'T7');
+  assert.equal(t7Slots.length, 0, 'Instructor T7 on REST must have 0 class slots assigned');
+});
+
+test('Scenario 35: In PDF, REST instructor is shown as normal available free / reserve and excluded from absent section', () => {
+  const routine: DailyRoutine = {
+    id: 'routine-test-rest',
+    dayNumber: 1,
+    date: '2026-10-24',
+    absentTeacherIds: ['T7', 'T8'],
+    unavailableTeachers: [
+      { teacherId: 'T7', type: 'REST', remark: 'Rest / Standby Reserve' },
+      { teacherId: 'T8', type: 'LEAVE', remark: 'Casual Leave' },
+    ],
+    priorityPaperIds: [],
+    slots: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isLocked: false,
+    status: 'draft',
+  };
+
+  // 1. Resting instructor check
+  const restingTeacherIds = new Set(
+    (routine.unavailableTeachers || [])
+      .filter((u) => u.type === 'REST')
+      .map((u) => u.teacherId.replace(/^T0*/, 'T'))
+  );
+  assert.equal(restingTeacherIds.has('T7'), true);
+  assert.equal(restingTeacherIds.has('T8'), false);
+
+  // 2. Absent exclusion set for period availability (T7 on REST must NOT be excluded)
+  const absentExclusionSet = new Set(
+    routine.absentTeacherIds
+      .map((id) => id.replace(/^T0*/, 'T'))
+      .filter((id) => !restingTeacherIds.has(id))
+  );
+  assert.equal(absentExclusionSet.has('T7'), false, 'T7 on REST must not be excluded from reserve roster');
+  assert.equal(absentExclusionSet.has('T8'), true, 'T8 on LEAVE must be excluded from reserve roster');
+
+  // 3. Bottom unavailable section (T7 on REST must be excluded, only T8 shown)
+  const unavailableMap = new Map<string, { type: string; remark?: string }>();
+  if (routine.unavailableTeachers) {
+    for (const u of routine.unavailableTeachers) {
+      unavailableMap.set(u.teacherId.replace(/^T0*/, 'T'), { type: u.type, remark: u.remark });
+    }
+  }
+  const unavailableInstructors = Array.from(unavailableMap.entries()).map(([tid, info]) => ({
+    teacherId: tid,
+    type: info.type,
+    remark: info.remark,
+  }));
+  const displayedUnavailable = unavailableInstructors.filter((u) => u.type !== 'REST');
+  assert.equal(displayedUnavailable.length, 1);
+  assert.equal(displayedUnavailable[0].teacherId, 'T8');
+  assert.equal(displayedUnavailable[0].type, 'LEAVE');
+});
+
+test('Scenario 36: AppSettings adminPassword defaults to admin123 and supports custom password', () => {
+  assert.equal(DEFAULT_APP_SETTINGS.adminPassword, 'admin123');
+
+  const customSettings: AppSettings = {
+    ...DEFAULT_APP_SETTINGS,
+    adminPassword: 'securePassword456',
+  };
+  assert.equal(customSettings.adminPassword, 'securePassword456');
+});
+
+test('Scenario 37: Rule 8: Teacher Load Equalization Priority generates 75 valid slots with Tier 1 passed', () => {
+  const rules = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: true,
+  };
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  assert.equal(routine.slots.length, 75);
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    rules,
+    INITIAL_PAPERS
+  );
+
+  assert.equal(validation.tier1Passed, true, 'Rule 8 must satisfy all Tier 1 hard constraints');
+  assert.equal(validation.conflicts.length, 0, 'No double-booking conflicts allowed');
+  assert.equal(validation.buildingBindingViolations.length, 0, 'Strict building binding must hold');
+  assert.equal(validation.teacherMaxLoadViolations.length, 0, 'Hard cap of 4 periods must not be exceeded');
+});
+
+test('Scenario 38: Rule 8 prioritizes lagging teachers with fewer cumulative sessions', () => {
+  const rules = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: true,
+  };
+
+  // Day 1
+  const day1 = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Day 2
+  const day2 = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [day1],
+    targetDayNumber: 2,
+    targetDate: '2026-10-25',
+  });
+
+  const d1Loads = new Map<string, number>();
+  INITIAL_TEACHERS.forEach((t) => d1Loads.set(t.id, 0));
+  day1.slots.forEach((s) => {
+    if (s.teacherId) d1Loads.set(s.teacherId, (d1Loads.get(s.teacherId) || 0) + 1);
+  });
+
+  const d2Loads = new Map<string, number>();
+  INITIAL_TEACHERS.forEach((t) => d2Loads.set(t.id, 0));
+  day2.slots.forEach((s) => {
+    if (s.teacherId) d2Loads.set(s.teacherId, (d2Loads.get(s.teacherId) || 0) + 1);
+  });
+
+  // Find teachers who had lowest load on Day 1 (<= 2 periods)
+  const lowDay1Teachers = INITIAL_TEACHERS.filter((t) => (d1Loads.get(t.id) || 0) <= 2);
+  const avgDay2LoadForLowD1 =
+    lowDay1Teachers.reduce((acc, t) => acc + (d2Loads.get(t.id) || 0), 0) / lowDay1Teachers.length;
+
+  assert.equal(
+    avgDay2LoadForLowD1 >= 2.5,
+    true,
+    'Teachers with fewer sessions on Day 1 must receive higher session allocations on Day 2'
+  );
+});
+
+test('Scenario 39: When Rule 8 is OFF, routine generator operates in standard curriculum-first mode', () => {
+  const rulesOff = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: false,
+  };
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules: rulesOff,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  assert.equal(routine.slots.length, 75);
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    rulesOff,
+    INITIAL_PAPERS
+  );
+  assert.equal(validation.tier1Passed, true);
+});
+
+
+
+
 
 
 

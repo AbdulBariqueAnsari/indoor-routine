@@ -4,9 +4,10 @@
   "trainingCenterName": "Subsidiary Training Centre",
   "subTitle": "Daily Indoor Class Routine & Instructor Assignment Master Sheet",
   "location": "SAP 4th Bn, Kasba, Raiganj, Uttar Dinajpur",
-  "signatoryDesignation": "O/C STC (Indoor), SAP 4th Bn",
+  "signatoryDesignation": "O/C STC (Indoor)",
   "tagline": "Daily Indoor Class Routine Scheduler",
-  "activeRoutineId": "routine-day-48",
+  "activeRoutineId": "routine-day-6",
   "language": "en",
-  "address": "Kasba, Raiganj, Uttar Dinajpur - 733123"
+  "address": "Kasba, Raiganj, Uttar Dinajpur - 733123",
+  "adminPassword": "admin123"
 }

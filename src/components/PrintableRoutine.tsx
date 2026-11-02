@@ -49,13 +49,22 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   const oldBuilding = classrooms.filter((c) => c.building === 'OLD');
   const newBuilding = classrooms.filter((c) => c.building === 'NEW');
 
-  // Compute period-wise available (free/reserve) instructors
+  // Resting instructors (Rest option: excluded from classes, but kept as normal available free/reserve in PDF)
+  const restingTeacherIds = new Set(
+    (routine.unavailableTeachers || [])
+      .filter((u) => u.type === 'REST')
+      .map((u) => u.teacherId.replace(/^T0*/, 'T'))
+  );
+
+  // Compute period-wise available (free/reserve) instructors - Rest faculty is NOT excluded from reserve roster
   const absentNormalizedSet = new Set(
-    routine.absentTeacherIds.map((id) => id.replace(/^T0*/, 'T'))
+    routine.absentTeacherIds
+      .map((id) => id.replace(/^T0*/, 'T'))
+      .filter((id) => !restingTeacherIds.has(id))
   );
 
   // Instructors on Leave / Duty / Sick / Absent
-  const unavailableMap = new Map<string, { type: 'LEAVE' | 'DUTY' | 'SICK' | 'ABSENT'; remark?: string }>();
+  const unavailableMap = new Map<string, { type: 'LEAVE' | 'DUTY' | 'SICK' | 'ABSENT' | 'REST'; remark?: string }>();
 
   if (routine.unavailableTeachers && routine.unavailableTeachers.length > 0) {
     for (const u of routine.unavailableTeachers) {
@@ -84,6 +93,9 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
       remark: info.remark,
     };
   });
+
+  // Instructors marked as REST are shown in normal reserve/available free roster above, and excluded from bottom Absent/Leave block
+  const displayedUnavailable = unavailableInstructors.filter((u) => u.type !== 'REST');
 
   const periodAvailability = PERIOD_TIMINGS.map((p) => {
     const busyTeacherIdsInPeriod = new Set(
@@ -267,18 +279,18 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
         <div className="flex items-center justify-between border-b border-black pb-0.5 mb-1 font-bold uppercase tracking-wider text-black">
           <div className="flex items-center gap-1.5">
             <span className="text-[9.5px]">Instructors on Leave / Duty / Sick / Absent</span>
-            {unavailableInstructors.length > 0 && (
+            {displayedUnavailable.length > 0 && (
               <span className="px-1.5 py-0.2 rounded bg-black text-white text-[7.5px] font-bold font-mono">
-                Total: {unavailableInstructors.length}
+                Total: {displayedUnavailable.length}
               </span>
             )}
           </div>
           <span className="text-[7.5px] font-mono text-slate-700">Daily Faculty Status</span>
         </div>
 
-        {unavailableInstructors.length > 0 ? (
+        {displayedUnavailable.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
-            {unavailableInstructors.map((item) => {
+            {displayedUnavailable.map((item) => {
               const label =
                 item.type === 'LEAVE'
                   ? 'ON LEAVE'
@@ -319,6 +331,19 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
           </div>
         )}
       </div>
+
+      {/* Paper-Wise Syllabus Content & Directives Note Section */}
+      {routine.notes && (
+        <div className="mt-2 p-2 border border-black bg-slate-50 text-[8px] break-inside-avoid">
+          <div className="flex items-center justify-between border-b border-black pb-0.5 mb-1 font-bold uppercase tracking-wider text-black">
+            <span className="text-[9px]">Paper-Wise Syllabus Content / Directives & Notes</span>
+            <span className="text-[7.5px] font-mono text-slate-700">Course Curriculum & Session Instructions</span>
+          </div>
+          <div className="text-black font-semibold whitespace-pre-wrap leading-relaxed text-[8.5px]">
+            {routine.notes}
+          </div>
+        </div>
+      )}
 
       {/* Official Signature: Authority & Institution only */}
       <div className="mt-4 pt-2 border-t-2 border-black flex justify-end break-inside-avoid">

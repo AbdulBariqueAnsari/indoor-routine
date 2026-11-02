@@ -11,6 +11,7 @@ import {
   Database,
   Download,
   Eye,
+  KeyRound,
   LayoutTemplate,
   Lock,
   LogIn,
@@ -42,6 +43,7 @@ interface HeaderProps {
   onOpenRulesModal?: () => void;
   onOpenPageSetup?: () => void;
   onOpenDownloads?: () => void;
+  onOpenChangePassword?: () => void;
   onPrint: () => void;
   isCurrentEditable: boolean;
   onToggleLockRoutine?: (routineId: string) => void;
@@ -65,6 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRulesModal,
   onOpenPageSetup,
   onOpenDownloads,
+  onOpenChangePassword,
   onPrint,
   isCurrentEditable,
   onToggleLockRoutine,
@@ -101,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'progress', label: 'Session Counter' },
     { id: 'ledger', label: 'Instructor Ledger' },
     { id: 'teachers', label: 'Instructor Duty' },
-    { id: 'mapping', label: 'Instructor Mapping (T1–T26)' },
+    { id: 'mapping', label: 'Instructor Mapping' },
     { id: 'history', label: 'History & Audit' },
   ];
 
@@ -137,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium hidden lg:block truncate">
-                {tagline || 'Daily Indoor Class Routine Scheduler · 15 Rooms · 26 Instructors'}
+                {tagline || 'Daily Indoor Class Routine Scheduler · 15 Rooms · Multi-Instructor Matrix'}
               </p>
             </div>
           </div>
@@ -365,6 +368,23 @@ export const Header: React.FC<HeaderProps> = ({
                           <div>
                             <div className="font-bold text-slate-900">Downloads & Reports</div>
                             <div className="text-[10px] text-slate-500">PDF & Excel exports for all 8 registers</div>
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Change Admin Password */}
+                      {onOpenChangePassword && (
+                        <button
+                          onClick={() => {
+                            setIsAdminMenuOpen(false);
+                            onOpenChangePassword();
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-800 transition-colors border-t border-slate-100"
+                        >
+                          <KeyRound className="w-4 h-4 text-slate-700 shrink-0" />
+                          <div>
+                            <div className="font-bold text-slate-900">Change Admin Password</div>
+                            <div className="text-[10px] text-slate-500">Update security login credentials</div>
                           </div>
                         </button>
                       )}

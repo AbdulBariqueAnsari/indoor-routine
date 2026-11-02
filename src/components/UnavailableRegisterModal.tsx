@@ -88,9 +88,10 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
     LEAVE: teachers.filter((t) => unavailableMap.get(t.id)?.type === 'LEAVE').length,
     DUTY: teachers.filter((t) => unavailableMap.get(t.id)?.type === 'DUTY').length,
     SICK: teachers.filter((t) => unavailableMap.get(t.id)?.type === 'SICK').length,
+    REST: teachers.filter((t) => unavailableMap.get(t.id)?.type === 'REST').length,
   };
 
-  // Set instructor status (AVAILABLE, ABSENT, LEAVE, DUTY, SICK)
+  // Set instructor status (AVAILABLE, ABSENT, LEAVE, DUTY, SICK, REST)
   const handleSetStatus = (teacher: Teacher, newStatus: 'AVAILABLE' | UnavailabilityType, customRemark?: string) => {
     let newUnavailableList = [...(routine.unavailableTeachers || [])];
     let newAbsentTeacherIds = [...routine.absentTeacherIds];
@@ -115,6 +116,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
         LEAVE: 'Sanctioned Casual / Privilege Leave',
         DUTY: 'Special / Law & Order / Campus Duty',
         SICK: 'Medical / Sick Leave',
+        REST: 'Rest / Standby Reserve',
       };
 
       const finalRemark = customRemark !== undefined ? customRemark : (unavailableMap.get(teacher.id)?.remark || defaultRemarks[newStatus]);
@@ -284,8 +286,8 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
         </div>
 
         {/* Status Count Summary Cards */}
-        <div className="p-4 bg-slate-100/70 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-2.5">
+        <div className="p-4 bg-slate-100/70 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+          <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
               <UserCheck className="w-4 h-4" />
             </div>
@@ -295,7 +297,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-rose-200 shadow-2xs flex items-center gap-2.5">
+          <div className="bg-white p-2 rounded-xl border border-rose-200 shadow-2xs flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
               <UserX className="w-4 h-4" />
             </div>
@@ -305,7 +307,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs flex items-center gap-2.5">
+          <div className="bg-white p-2 rounded-xl border border-amber-200 shadow-2xs flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
               <UserMinus className="w-4 h-4" />
             </div>
@@ -315,7 +317,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-blue-200 shadow-2xs flex items-center gap-2.5">
+          <div className="bg-white p-2 rounded-xl border border-blue-200 shadow-2xs flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
               <Briefcase className="w-4 h-4" />
             </div>
@@ -325,13 +327,23 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-purple-200 shadow-2xs flex items-center gap-2.5">
+          <div className="bg-white p-2 rounded-xl border border-purple-200 shadow-2xs flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
               <HeartPulse className="w-4 h-4" />
             </div>
             <div>
               <div className="text-[11px] text-slate-500 font-medium">Sick / Med</div>
               <div className="text-base font-bold text-purple-700">{counts.SICK}</div>
+            </div>
+          </div>
+
+          <div className="bg-white p-2 rounded-xl border border-teal-200 shadow-2xs flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500 font-medium">Rest</div>
+              <div className="text-base font-bold text-teal-700">{counts.REST}</div>
             </div>
           </div>
         </div>
@@ -386,6 +398,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                 <option value="LEAVE">On Leave ({counts.LEAVE})</option>
                 <option value="DUTY">On Duty ({counts.DUTY})</option>
                 <option value="SICK">Sick ({counts.SICK})</option>
+                <option value="REST">Rest ({counts.REST})</option>
               </select>
             </div>
           )}
@@ -431,7 +444,9 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                         ? 'bg-amber-50/70 border-amber-200'
                         : statusType === 'DUTY'
                         ? 'bg-blue-50/70 border-blue-200'
-                        : 'bg-purple-50/70 border-purple-200'
+                        : statusType === 'SICK'
+                        ? 'bg-purple-50/70 border-purple-200'
+                        : 'bg-teal-50/70 border-teal-200'
                     }`}
                   >
                     {/* Left: Teacher Info & Badge */}
@@ -446,7 +461,9 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                             ? 'bg-amber-100 text-amber-800'
                             : statusType === 'DUTY'
                             ? 'bg-blue-100 text-blue-800'
-                            : 'bg-purple-100 text-purple-800'
+                            : statusType === 'SICK'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-teal-100 text-teal-800'
                         }`}
                       >
                         {teacher.code}
@@ -472,7 +489,9 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                                 ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                 : statusType === 'DUTY'
                                 ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                : 'bg-purple-100 text-purple-800 border border-purple-300'
+                                : statusType === 'SICK'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                : 'bg-teal-100 text-teal-800 border border-teal-300'
                             }`}
                           >
                             {!isUnavailable ? 'Available' : statusType}
@@ -562,6 +581,18 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                         Sick
                       </button>
 
+                      <button
+                        onClick={() => handleSetStatus(teacher, 'REST')}
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                          isUnavailable && statusType === 'REST'
+                            ? 'bg-teal-600 text-white shadow-2xs ring-1 ring-teal-700'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-teal-50 hover:text-teal-800'
+                        }`}
+                        title="Mark Rest (Excluded from routine assignments, shown as reserve/available free in PDF)"
+                      >
+                        Rest
+                      </button>
+
                       {/* Custom Remark Button */}
                       {isUnavailable && (
                         <button
@@ -648,7 +679,9 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                                   ? 'bg-amber-100 text-amber-800 border-amber-300'
                                   : unavail.type === 'DUTY'
                                   ? 'bg-blue-100 text-blue-800 border-blue-300'
-                                  : 'bg-purple-100 text-purple-800 border-purple-300';
+                                  : unavail.type === 'SICK'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                  : 'bg-teal-100 text-teal-800 border-teal-300';
 
                               return (
                                 <td

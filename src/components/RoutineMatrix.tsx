@@ -3,21 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Classroom, ClassSlot, DailyRoutine, Paper, Teacher } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import {
   ArrowLeftRight,
+  BookOpen,
   Building2,
   Check,
   Clock,
   Edit3,
+  FileText,
   Filter,
   Info,
   Lock,
   Printer,
   RefreshCw,
   RotateCcw,
+  Save,
   Search,
   Sparkles,
   Unlock,
@@ -42,6 +45,7 @@ interface RoutineMatrixProps {
   onRequireAdmin?: () => void;
   onPrint?: () => void;
   onToggleLockRoutine?: (routineId: string) => void;
+  onUpdateNotes?: (notes: string) => void;
 }
 
 export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
@@ -58,7 +62,16 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   onRequireAdmin,
   onPrint,
   onToggleLockRoutine,
+  onUpdateNotes,
 }) => {
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesText, setNotesText] = useState(routine.notes || '');
+
+  useEffect(() => {
+    setNotesText(routine.notes || '');
+    setIsEditingNotes(false);
+  }, [routine.id, routine.notes]);
+
   // Filter states
   const [buildingFilter, setBuildingFilter] = useState<'ALL' | 'OLD' | 'NEW'>('ALL');
   const [selectedTeacherHighlight, setSelectedTeacherHighlight] = useState<string>('ALL');
@@ -659,7 +672,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
               }`}
               aria-label="Filter by Instructor"
             >
-              <option value="ALL">All Instructors (26: T1–T26)</option>
+              <option value="ALL">All Instructors ({teachers.length}: T1–T{teachers.length})</option>
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.code} - {t.name}
@@ -863,6 +876,95 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             )}
           </>
         )}
+      </div>
+
+      {/* Paper-Wise Syllabus Content & Class Directives Card */}
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Paper-Wise Syllabus Content & Daily Directives
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 font-mono">
+              Printed on Routine PDF
+            </span>
+            {isAdmin && isEditable && onUpdateNotes && !isEditingNotes && (
+              <button
+                type="button"
+                onClick={() => setIsEditingNotes(true)}
+                className="px-2.5 py-1 text-xs font-semibold rounded bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit Note</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 bg-slate-50/70">
+          {isEditingNotes ? (
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                Edit Paper-Wise Syllabus Content / Directives:
+              </label>
+              <textarea
+                rows={5}
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+                placeholder="Enter paper-wise syllabus contents to be taught during class sessions (multiline)..."
+                className="w-full text-xs font-mono rounded-lg border border-slate-300 p-2.5 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 leading-relaxed resize-y"
+              />
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotesText(routine.notes || '');
+                    setIsEditingNotes(false);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateNotes) {
+                      onUpdateNotes(notesText);
+                    }
+                    setIsEditingNotes(false);
+                  }}
+                  className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Syllabus Note</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {routine.notes ? (
+                <div className="text-xs text-slate-900 font-medium whitespace-pre-wrap leading-relaxed font-sans bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                  {routine.notes}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic py-2 text-center bg-white rounded-lg border border-dashed border-slate-300">
+                  No syllabus notes or directives recorded for this routine.
+                  {isAdmin && isEditable && onUpdateNotes && (
+                    <span
+                      onClick={() => setIsEditingNotes(true)}
+                      className="ml-1.5 text-indigo-600 font-semibold cursor-pointer underline hover:text-indigo-800"
+                    >
+                      Click here to add paper-wise syllabus contents
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Public / Read-Only Slot Detail Inspection Modal */}

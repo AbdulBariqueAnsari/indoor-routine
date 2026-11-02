@@ -165,6 +165,15 @@ export function validateRoutine(
         const next = teacherSlots[i + 1];
 
         if (next.period === current.period + 1) {
+          // Rule 4A: Exclude Period 3 to Period 4 transit from mandatory gap (recess break)
+          if (
+            activeRules.enableBuildingChangeGapPeriod3To4Exemption &&
+            current.period === 3 &&
+            next.period === 4
+          ) {
+            continue;
+          }
+
           const currentRoom = roomMap.get(current.roomId);
           const nextRoom = roomMap.get(next.roomId);
 
@@ -366,17 +375,25 @@ export function validateSlotAssignmentTier1(
       // Check immediately preceding period
       const prevSlot = existingSlots.find((s) => s.period === proposed.period - 1 && s.teacherId === proposed.teacherId);
       if (prevSlot) {
-        const prevRoom = classrooms.find((r) => r.id === prevSlot.roomId);
-        if (prevRoom && prevRoom.building !== room.building) {
-          return { isValid: false, reason: `Transit gap violation: Teacher ${teacher.name} requires 1 period gap between buildings` };
+        const isPeriod3To4 = prevSlot.period === 3 && proposed.period === 4;
+        const isExempt = activeRules.enableBuildingChangeGapPeriod3To4Exemption && isPeriod3To4;
+        if (!isExempt) {
+          const prevRoom = classrooms.find((r) => r.id === prevSlot.roomId);
+          if (prevRoom && prevRoom.building !== room.building) {
+            return { isValid: false, reason: `Transit gap violation: Teacher ${teacher.name} requires 1 period gap between buildings` };
+          }
         }
       }
       // Check immediately succeeding period
       const nextSlot = existingSlots.find((s) => s.period === proposed.period + 1 && s.teacherId === proposed.teacherId);
       if (nextSlot) {
-        const nextRoom = classrooms.find((r) => r.id === nextSlot.roomId);
-        if (nextRoom && nextRoom.building !== room.building) {
-          return { isValid: false, reason: `Transit gap violation: Teacher ${teacher.name} requires 1 period gap between buildings` };
+        const isPeriod3To4 = proposed.period === 3 && nextSlot.period === 4;
+        const isExempt = activeRules.enableBuildingChangeGapPeriod3To4Exemption && isPeriod3To4;
+        if (!isExempt) {
+          const nextRoom = classrooms.find((r) => r.id === nextSlot.roomId);
+          if (nextRoom && nextRoom.building !== room.building) {
+            return { isValid: false, reason: `Transit gap violation: Teacher ${teacher.name} requires 1 period gap between buildings` };
+          }
         }
       }
     }

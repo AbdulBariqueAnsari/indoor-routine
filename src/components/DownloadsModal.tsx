@@ -182,13 +182,13 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
     },
     {
       id: 'instructor-mapping',
-      title: 'Instructor Mapping Matrix (T1–T26)',
+      title: `Instructor Mapping Matrix (T1–T${teachers.length})`,
       subtitle: 'Master faculty register with primary subject codes, backups, and daily period caps',
       category: 'faculty',
       icon: Database,
       color: 'text-purple-600 bg-purple-50 border-purple-200',
       recordCount: `${teachers.length} Master Faculty Profiles`,
-      fileName: `STC_Instructor_Mapping_Matrix_T1_T26`,
+      fileName: `STC_Instructor_Mapping_Matrix_T1_T${teachers.length}`,
       getHeaders: () => [
         'Sl No',
         'Teacher Code',

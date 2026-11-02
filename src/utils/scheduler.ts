@@ -487,6 +487,45 @@ export const CROSS_SUBJECT_BACKUP_MAP: Record<string, { backupPaperIds: string[]
 };
 
 /**
+ * Helper to dynamically resolve primary teachers for a paper from the instructor mapping.
+ * Any teacher whose main subject (primaryPaperIds) matches this paper is a primary teacher.
+ */
+export function getPaperPrimaryTeachers(paper: Paper, teachers: Teacher[]): Teacher[] {
+  // Find all teachers whose main subject in instructor mapping matches this paper (by ID, code, or title)
+  const matching = teachers.filter((t) => {
+    if (!t.primaryPaperIds || t.primaryPaperIds.length === 0) return false;
+    return t.primaryPaperIds.some((pid) => {
+      if (!pid) return false;
+      const cleanPid = pid.trim().toLowerCase();
+      const pId = paper.id.trim().toLowerCase();
+      const pCode = paper.code.trim().toLowerCase();
+      const pTitle = paper.title.trim().toLowerCase();
+      return (
+        cleanPid === pId ||
+        cleanPid === pCode ||
+        cleanPid === pTitle ||
+        pCode.replace(/[^a-z0-9]/g, '') === cleanPid.replace(/[^a-z0-9]/g, '') ||
+        (cleanPid.length > 3 && pTitle.includes(cleanPid))
+      );
+    });
+  });
+
+  if (matching.length > 0) {
+    return matching;
+  }
+
+  // Fallback to paper.primaryTeacherIds if no teacher has it in primaryPaperIds (e.g. Practical P13 or unmapped papers)
+  if (paper.primaryTeacherIds && paper.primaryTeacherIds.length > 0) {
+    const fromIds = paper.primaryTeacherIds
+      .map((tid) => teachers.find((t) => t.id === tid || t.code === tid))
+      .filter(Boolean) as Teacher[];
+    if (fromIds.length > 0) return fromIds;
+  }
+
+  return [];
+}
+
+/**
  * Primary Routine Generation Engine implementing Tier 1 Hard Constraints,
  * Tier 2 Priority-Based Curriculum Allocation, Rotational Wave Sequencing,
  * and Fair Teacher Balancing.
@@ -494,7 +533,7 @@ export const CROSS_SUBJECT_BACKUP_MAP: Record<string, { backupPaperIds: string[]
 export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   const {
     classrooms,
-    papers,
+    papers: rawPapers,
     teachers,
     absentTeacherIds = [],
     priorityPaperIds = [],
@@ -509,10 +548,22 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     notes,
   } = options;
 
+  // Synchronize primary teacher assignments from instructor mapping (teacher.primaryPaperIds)
+  // Rule: Any subject's teacher will be whichever teacher has that subject as their main subject in instructor mapping
+  const papers = rawPapers.map((p) => {
+    const primaryTeachers = getPaperPrimaryTeachers(p, teachers);
+    return {
+      ...p,
+      primaryTeacherIds: primaryTeachers.map((t) => t.id),
+    };
+  });
+
   const activeRules: RoutineRuleConfig = normalizeRuleConfig(rules);
   const totalDailySlots = classrooms.length * 5; // 75 slots
   const paperMap = new Map(papers.map((p) => [p.id, p]));
   const classroomMap = new Map(classrooms.map((c) => [c.id, c]));
+  const classroomIndexMap = new Map<string, number>();
+  classrooms.forEach((c, idx) => classroomIndexMap.set(c.id, idx + 1));
   const teacherMap = new Map(teachers.map((t) => [t.id, t]));
 
   const combinedExcludedSet = new Set(excludedPaperIds.map((id) => id.trim()));
@@ -683,6 +734,15 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           const remB = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(b.id)?.get(paper.id) || 0));
           if (remA !== remB) return remB - remA;
 
+          // Rotational campus offset so subjects with smaller daily counts (e.g. Paper-12)
+          // rotate evenly across both Old Building and New Building instead of clustering in low-index rooms
+          const idxA = classroomIndexMap.get(a.id) || 1;
+          const idxB = classroomIndexMap.get(b.id) || 1;
+          const dayOffset = (targetDayNumber * 3) % classrooms.length;
+          const distA = (idxA - dayOffset + classrooms.length) % classrooms.length;
+          const distB = (idxB - dayOffset + classrooms.length) % classrooms.length;
+          if (distA !== distB) return distA - distB;
+
           return a.id.localeCompare(b.id);
         });
 
@@ -839,9 +899,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   >();
 
   // Teacher room rotation target
-  const classroomIndexMap = new Map<string, number>();
-  classrooms.forEach((c, idx) => classroomIndexMap.set(c.id, idx + 1));
-
   const teacherTargetRoomIndex = new Map<string, number>();
   const previousRoutines = historicalRoutines
     .filter((r) => r.dayNumber < targetDayNumber)
@@ -882,7 +939,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return (teacherHistoricalSessions.get(tid) || 0) + (teacherDailyLoad.get(tid) || 0);
   };
 
-  // Helper to check building change gap (Rule 4)
+  // Helper to check building change gap (Rule 4 & Rule 4A)
   const hasBuildingChangeConflict = (
     teacherId: string,
     period: number,
@@ -891,7 +948,19 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     if (!activeRules.enableBuildingChangeGap) return false;
     const last = teacherLastSlot.get(teacherId);
     if (!last) return false;
-    return last.period === period - 1 && last.building !== targetBuilding;
+    if (last.building === targetBuilding) return false;
+    if (last.period === period - 1) {
+      // Rule 4A: Exclude Period 3 to Period 4 transit from mandatory gap (recess break)
+      if (
+        activeRules.enableBuildingChangeGapPeriod3To4Exemption &&
+        last.period === 3 &&
+        period === 4
+      ) {
+        return false;
+      }
+      return true;
+    }
+    return false;
   };
 
   // Helper to check strict building binding (Rule 3)
@@ -924,14 +993,8 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         return loadA - loadB;
       }
 
-      // 2. Cumulative Workload Balancing: prefer teacher with fewer total historical sessions
-      const totalA = getTeacherTotalLoad(a.id);
-      const totalB = getTeacherTotalLoad(b.id);
-      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
-        return totalA - totalB;
-      }
-
-      // 3. Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+      // 2. Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+      // Strongly prioritize instructors who have NEVER visited this room (0 visits)
       if (activeRules.enableUnvisitedRoomTeacherPrioritization) {
         const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
         const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
@@ -960,6 +1023,13 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
         const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
         if (visitsA !== visitsB) return visitsA - visitsB;
+      }
+
+      // 3. Cumulative Workload Balancing: prefer teacher with fewer total historical sessions
+      const totalA = getTeacherTotalLoad(a.id);
+      const totalB = getTeacherTotalLoad(b.id);
+      if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
+        return totalA - totalB;
       }
 
       // Room carousel circular distance
@@ -1001,8 +1071,240 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     (a, b) => (classroomIndexMap.get(a.id) || 0) - (classroomIndexMap.get(b.id) || 0)
   );
 
-  for (let period = 1; period <= 5; period++) {
-    const busyTeachersInPeriod = new Set<string>();
+  if (activeRules.enableTeacherLoadEqualizationPriority) {
+    // =========================================================================
+    // RULE 8: TEACHER LOAD EQUALIZATION PRIORITY (TEACHER-FIRST DETAILMENT)
+    // =========================================================================
+    // When enabled, instructor session equalization takes absolute priority over
+    // classroom curriculum targets.
+    // Principles:
+    // 1. Teachers are detailed first; lagging teachers (fewer cumulative sessions)
+    //    receive more classes.
+    // 2. Classrooms curriculum counts are bypassed; subject is assigned directly from
+    //    the instructor's primary paper mapping.
+    // 3. Teachers belonging to the same paper category (and same paper) will NOT appear
+    //    together in the same classroom on the same day.
+    // 4. Instructors are prioritized for deployment in classrooms where their historical
+    //    deployment / visit count has been the lowest (broad building exposure).
+    // =========================================================================
+
+    const getTeacherPrimaryPaper = (t: Teacher): Paper => {
+      for (const pid of t.primaryPaperIds || []) {
+        const p = paperMap.get(pid);
+        if (p) return p;
+      }
+      const mapped = papers.find((p) => (p.primaryTeacherIds || []).includes(t.id));
+      return mapped || papers[0];
+    };
+
+    const getTeacherPaperCategory = (t: Teacher, paper?: Paper): string => {
+      const p = paper || getTeacherPrimaryPaper(t);
+      return p.code || p.id;
+    };
+
+    const getAvailablePaperForTeacherInRoom = (t: Teacher, roomId: string): Paper => {
+      const assigned = roomAssignedPaperIds.get(roomId)!;
+      // 1. Primary paper
+      for (const pid of t.primaryPaperIds || []) {
+        if (!assigned.has(pid)) {
+          const p = paperMap.get(pid);
+          if (p) return p;
+        }
+      }
+      // 2. Backup paper
+      for (const pid of t.backupPaperIds || []) {
+        if (!assigned.has(pid)) {
+          const p = paperMap.get(pid);
+          if (p) return p;
+        }
+      }
+      // 3. Secondary paper
+      for (const pid of t.secondaryPaperIds || []) {
+        if (!assigned.has(pid)) {
+          const p = paperMap.get(pid);
+          if (p) return p;
+        }
+      }
+      // 4. Any paper of this teacher's primary category not yet in room
+      const primaryP = getTeacherPrimaryPaper(t);
+      const categoryPapers = papers.filter((p) => p.category === primaryP.category && !assigned.has(p.id));
+      if (categoryPapers.length > 0) return categoryPapers[0];
+
+      // 5. Any paper not yet in room
+      const anyFreePaper = papers.filter((p) => !assigned.has(p.id));
+      if (anyFreePaper.length > 0) return anyFreePaper[0];
+
+      return primaryP;
+    };
+
+    const roomAssignedTeacherIds = new Map<string, Set<string>>();
+    const roomAssignedPaperIds = new Map<string, Set<string>>();
+    const roomAssignedCategories = new Map<string, Set<string>>();
+    for (const r of classrooms) {
+      roomAssignedTeacherIds.set(r.id, new Set());
+      roomAssignedPaperIds.set(r.id, new Set());
+      roomAssignedCategories.set(r.id, new Set());
+    }
+
+    for (let period = 1; period <= 5; period++) {
+      const busyTeachersInPeriod = new Set<string>();
+
+      // Period classrooms: sort by building, and room with more assigned papers first
+      const periodRooms = [...orderedRooms].sort((a, b) => {
+        // Home building grouping
+        if (a.building !== b.building) {
+          return a.building === 'OLD' ? -1 : 1;
+        }
+        const assignedA = roomAssignedPaperIds.get(a.id)!.size;
+        const assignedB = roomAssignedPaperIds.get(b.id)!.size;
+        if (assignedA !== assignedB) return assignedB - assignedA;
+        return (classroomIndexMap.get(a.id) || 0) - (classroomIndexMap.get(b.id) || 0);
+      });
+
+      const periodSlotMap = new Map<string, { teacher: Teacher; paper: Paper }>();
+      const assignedThisPeriod = new Set<string>();
+
+      for (const room of periodRooms) {
+        // Find candidate teachers for this room in this period
+        const candidates = availableTeachers.filter((t) => {
+          if (assignedThisPeriod.has(t.id)) return false;
+          const currentDaily = teacherDailyLoad.get(t.id) || 0;
+          const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
+          if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
+          if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
+          if (hasBuildingChangeConflict(t.id, period, room.building)) return false;
+          if (roomAssignedTeacherIds.get(room.id)!.has(t.id)) return false;
+          // Teacher must have a paper that is not yet assigned in this room today
+          const assignedPapers = roomAssignedPaperIds.get(room.id)!;
+          const hasEligiblePaper = (t.primaryPaperIds || []).some((pid) => !assignedPapers.has(pid)) ||
+            (t.backupPaperIds || []).some((pid) => !assignedPapers.has(pid)) ||
+            (t.secondaryPaperIds || []).some((pid) => !assignedPapers.has(pid));
+          if (!hasEligiblePaper && assignedPapers.size < papers.length) return false;
+          return true;
+        });
+
+        // Fallback pool if strict room repeat is exhausted
+        const pool = candidates.length > 0 ? candidates : availableTeachers.filter((t) => {
+          if (assignedThisPeriod.has(t.id)) return false;
+          const currentDaily = teacherDailyLoad.get(t.id) || 0;
+          const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
+          if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
+          if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
+          if (hasBuildingChangeConflict(t.id, period, room.building)) return false;
+          return true;
+        });
+
+        if (pool.length > 0) {
+          // Sort candidates:
+          // 1. Same paper category in this room avoided (teachers of same paper category will not appear in same class)
+          // 2. Lowest cumulative workload across history + today (lagging teachers get more classes)
+          // 3. Lowest deployment in this room (teacher historical visits count)
+          // 4. Daily load balance
+          // 5. Home-building preference
+          pool.sort((a, b) => {
+            const paperA = getAvailablePaperForTeacherInRoom(a, room.id);
+            const paperB = getAvailablePaperForTeacherInRoom(b, room.id);
+            const catA = getTeacherPaperCategory(a, paperA);
+            const catB = getTeacherPaperCategory(b, paperB);
+
+            // Category uniqueness in this room
+            const hasCatA = roomAssignedCategories.get(room.id)!.has(catA) ? 1 : 0;
+            const hasCatB = roomAssignedCategories.get(room.id)!.has(catB) ? 1 : 0;
+            if (hasCatA !== hasCatB) return hasCatA - hasCatB;
+
+            // Lowest visits / prior deployments in this room (unvisited rooms prioritized)
+            const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(room.id) || 0;
+            const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(room.id) || 0;
+            const isUnvisitedA = visitsA === 0;
+            const isUnvisitedB = visitsB === 0;
+            if (isUnvisitedA !== isUnvisitedB) {
+              return isUnvisitedA ? -1 : 1;
+            }
+            if (visitsA !== visitsB) return visitsA - visitsB;
+
+            // Cumulative workload balancing
+            const totalLoadA = (teacherHistoricalSessions.get(a.id) || 0) + (teacherDailyLoad.get(a.id) || 0);
+            const totalLoadB = (teacherHistoricalSessions.get(b.id) || 0) + (teacherDailyLoad.get(b.id) || 0);
+            if (totalLoadA !== totalLoadB) return totalLoadA - totalLoadB;
+
+            const dailyA = teacherDailyLoad.get(a.id) || 0;
+            const dailyB = teacherDailyLoad.get(b.id) || 0;
+            if (dailyA !== dailyB) return dailyA - dailyB;
+
+            const isHomeA = a.assignedBuilding === room.building ? 1 : 0;
+            const isHomeB = b.assignedBuilding === room.building ? 1 : 0;
+            if (isHomeA !== isHomeB) return isHomeB - isHomeA;
+
+            return a.id.localeCompare(b.id);
+          });
+
+          const chosen = pool[0];
+          assignedThisPeriod.add(chosen.id);
+          const paper = getAvailablePaperForTeacherInRoom(chosen, room.id);
+          const cat = getTeacherPaperCategory(chosen, paper);
+
+          roomAssignedTeacherIds.get(room.id)!.add(chosen.id);
+          roomAssignedPaperIds.get(room.id)!.add(paper.id);
+          roomAssignedCategories.get(room.id)!.add(cat);
+          periodSlotMap.set(room.id, { teacher: chosen, paper });
+        }
+      }
+
+      // Commit all 15 assignments for this period
+      for (const room of orderedRooms) {
+        const assignment = periodSlotMap.get(room.id);
+        const roomIndex = classroomIndexMap.get(room.id) || 1;
+
+        if (assignment) {
+          const { teacher: chosen, paper } = assignment;
+          busyTeachersInPeriod.add(chosen.id);
+
+          const currentDaily = teacherDailyLoad.get(chosen.id) || 0;
+          teacherDailyLoad.set(chosen.id, currentDaily + 1);
+
+          teacherLastSlot.set(chosen.id, {
+            period,
+            building: room.building,
+            roomIndex,
+          });
+
+          teacherTargetRoomIndex.set(chosen.id, (roomIndex % classrooms.length) + 1);
+
+          if (teacherRoomDeploymentCount.has(chosen.id)) {
+            const rMap = teacherRoomDeploymentCount.get(chosen.id)!;
+            rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
+          }
+
+          generatedSlots.push({
+            id: `slot-${targetDayNumber}-${room.id}-P${period}`,
+            roomId: room.id,
+            period,
+            paperId: paper.id,
+            teacherId: chosen.id,
+            isSubstitute: false,
+            isPriority: priorityPaperIds.includes(paper.id) || (subjectPriorityTiers[paper.id] === 'HIGH'),
+          });
+        } else {
+          // Empty slot fallback if no teacher could legally be assigned under hard constraints
+          generatedSlots.push({
+            id: `slot-${targetDayNumber}-${room.id}-P${period}`,
+            roomId: room.id,
+            period,
+            paperId: '',
+            teacherId: '',
+            isSubstitute: false,
+            substituteReason: 'No instructor available under operational constraints',
+          });
+          noInstructorCount++;
+        }
+      }
+    }
+  } else {
+    // =========================================================================
+    // STANDARD CURRICULUM-FIRST ROTATIONAL FLOW ENGINE
+    // =========================================================================
+    for (let period = 1; period <= 5; period++) {
+      const busyTeachersInPeriod = new Set<string>();
 
     // Determine room processing order for this period:
     // When Rule 22 (enableUnvisitedRoomTeacherPrioritization) is active, prioritize classrooms
@@ -1038,7 +1340,10 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           return unvisitedA ? -1 : 1;
         }
 
-        return (classroomIndexMap.get(roomA.id) || 0) - (classroomIndexMap.get(roomB.id) || 0);
+        const roomOffset = ((period - 1) * 3 + targetDayNumber) % orderedRooms.length;
+        const idxA = ((classroomIndexMap.get(roomA.id) || 1) - roomOffset + classrooms.length) % classrooms.length;
+        const idxB = ((classroomIndexMap.get(roomB.id) || 1) - roomOffset + classrooms.length) % classrooms.length;
+        return idxA - idxB;
       });
     }
 
@@ -1256,6 +1561,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       generatedSlots.push(slot);
     }
   }
+}
 
   // 8. Part L: Final Tier 1 Validation and Audit Report Creation
   const tier1Validation = validateRoutine(

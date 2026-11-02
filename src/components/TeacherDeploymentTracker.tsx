@@ -349,8 +349,8 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
               <Users className="w-3.5 h-3.5 text-indigo-600" />
               Total Faculty
             </div>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">26 Instructors</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">T1 to T26 (All Floating)</div>
+            <div className="text-xl font-bold text-slate-900 mt-0.5">{teachers.length} Instructors</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">T1 to T{teachers.length} (Active Roster)</div>
           </div>
 
           <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-lg">
@@ -360,7 +360,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
             </div>
             <div className="text-xl font-bold text-emerald-950 mt-0.5">{activeTodayCount} Instructors</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
-              {26 - activeTodayCount} on leave today
+              {Math.max(0, teachers.length - activeTodayCount)} on leave today
             </div>
           </div>
 
@@ -524,7 +524,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
               onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'LEAVE')}
               className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="ALL">All Statuses (26 Teachers)</option>
+              <option value="ALL">All Statuses ({teachers.length} Teachers)</option>
               <option value="ACTIVE">Active on Duty Today</option>
               <option value="LEAVE">On Leave / Absent Today</option>
             </select>
@@ -555,6 +555,8 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                         ? 'Special Duty Today'
                         : focusedItem.unavailType === 'SICK'
                         ? 'Sick / Medical'
+                        : focusedItem.unavailType === 'REST'
+                        ? 'Rest / Standby'
                         : 'Unavailable Today'}
                     </span>
                   ) : (
@@ -1004,7 +1006,9 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                                 ? 'bg-amber-100 text-amber-800 border-amber-200'
                                 : item.unavailType === 'DUTY'
                                 ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                : 'bg-purple-100 text-purple-800 border-purple-200'
+                                : item.unavailType === 'SICK'
+                                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                : 'bg-teal-100 text-teal-800 border-teal-200'
                             }`}
                           >
                             <UserX className="w-2.5 h-2.5" />
@@ -1016,6 +1020,8 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                               ? 'Special Duty'
                               : item.unavailType === 'SICK'
                               ? 'Sick / Med'
+                              : item.unavailType === 'REST'
+                              ? 'Rest'
                               : 'Unavailable Today'}
                           </span>
                         ) : (
@@ -1221,7 +1227,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden p-4 sm:p-5 space-y-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              Cross-Classroom Deployment Matrix (All 26 Instructors × 15 Classrooms)
+              Cross-Classroom Deployment Matrix (All {teachers.length} Instructors × 15 Classrooms)
             </h3>
             <p className="text-xs text-slate-500">
               Numbers indicate total sessions conducted by each instructor in each classroom. Today's current classes are highlighted in green.

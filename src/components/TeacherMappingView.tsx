@@ -102,13 +102,13 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
 
     if (
       window.confirm(
-        'Are you sure you want to restore original academy instructor names and designations for T1 to T26?'
+        `Are you sure you want to restore original academy instructor names and designations for T1 to T${teachers.length}?`
       )
     ) {
       setEditingList([...INITIAL_TEACHERS]);
       onUpdateTeachers([...INITIAL_TEACHERS]);
       setHasUnsavedChanges(false);
-      setSaveSuccessMsg('Restored original academy instructors for T1 to T26.');
+      setSaveSuccessMsg(`Restored original academy instructors for T1 to T${teachers.length}.`);
       setTimeout(() => setSaveSuccessMsg(''), 5000);
     }
   };
@@ -141,14 +141,14 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
                 Admin Instructor Section
               </span>
               <span className="text-xs text-indigo-200">
-                26 System Instructor Codes · T1 through T26
+                {editingList.length} System Instructor Codes · T1 through T{editingList.length}
               </span>
             </div>
             <h2 className="text-lg font-bold text-white mt-1">
-              Instructor Assignment & Name Mapping (T1 to T26)
+              Instructor Assignment & Name Mapping (T1 to T{editingList.length})
             </h2>
             <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
-              In this dedicated section, assign real instructor names and campus building roles (Old Bldg, New Bldg, Floating) against system codes <strong>T1 through T26</strong>. 26 instructors are strictly divided across the 12 theory papers by session ratio. Practical (Paper-13) does not require fixed primary instructors—any available instructor can conduct practical classes.
+              In this dedicated section, assign real instructor names, Main Subjects, and campus building roles (Old Bldg, New Bldg, Floating) against system codes <strong>T1 through T{editingList.length}</strong>. Instructors are mapped across theory papers as primary teachers. Any subject's primary teacher will be whoever has that subject as their main subject here in instructor mapping.
             </p>
           </div>
 
@@ -195,21 +195,21 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-white/10 mt-4 text-xs">
           <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
             <div className="text-slate-400 text-[11px]">Theory Allocation</div>
-            <div className="text-lg font-bold font-mono text-white mt-0.5">26 Instructors / 12 Papers</div>
+            <div className="text-lg font-bold font-mono text-white mt-0.5">{editingList.length} Instructors / 12 Papers</div>
           </div>
           <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
             <div className="text-slate-400 text-[11px]">Active Today</div>
             <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">
               {currentRoutine
                 ? teachers.length - currentRoutine.absentTeacherIds.length
-                : 26}{' '}
+                : teachers.length}{' '}
               Instructors
             </div>
           </div>
           <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
             <div className="text-slate-400 text-[11px]">Practical (Paper-13)</div>
             <div className="text-lg font-bold font-mono text-lime-400 mt-0.5">
-              Open to All 26
+              Open to All {teachers.length}
             </div>
           </div>
           <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
@@ -219,7 +219,7 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
         </div>
       </div>
 
-      {/* 26 Instructors Calculation Across 12 Theory Papers Card */}
+      {/* Instructors Calculation Across 12 Theory Papers Card */}
       <div className="bg-white rounded-xl border border-indigo-100 p-4 shadow-2xs space-y-3">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900">
-                26 Instructors Distribution Across 12 Theory Papers (Session Ratio Based)
+                {editingList.length} Instructors Distribution Across 12 Theory Papers (Session Ratio Based)
               </h3>
               <p className="text-[11px] text-slate-500">
                 Theory papers account for 435 total target sessions. Instructor counts strictly follow session weightage.
@@ -271,24 +271,24 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
             <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center justify-between">
               <span>3 Instructors / Paper</span>
-              <span className="font-mono text-[10px] bg-indigo-100 px-1.5 py-0.2 rounded">3 Papers · 9 Teachers</span>
+              <span className="font-mono text-[10px] bg-indigo-100 px-1.5 py-0.2 rounded">2 Papers · 6 Teachers</span>
             </div>
             <div className="space-y-1 text-[11px] text-slate-700">
               <div>• <strong>Paper-1: BNSS (46 sess)</strong>: T1 (Old), T2 (New), T3 (Float)</div>
               <div>• <strong>Paper-3: Minor Acts (50 sess)</strong>: T8 (Old), T9 (New), T10 (Float)</div>
-              <div>• <strong>Paper-12: Ethics & Human Rights (54 sess)</strong>: T24 (Old), T25 (New), T26 (Float)</div>
             </div>
           </div>
 
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
             <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center justify-between">
               <span>4 Instructors / Paper</span>
-              <span className="font-mono text-[10px] bg-indigo-100 px-1.5 py-0.2 rounded">1 Paper · 4 Teachers</span>
+              <span className="font-mono text-[10px] bg-indigo-100 px-1.5 py-0.2 rounded">2 Papers · 8 Teachers</span>
             </div>
             <div className="space-y-1 text-[11px] text-slate-700">
               <div>• <strong>Paper-2: Bharatiya Nyaya Sanhita / BNS (56 sess)</strong>: T4, T5 (Old), T6, T7 (New)</div>
+              <div>• <strong>Paper-12: Ethics & Human Rights (54 sess)</strong>: T24, T25, T26, T27</div>
               <div className="pt-1.5 border-t border-slate-200 text-[10px] text-emerald-700 font-semibold">
-                Total Theory: 3+10+9+4 = 26 Instructors
+                Total Theory: 3+10+6+8 = {editingList.length} Instructors
               </div>
             </div>
           </div>
@@ -317,7 +317,7 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>View Only Mode:</strong> You are viewing current instructor mappings for T1 through T26. Log in with admin credentials to change names or reassign instructors.
+              <strong>View Only Mode:</strong> You are viewing current instructor mappings for T1 through T{editingList.length}. Log in with admin credentials to change names or reassign instructors.
             </span>
           </div>
           <button
@@ -361,7 +361,7 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
           </select>
 
           <span className="text-xs text-slate-400 pl-2">
-            Showing {filteredTeachers.length} of 26
+            Showing {filteredTeachers.length} of {editingList.length}
           </span>
         </div>
       </div>
@@ -461,30 +461,45 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
                     <td className="p-3 border-r border-slate-200 align-top">
                       {/* Main Subject */}
                       <div className="mb-2">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                          Main Subject:
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                          <span>Main Subject:</span>
+                          <span className="text-[9px] text-indigo-600 font-semibold">Primary Paper</span>
                         </div>
-                        <div className="space-y-1">
-                          {t.primaryPaperIds.map((pid) => {
-                            const paper = paperMap.get(pid);
-                            return (
-                              <div
-                                key={pid}
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50/70 border border-indigo-200 text-xs w-full"
-                              >
-                                <span
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white font-mono shrink-0"
-                                  style={{ backgroundColor: paper?.color || '#4F46E5' }}
+                        {isAdmin ? (
+                          <select
+                            value={t.primaryPaperIds[0] || 'P01'}
+                            onChange={(e) => handleFieldChange(t.id, 'primaryPaperIds', [e.target.value])}
+                            className="w-full px-2 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-indigo-300 rounded-md text-xs font-semibold text-indigo-950 focus:outline-indigo-500 transition-colors"
+                          >
+                            {papers.filter((p) => p.id !== 'P13').map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.code}: {p.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="space-y-1">
+                            {t.primaryPaperIds.map((pid) => {
+                              const paper = paperMap.get(pid);
+                              return (
+                                <div
+                                  key={pid}
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50/70 border border-indigo-200 text-xs w-full"
                                 >
-                                  {paper?.code || pid}
-                                </span>
-                                <span className="font-semibold text-slate-800 text-[11px] truncate">
-                                  {paper?.title || pid}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                  <span
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white font-mono shrink-0"
+                                    style={{ backgroundColor: paper?.color || '#4F46E5' }}
+                                  >
+                                    {paper?.code || pid}
+                                  </span>
+                                  <span className="font-semibold text-slate-800 text-[11px] truncate">
+                                    {paper?.title || pid}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Backup Subjects (At least 2 Options - 100% Floating across campus) */}
@@ -658,7 +673,7 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
         {/* Footer info bar */}
         <div className="p-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <span>
-            Total 26 instructors configured (Codes T1 to T26) across 12 theory papers. Practical (Paper-13) has no fixed instructors and is open to all available instructors.
+            Total {editingList.length} instructors configured (Codes T1 to T{editingList.length}) across 12 theory papers. Practical (Paper-13) has no fixed instructors and is open to all available instructors.
           </span>
           {isAdmin && hasUnsavedChanges && (
             <button

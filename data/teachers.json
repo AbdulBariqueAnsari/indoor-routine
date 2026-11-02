@@ -8,12 +8,8 @@
     "primaryPaperIds": [
       "P01"
     ],
-    "backupPaperIds": [
-      "P02"
-    ],
-    "secondaryPaperIds": [
-      "P02"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 99334 52921"
   },
@@ -26,14 +22,8 @@
     "primaryPaperIds": [
       "P01"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P08"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P08"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 98006 20487"
   },
@@ -46,14 +36,8 @@
     "primaryPaperIds": [
       "P01"
     ],
-    "backupPaperIds": [
-      "P02",
-      "P09"
-    ],
-    "secondaryPaperIds": [
-      "P02",
-      "P09"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 96142 17484"
   },
@@ -66,14 +50,8 @@
     "primaryPaperIds": [
       "P02"
     ],
-    "backupPaperIds": [
-      "P01",
-      "P04"
-    ],
-    "secondaryPaperIds": [
-      "P01",
-      "P04"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 89006 74916"
   },
@@ -86,14 +64,8 @@
     "primaryPaperIds": [
       "P02"
     ],
-    "backupPaperIds": [
-      "P01",
-      "P04"
-    ],
-    "secondaryPaperIds": [
-      "P01",
-      "P04"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 97352 80252"
   },
@@ -106,14 +78,8 @@
     "primaryPaperIds": [
       "P02"
     ],
-    "backupPaperIds": [
-      "P09",
-      "P08"
-    ],
-    "secondaryPaperIds": [
-      "P09",
-      "P08"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 79082 77110"
   },
@@ -126,14 +92,8 @@
     "primaryPaperIds": [
       "P02"
     ],
-    "backupPaperIds": [
-      "P09",
-      "P01"
-    ],
-    "secondaryPaperIds": [
-      "P09",
-      "P01"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 76021 44180"
   },
@@ -146,14 +106,8 @@
     "primaryPaperIds": [
       "P03"
     ],
-    "backupPaperIds": [
-      "P02",
-      "P07"
-    ],
-    "secondaryPaperIds": [
-      "P02",
-      "P07"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 861 786 1981"
   },
@@ -166,14 +120,8 @@
     "primaryPaperIds": [
       "P03"
     ],
-    "backupPaperIds": [
-      "P01",
-      "P02"
-    ],
-    "secondaryPaperIds": [
-      "P01",
-      "P02"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 891 844 1326"
   },
@@ -186,14 +134,8 @@
     "primaryPaperIds": [
       "P03"
     ],
-    "backupPaperIds": [
-      "P11",
-      "P02"
-    ],
-    "secondaryPaperIds": [
-      "P11",
-      "P02"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 97332 18259"
   },
@@ -206,14 +148,8 @@
     "primaryPaperIds": [
       "P04"
     ],
-    "backupPaperIds": [
-      "P03",
-      "P02"
-    ],
-    "secondaryPaperIds": [
-      "P03",
-      "P02"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 94345 18447"
   },
@@ -226,14 +162,8 @@
     "primaryPaperIds": [
       "P05"
     ],
-    "backupPaperIds": [
-      "P06",
-      "P12"
-    ],
-    "secondaryPaperIds": [
-      "P06",
-      "P12"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 83378 00950"
   },
@@ -246,14 +176,8 @@
     "primaryPaperIds": [
       "P05"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P07"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P07"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 94757 68133"
   },
@@ -266,14 +190,8 @@
     "primaryPaperIds": [
       "P06"
     ],
-    "backupPaperIds": [
-      "P05",
-      "P10"
-    ],
-    "secondaryPaperIds": [
-      "P05",
-      "P10"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 81458 48041"
   },
@@ -286,14 +204,8 @@
     "primaryPaperIds": [
       "P06"
     ],
-    "backupPaperIds": [
-      "P05",
-      "P09"
-    ],
-    "secondaryPaperIds": [
-      "P05",
-      "P09"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 98323 86930"
   },
@@ -306,14 +218,8 @@
     "primaryPaperIds": [
       "P07"
     ],
-    "backupPaperIds": [
-      "P03",
-      "P09"
-    ],
-    "secondaryPaperIds": [
-      "P03",
-      "P09"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 70312 35687"
   },
@@ -326,14 +232,8 @@
     "primaryPaperIds": [
       "P08"
     ],
-    "backupPaperIds": [
-      "P07",
-      "P12"
-    ],
-    "secondaryPaperIds": [
-      "P07",
-      "P12"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 79087 52229"
   },
@@ -346,14 +246,8 @@
     "primaryPaperIds": [
       "P09"
     ],
-    "backupPaperIds": [
-      "P09",
-      "P03"
-    ],
-    "secondaryPaperIds": [
-      "P09",
-      "P03"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 90029 43499"
   },
@@ -366,14 +260,8 @@
     "primaryPaperIds": [
       "P09"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P11"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P11"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 70013 37008"
   },
@@ -386,14 +274,8 @@
     "primaryPaperIds": [
       "P10"
     ],
-    "backupPaperIds": [
-      "P04",
-      "P07"
-    ],
-    "secondaryPaperIds": [
-      "P04",
-      "P07"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 70018 83069"
   },
@@ -406,14 +288,8 @@
     "primaryPaperIds": [
       "P10"
     ],
-    "backupPaperIds": [
-      "P11",
-      "P12"
-    ],
-    "secondaryPaperIds": [
-      "P11",
-      "P12"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 83482 65787"
   },
@@ -426,14 +302,8 @@
     "primaryPaperIds": [
       "P11"
     ],
-    "backupPaperIds": [
-      "P05",
-      "P10"
-    ],
-    "secondaryPaperIds": [
-      "P05",
-      "P10"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 70010 05530"
   },
@@ -446,14 +316,8 @@
     "primaryPaperIds": [
       "P11"
     ],
-    "backupPaperIds": [
-      "P12",
-      "P09"
-    ],
-    "secondaryPaperIds": [
-      "P12",
-      "P09"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 98327 36256"
   },
@@ -466,14 +330,8 @@
     "primaryPaperIds": [
       "P12"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P09"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P09"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 94344 58547"
   },
@@ -486,14 +344,8 @@
     "primaryPaperIds": [
       "P12"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P07"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P07"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 97332 91300"
   },
@@ -506,14 +358,8 @@
     "primaryPaperIds": [
       "P12"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P11"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P11"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "maxDailyPeriods": 4,
     "phone": "+91 747 914 2044"
   },
@@ -523,18 +369,12 @@
     "name": "SI(AB) Biswajit Deb",
     "designation": "Ethics",
     "assignedBuilding": "FLOATING",
-    "maxDailyPeriods": 4,
+    "maxDailyPeriods": 3,
     "primaryPaperIds": [
       "P12"
     ],
-    "backupPaperIds": [
-      "P10",
-      "P11"
-    ],
-    "secondaryPaperIds": [
-      "P10",
-      "P11"
-    ],
+    "backupPaperIds": [],
+    "secondaryPaperIds": [],
     "phone": "",
     "email": "",
     "status": "ACTIVE",

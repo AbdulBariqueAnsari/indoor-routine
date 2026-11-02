@@ -933,13 +933,18 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                         <div className="text-[10px] text-slate-600 pt-2 border-t border-slate-200 flex items-center justify-between">
                           <span>
                             <strong className="text-slate-700">Instructors:</strong>{' '}
-                            {p.primaryTeacherIds.length > 0 ? (
-                              p.primaryTeacherIds.join(', ')
-                            ) : (
-                              <span className="font-semibold text-lime-700">
-                                All instructors eligible (Practical)
-                              </span>
-                            )}
+                            {(() => {
+                              const assignedInstructors = teachers.filter(
+                                (t) => (t.primaryPaperIds || []).includes(p.id) || (p.primaryTeacherIds || []).includes(t.id)
+                              );
+                              return assignedInstructors.length > 0 ? (
+                                assignedInstructors.map((t) => t.code).join(', ')
+                              ) : (
+                                <span className="font-semibold text-lime-700">
+                                  All instructors eligible (Practical)
+                                </span>
+                              );
+                            })()}
                           </span>
                           <span className="font-mono text-slate-500">
                             Max {p.maxDailyPerRoom || 2}/room/day

@@ -4,27 +4,31 @@
  */
 
 import React, { useState } from 'react';
-import { KeyRound, Lock, ShieldCheck, X } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Lock, X } from 'lucide-react';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: () => void;
+  adminPassword?: string;
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  adminPassword = 'admin123',
 }) => {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123') {
+    const expected = adminPassword || 'admin123';
+    if (password === expected) {
       setError('');
       setPassword('');
       onLoginSuccess();
@@ -65,7 +69,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             </label>
             <div className="relative">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoFocus
                 placeholder="Enter password..."
                 value={password}
@@ -73,9 +77,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   setPassword(e.target.value);
                   setError('');
                 }}
-                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 pl-9 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 pl-9 pr-9 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 text-slate-400 hover:text-slate-600 absolute right-2 top-2"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
             {error && <p className="text-xs text-rose-600 font-medium mt-1">{error}</p>}
           </div>
