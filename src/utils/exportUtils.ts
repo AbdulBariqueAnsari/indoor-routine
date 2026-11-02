@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AppSettings, Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { AppSettings, Classroom, DailyRoutine, Paper, Teacher, UnavailableInstructor, UnavailabilityType } from '../types';
 
 export interface ReportDefinition {
   id: string;
@@ -549,6 +549,228 @@ export function generateInstructorPhoneDirectoryData(teachers: Teacher[], papers
       primarySubjectTitles || 'Applied Practical Training',
       t.status || 'ACTIVE',
       t.email || `${t.code.toLowerCase()}@stc.police.gov.in`,
+    ]);
+  }
+
+  return rows;
+}
+
+export interface TeacherUnavailabilityIncident {
+  date: string;
+  dayNumber: number;
+  routineId?: string;
+  type: UnavailabilityType;
+  remark: string;
+  routineStatus?: string;
+}
+
+export interface TeacherUnavailabilitySummary {
+  teacher: Teacher;
+  totalUnavailableDays: number;
+  leaveCount: number;
+  dutyCount: number;
+  sickCount: number;
+  restCount: number;
+  absentCount: number;
+  totalRoutinesCount: number;
+  attendanceRate: number; // percentage (0 - 100)
+  incidents: TeacherUnavailabilityIncident[];
+}
+
+/**
+ * Computes consolidated faculty unavailability statistics and incident details across all daily routines.
+ */
+export function computeInstructorUnavailabilityStats(
+  teachers: Teacher[],
+  allRoutines: DailyRoutine[],
+  standaloneUnavailability: UnavailableInstructor[] = []
+): TeacherUnavailabilitySummary[] {
+  const sortedRoutines = [...allRoutines].sort((a, b) => a.dayNumber - b.dayNumber);
+  const totalRoutinesCount = Math.max(1, sortedRoutines.length);
+
+  const summaryMap = new Map<string, TeacherUnavailabilitySummary>();
+  for (const t of teachers) {
+    summaryMap.set(t.id, {
+      teacher: t,
+      totalUnavailableDays: 0,
+      leaveCount: 0,
+      dutyCount: 0,
+      sickCount: 0,
+      restCount: 0,
+      absentCount: 0,
+      totalRoutinesCount,
+      attendanceRate: 100,
+      incidents: [],
+    });
+  }
+
+  // Track routine-based unavailability
+  for (const r of sortedRoutines) {
+    const recordedInRoutine = new Set<string>();
+
+    if (r.unavailableTeachers && r.unavailableTeachers.length > 0) {
+      for (const u of r.unavailableTeachers) {
+        const item = summaryMap.get(u.teacherId);
+        if (item) {
+          recordedInRoutine.add(u.teacherId);
+          item.totalUnavailableDays++;
+          const type = (u.type || 'ABSENT').toUpperCase() as UnavailabilityType;
+          if (type === 'LEAVE') item.leaveCount++;
+          else if (type === 'DUTY') item.dutyCount++;
+          else if (type === 'SICK') item.sickCount++;
+          else if (type === 'REST') item.restCount++;
+          else item.absentCount++;
+
+          item.incidents.push({
+            date: u.date || r.date,
+            dayNumber: r.dayNumber,
+            routineId: r.id,
+            type,
+            remark: u.remark || `${type} Record`,
+            routineStatus: r.status || 'published',
+          });
+        }
+      }
+    }
+
+    for (const tid of r.absentTeacherIds || []) {
+      if (!recordedInRoutine.has(tid)) {
+        const item = summaryMap.get(tid);
+        if (item) {
+          recordedInRoutine.add(tid);
+          item.totalUnavailableDays++;
+          item.absentCount++;
+          item.incidents.push({
+            date: r.date,
+            dayNumber: r.dayNumber,
+            routineId: r.id,
+            type: 'ABSENT',
+            remark: 'Marked Absent',
+            routineStatus: r.status || 'published',
+          });
+        }
+      }
+    }
+  }
+
+  // Include standalone records if they belong to dates not present in allRoutines
+  const routineDates = new Set(sortedRoutines.map((r) => r.date));
+  for (const u of standaloneUnavailability) {
+    if (u.date && !routineDates.has(u.date)) {
+      const item = summaryMap.get(u.teacherId);
+      if (item) {
+        item.totalUnavailableDays++;
+        const type = (u.type || 'ABSENT').toUpperCase() as UnavailabilityType;
+        if (type === 'LEAVE') item.leaveCount++;
+        else if (type === 'DUTY') item.dutyCount++;
+        else if (type === 'SICK') item.sickCount++;
+        else if (type === 'REST') item.restCount++;
+        else item.absentCount++;
+
+        item.incidents.push({
+          date: u.date,
+          dayNumber: 0,
+          type,
+          remark: u.remark || 'Standalone Register Entry',
+          routineStatus: 'register',
+        });
+      }
+    }
+  }
+
+  // Calculate attendance percentages
+  for (const item of summaryMap.values()) {
+    const presentDays = Math.max(0, totalRoutinesCount - item.totalUnavailableDays);
+    item.attendanceRate = Math.round((presentDays / totalRoutinesCount) * 1000) / 10;
+  }
+
+  return Array.from(summaryMap.values());
+}
+
+/**
+ * 9. Instructor Unavailability Summary Data Generator (Excel & CSV)
+ */
+export function generateInstructorUnavailabilityData(
+  teachers: Teacher[],
+  allRoutines: DailyRoutine[],
+  standaloneUnavailability: UnavailableInstructor[] = []
+): (string | number)[][] {
+  const stats = computeInstructorUnavailabilityStats(teachers, allRoutines, standaloneUnavailability);
+  const rows: (string | number)[][] = [];
+
+  let idx = 1;
+  for (const item of stats) {
+    const formattedIncidents = item.incidents.length > 0
+      ? item.incidents
+          .map((inc) => `Day ${inc.dayNumber || 'Ext'} (${inc.date}) [${inc.type}]: ${inc.remark || 'No remark'}`)
+          .join('; ')
+      : 'Full Attendance (0 Absent Days)';
+
+    rows.push([
+      idx++,
+      item.teacher.code,
+      item.teacher.name,
+      item.teacher.designation || 'Instructor',
+      item.teacher.assignedBuilding || 'FLOATING',
+      item.totalUnavailableDays,
+      item.leaveCount,
+      item.dutyCount,
+      item.sickCount,
+      item.restCount,
+      item.absentCount,
+      `${item.attendanceRate}%`,
+      formattedIncidents,
+    ]);
+  }
+
+  return rows;
+}
+
+/**
+ * 10. Unavailability Incident Log Data Generator (Chronological per incident)
+ */
+export function generateUnavailabilityIncidentLogData(
+  teachers: Teacher[],
+  allRoutines: DailyRoutine[],
+  standaloneUnavailability: UnavailableInstructor[] = []
+): (string | number)[][] {
+  const stats = computeInstructorUnavailabilityStats(teachers, allRoutines, standaloneUnavailability);
+  const teacherMap = new Map(teachers.map((t) => [t.id, t]));
+  const rows: (string | number)[][] = [];
+
+  const allIncidents: {
+    incident: TeacherUnavailabilityIncident;
+    teacher: Teacher;
+  }[] = [];
+
+  for (const s of stats) {
+    for (const inc of s.incidents) {
+      allIncidents.push({
+        incident: inc,
+        teacher: s.teacher,
+      });
+    }
+  }
+
+  allIncidents.sort((a, b) => {
+    if (a.incident.dayNumber !== b.incident.dayNumber) {
+      return a.incident.dayNumber - b.incident.dayNumber;
+    }
+    return a.incident.date.localeCompare(b.incident.date);
+  });
+
+  let idx = 1;
+  for (const item of allIncidents) {
+    rows.push([
+      idx++,
+      item.incident.date,
+      item.incident.dayNumber > 0 ? `Day ${item.incident.dayNumber}` : 'General',
+      item.teacher.code,
+      item.teacher.name,
+      item.teacher.designation || 'Instructor',
+      item.incident.type,
+      item.incident.remark || '',
+      item.incident.routineStatus || 'published',
     ]);
   }
 

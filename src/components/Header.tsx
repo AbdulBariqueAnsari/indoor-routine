@@ -96,6 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
   const publicNavItems = [
     { id: 'matrix', label: 'Daily Routine Matrix' },
     { id: 'tracker', label: 'Instructor Deployment Tracker' },
+    { id: 'unavailability', label: 'Unavailability Ledger' },
   ];
 
   const adminNavItems = [
@@ -103,6 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'tracker', label: 'Instructor Deployment Tracker' },
     { id: 'progress', label: 'Session Counter' },
     { id: 'ledger', label: 'Instructor Ledger' },
+    { id: 'unavailability', label: 'Unavailability Ledger' },
     { id: 'teachers', label: 'Instructor Duty' },
     { id: 'mapping', label: 'Instructor Mapping' },
     { id: 'history', label: 'History & Audit' },

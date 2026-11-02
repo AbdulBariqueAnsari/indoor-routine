@@ -16,6 +16,7 @@ import { InstructorLedgerView } from './components/InstructorLedgerView';
 import { TeacherDutyView } from './components/TeacherDutyView';
 import { TeacherMappingView } from './components/TeacherMappingView';
 import { TeacherDeploymentTracker } from './components/TeacherDeploymentTracker';
+import { InstructorUnavailabilityView } from './components/InstructorUnavailabilityView';
 import { HistoryView } from './components/HistoryView';
 import { SlotEditModal } from './components/SlotEditModal';
 import { RoutineGeneratorModal } from './components/RoutineGeneratorModal';
@@ -556,6 +557,19 @@ export default function App() {
               classrooms={classrooms}
               allRoutines={visibleRoutines}
               currentRoutine={currentRoutine}
+            />
+          )}
+
+          {/* Tab 1B: Instructor Unavailability & Leave Ledger */}
+          {activeTab === 'unavailability' && (
+            <InstructorUnavailabilityView
+              teachers={teachers}
+              allRoutines={visibleRoutines}
+              currentRoutine={currentRoutine}
+              papers={papers}
+              classrooms={classrooms}
+              isAdmin={isAdmin}
+              onOpenLeaveManager={() => setIsLeaveManagerOpen(true)}
             />
           )}
 

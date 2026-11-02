@@ -26,6 +26,11 @@ import {
 } from './scheduler';
 import { validateRoutine, validateSlotAssignmentTier1, isRoutineEditable } from './routineValidator';
 import { AppSettings, ClassSlot, DailyRoutine, SubjectPriorityTier } from '../types';
+import {
+  computeInstructorUnavailabilityStats,
+  generateInstructorUnavailabilityData,
+  generateUnavailabilityIncidentLogData,
+} from './exportUtils';
 
 test('Routine generator produces exactly 75 slots for 15 classrooms and 5 periods', () => {
   const routine = generateDailyRoutine({
@@ -2221,6 +2226,106 @@ test('Scenario 39: When Rule 8 is OFF, routine generator operates in standard cu
     INITIAL_PAPERS
   );
   assert.equal(validation.tier1Passed, true);
+});
+
+test('Scenario 40: computeInstructorUnavailabilityStats accurately aggregates leave, duty, sick, rest, and absences across routines', () => {
+  const dummyRoutines: DailyRoutine[] = [
+    {
+      id: 'r1',
+      dayNumber: 1,
+      date: '2026-10-27',
+      isLocked: true,
+      absentTeacherIds: ['T1', 'T2'],
+      unavailableTeachers: [
+        { teacherId: 'T1', type: 'LEAVE', remark: 'Casual Leave', date: '2026-10-27' },
+        { teacherId: 'T2', type: 'DUTY', remark: 'Special Law & Order Duty', date: '2026-10-27' },
+      ],
+      priorityPaperIds: [],
+      slots: [],
+    },
+    {
+      id: 'r2',
+      dayNumber: 2,
+      date: '2026-10-28',
+      isLocked: true,
+      absentTeacherIds: ['T1', 'T3'],
+      unavailableTeachers: [
+        { teacherId: 'T1', type: 'REST', remark: 'Rest Standby', date: '2026-10-28' },
+        { teacherId: 'T3', type: 'SICK', remark: 'Medical leave', date: '2026-10-28' },
+      ],
+      priorityPaperIds: [],
+      slots: [],
+    },
+    {
+      id: 'r3',
+      dayNumber: 3,
+      date: '2026-10-29',
+      isLocked: true,
+      absentTeacherIds: ['T4'],
+      priorityPaperIds: [],
+      slots: [],
+    },
+  ];
+
+  const stats = computeInstructorUnavailabilityStats(INITIAL_TEACHERS, dummyRoutines);
+  assert.equal(stats.length, INITIAL_TEACHERS.length);
+
+  const t1 = stats.find((s) => s.teacher.id === 'T1');
+  assert.ok(t1);
+  assert.equal(t1.totalUnavailableDays, 2);
+  assert.equal(t1.leaveCount, 1);
+  assert.equal(t1.restCount, 1);
+  assert.equal(t1.dutyCount, 0);
+  assert.equal(t1.incidents.length, 2);
+
+  const t2 = stats.find((s) => s.teacher.id === 'T2');
+  assert.ok(t2);
+  assert.equal(t2.totalUnavailableDays, 1);
+  assert.equal(t2.dutyCount, 1);
+
+  const t3 = stats.find((s) => s.teacher.id === 'T3');
+  assert.ok(t3);
+  assert.equal(t3.totalUnavailableDays, 1);
+  assert.equal(t3.sickCount, 1);
+
+  const t4 = stats.find((s) => s.teacher.id === 'T4');
+  assert.ok(t4);
+  assert.equal(t4.totalUnavailableDays, 1);
+  assert.equal(t4.absentCount, 1);
+
+  const t5 = stats.find((s) => s.teacher.id === 'T5');
+  assert.ok(t5);
+  assert.equal(t5.totalUnavailableDays, 0);
+  assert.equal(t5.attendanceRate, 100);
+});
+
+test('Scenario 41: generateInstructorUnavailabilityData and generateUnavailabilityIncidentLogData generate valid report rows', () => {
+  const dummyRoutines: DailyRoutine[] = [
+    {
+      id: 'r1',
+      dayNumber: 1,
+      date: '2026-10-27',
+      isLocked: true,
+      absentTeacherIds: ['T17'],
+      unavailableTeachers: [
+        { teacherId: 'T17', type: 'DUTY', remark: 'Special Law & Order', date: '2026-10-27' },
+      ],
+      priorityPaperIds: [],
+      slots: [],
+    },
+  ];
+
+  const summaryRows = generateInstructorUnavailabilityData(INITIAL_TEACHERS, dummyRoutines);
+  assert.equal(summaryRows.length, INITIAL_TEACHERS.length);
+  const t17Row = summaryRows.find((r) => r[1] === 'T17');
+  assert.ok(t17Row);
+  assert.equal(t17Row[5], 1);
+  assert.equal(t17Row[7], 1);
+
+  const incidentRows = generateUnavailabilityIncidentLogData(INITIAL_TEACHERS, dummyRoutines);
+  assert.equal(incidentRows.length, 1);
+  assert.equal(incidentRows[0][3], 'T17');
+  assert.equal(incidentRows[0][6], 'DUTY');
 });
 
 
