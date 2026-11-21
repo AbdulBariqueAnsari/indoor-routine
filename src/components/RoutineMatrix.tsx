@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
-import { Classroom, ClassSlot, DailyRoutine, Paper, Teacher } from '../types';
-import { PERIOD_TIMINGS } from '../data/initialData';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BuildingInfo, Classroom, ClassSlot, compareClassrooms, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
+import { INITIAL_BUILDINGS, PERIOD_TIMINGS } from '../data/initialData';
+import { buildRoutineSessionNumbersMap } from '../utils/scheduler';
 import {
   ArrowLeftRight,
   BookOpen,
@@ -36,6 +37,8 @@ interface RoutineMatrixProps {
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
+  buildings?: BuildingInfo[];
+  allRoutines?: DailyRoutine[];
   isEditable: boolean;
   isAdmin: boolean;
   onEditSlot: (slot: ClassSlot) => void;
@@ -53,6 +56,8 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   classrooms,
   papers,
   teachers,
+  buildings = INITIAL_BUILDINGS,
+  allRoutines = [],
   isEditable,
   isAdmin,
   onEditSlot,
@@ -73,7 +78,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   }, [routine.id, routine.notes]);
 
   // Filter states
-  const [buildingFilter, setBuildingFilter] = useState<'ALL' | 'OLD' | 'NEW'>('ALL');
+  const [buildingFilter, setBuildingFilter] = useState<string>('ALL');
   const [selectedTeacherHighlight, setSelectedTeacherHighlight] = useState<string>('ALL');
   const [selectedRoomHighlight, setSelectedRoomHighlight] = useState<string>('ALL');
   const [selectedPaperHighlight, setSelectedPaperHighlight] = useState<string>('ALL');
@@ -94,6 +99,11 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   const paperMap = new Map(papers.map((p) => [p.id, p]));
   const teacherMap = new Map(teachers.map((t) => [t.id, t]));
   const roomMap = new Map(classrooms.map((r) => [r.id, r]));
+
+  // Session numbers map: counts sequential session per teacher for that paper in that classroom
+  const sessionNumbersMap = useMemo(() => {
+    return buildRoutineSessionNumbersMap(routine, allRoutines);
+  }, [routine, allRoutines]);
 
   // Check if any filter is active
   const isAnyFilterActive =
@@ -172,8 +182,11 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
     ? routine.slots.filter((s) => isSlotMatched(s)).length
     : 0;
 
+  // Sorted classrooms in strict natural sequence (Room No. 1 to Room No. 15)
+  const sortedClassrooms = useMemo(() => [...classrooms].sort(compareClassrooms), [classrooms]);
+
   // Filter rooms based on building filter and matched_only mode
-  const filteredRooms = classrooms.filter((r) => {
+  const filteredRooms = sortedClassrooms.filter((r) => {
     if (buildingFilter !== 'ALL' && r.building !== buildingFilter) {
       return false;
     }
@@ -193,8 +206,15 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
     return true;
   });
 
-  const oldBuildingRooms = filteredRooms.filter((r) => r.building === 'OLD');
-  const newBuildingRooms = filteredRooms.filter((r) => r.building === 'NEW');
+  const BUILDING_BADGE_COLORS = [
+    'bg-amber-500',
+    'bg-indigo-600',
+    'bg-emerald-600',
+    'bg-cyan-600',
+    'bg-purple-600',
+    'bg-rose-600',
+    'bg-blue-600',
+  ];
 
   // Handle slot clicking
   const handleSlotClick = (slot: ClassSlot) => {
@@ -235,6 +255,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
 
     const paper = paperMap.get(slot.paperId);
     const teacher = teacherMap.get(slot.teacherId);
+    const sessionNum = sessionNumbersMap.get(slot.id) || sessionNumbersMap.get(`${room.id}_${period}`) || 0;
     const isMatch = isSlotMatched(slot, room);
     const isDimmed = isAnyFilterActive && !isMatch && filterDisplayMode === 'highlight';
     const isSwapSelected = swapSelectedSlot?.id === slot.id;
@@ -245,8 +266,31 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
       slot.period.toString() !== selectedPeriodFilter
     ) {
       return (
-        <td key={period} className="p-2 border border-slate-200 text-center text-xs text-slate-300 bg-slate-50/50">
+        <td key={period} className="p-1 sm:p-1.5 border border-slate-200 text-center text-xs text-slate-300 bg-slate-50/50">
           -
+        </td>
+      );
+    }
+
+    const isBlankSlot = !slot.paperId || !slot.teacherId || slot.paperId.trim() === '' || slot.teacherId.trim() === '';
+
+    if (isBlankSlot) {
+      return (
+        <td
+          key={period}
+          onClick={() => handleSlotClick(slot)}
+          className={`p-1 sm:p-1.5 border border-slate-200 text-xs transition-all duration-150 relative group cursor-pointer slot-hover-pop ${
+            isSwapSelected
+              ? 'bg-indigo-100 ring-2 ring-indigo-600 z-20 shadow-md'
+              : 'bg-white hover:bg-slate-50/90'
+          }`}
+        >
+          <div className="flex flex-col h-full justify-center items-center gap-0.5 min-h-[48px] text-center p-0.5">
+            <span className="text-[10px] font-bold text-slate-400 italic tracking-wide">-- Blank Slot --</span>
+            {isAdmin && isEditable && (
+              <span className="text-[8px] text-indigo-600 font-semibold px-1 rounded bg-indigo-50 border border-indigo-200">Assign</span>
+            )}
+          </div>
         </td>
       );
     }
@@ -255,7 +299,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
       <td
         key={period}
         onClick={() => handleSlotClick(slot)}
-        className={`p-2 border border-slate-200 text-xs transition-all relative group cursor-pointer ${
+        className={`p-1 sm:p-1.5 border border-slate-200 text-xs transition-all duration-150 relative group cursor-pointer slot-hover-pop ${
           isSwapSelected
             ? 'bg-indigo-100 ring-2 ring-indigo-600 z-20 shadow-md'
             : isMatch && isAnyFilterActive
@@ -265,74 +309,83 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             : 'bg-white hover:bg-slate-50'
         }`}
       >
-        {!slot.paperId && !slot.teacherId ? (
-          <div className="flex flex-col h-full justify-center items-center gap-1 min-h-[76px] text-center p-1">
-            <span className="text-[11px] font-semibold text-slate-400 italic">-- Blank Slot --</span>
-            {isAdmin && isEditable && (
-              <span className="text-[9px] text-indigo-600 font-medium">Click to assign</span>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col h-full justify-between gap-1.5 min-h-[76px]">
-            {/* Paper / Subject Tag */}
-            <div>
-              <div className="flex items-center justify-between gap-1">
+        <div className="flex flex-col h-full justify-between gap-1 min-h-[42px]">
+          {/* Paper / Subject Tag */}
+          <div>
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              <div className="flex items-center gap-1">
                 <span
-                  className="font-bold text-[11px] px-1.5 py-0.5 rounded text-white tracking-wide shrink-0 font-mono shadow-2xs"
+                  className="font-bold text-[10px] px-1.5 py-0.2 rounded text-white tracking-wide shrink-0 font-mono shadow-2xs leading-tight"
                   style={{ backgroundColor: paper?.color || '#4F46E5' }}
                 >
-                  {paper?.code || slot.paperId || 'N/A'}
+                  {paper?.code || slot.paperId}
                 </span>
 
-                {slot.isPriority && (
+                {slot.practicalName && (
                   <span
-                    title="Priority Subject Scheduled"
-                    className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded shrink-0"
+                    title={`Practical / Workshop: ${slot.practicalName}`}
+                    className="text-[8px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 font-mono truncate max-w-[85px] leading-tight"
                   >
-                    ★ Priority
+                    {slot.practicalName}
+                  </span>
+                )}
+
+                {slot.isExam && (
+                  <span
+                    title={`Examination / Assessment: ${slot.examName || 'Exam'}`}
+                    className="text-[8px] px-1 py-0.2 rounded bg-rose-100 text-rose-800 font-bold border border-rose-300 font-mono truncate max-w-[85px] leading-tight"
+                  >
+                    {slot.examName || 'Exam'}
                   </span>
                 )}
               </div>
 
-              <p className="font-semibold text-slate-800 text-[11px] mt-1 line-clamp-1" title={paper?.title}>
-                {paper?.title || 'Subject Unassigned'}
-              </p>
+              {slot.isPriority && (
+                <span
+                  title="Priority Subject Scheduled"
+                  className="text-[9px] text-amber-700 font-bold bg-amber-100 px-1 rounded shrink-0 leading-tight"
+                >
+                  ★ Pri
+                </span>
+              )}
             </div>
 
-            {/* Teacher Info */}
-            <div className="border-t border-slate-100 pt-1 flex items-end justify-between gap-1">
-              <div className="min-w-0 flex-1">
-                {slot.teacherId ? (
-                  <>
-                    <p
-                      className="font-semibold text-slate-900 text-[11px] truncate flex items-center gap-1"
-                      title={`${teacher?.code || 'T?'}: ${teacher?.name || ''}`}
-                    >
-                      <span className="px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] shrink-0">
-                        {teacher?.code || 'T?'}
-                      </span>
-                      <span className="truncate">{teacher?.name}</span>
-                    </p>
+            <p className="font-semibold text-slate-800 text-[10px] mt-0.5 line-clamp-1 leading-tight" title={slot.isExam ? `${paper?.title || slot.paperId} [${slot.examName || 'Exam'}]` : slot.practicalName ? `${paper?.title || slot.paperId} (${slot.practicalName})` : (paper?.title || slot.paperId)}>
+              {slot.isExam ? `${paper?.title || slot.paperId} [${slot.examName || 'Exam'}]` : slot.practicalName ? `${paper?.title || slot.paperId} [${slot.practicalName}]` : (paper?.title || slot.paperId)}
+            </p>
+          </div>
 
-                    {slot.isSubstitute && (
-                      <span
-                        className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 font-semibold mt-0.5"
-                        title={slot.substituteReason || 'Substitute Instructor Assigned'}
-                      >
-                        <UserCheck className="w-2.5 h-2.5 shrink-0" />
-                        <span className="truncate max-w-[120px]">Sub</span>
-                      </span>
-                    )}
-                  </>
-                ) : (
+          {/* Teacher Info */}
+          <div className="border-t border-slate-100 pt-0.5 flex items-center justify-between gap-1">
+            <div className="min-w-0 flex-1">
+              <p
+                className="font-medium text-slate-900 text-[10px] truncate flex items-center gap-1 leading-tight"
+                title={`${teacher?.code || 'T?'}: ${teacher?.name || ''}${sessionNum > 0 ? ` - Session (${sessionNum}) for ${paper?.code || slot.paperId} in ${room.name}` : ''}`}
+              >
+                <span className="px-1 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[9px] shrink-0">
+                  {teacher?.code || 'T?'}
+                </span>
+                <span className="truncate">{teacher?.name || slot.teacherId}</span>
+                {sessionNum > 0 && (
                   <span
-                    className="px-1.5 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-semibold inline-block truncate"
-                    title={slot.substituteReason || 'No Instructor Assigned (Vacant)'}
+                    className="font-mono font-bold text-indigo-700 text-[9.5px] shrink-0"
+                    title={`Session (${sessionNum}) for ${teacher?.name || slot.teacherId} in ${room.name} (${paper?.code || slot.paperId})`}
                   >
-                    No Instructor
+                    ({sessionNum})
                   </span>
                 )}
-              </div>
+              </p>
+
+              {slot.isSubstitute && (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[9px] text-amber-700 font-semibold leading-none mt-0.5"
+                  title={slot.substituteReason || 'Substitute Instructor Assigned'}
+                >
+                  <UserCheck className="w-2.5 h-2.5 shrink-0" />
+                  <span className="truncate max-w-[100px]">Sub</span>
+                </span>
+              )}
+            </div>
 
             {/* Action Indicators (Visible Prominently for Admin) */}
             {isAdmin && isEditable ? (
@@ -342,30 +395,27 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                   e.stopPropagation();
                   onEditSlot(slot);
                 }}
-                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-[10px] font-bold transition-all no-print ${
+                className={`inline-flex items-center p-0.5 rounded bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-[9px] font-bold transition-all no-print ${
                   isQuickEditVisible ? 'opacity-90' : 'opacity-0 group-hover:opacity-100'
                 }`}
                 title="Click to edit slot subject/instructor"
               >
-                <Edit3 className="w-3 h-3" />
-                <span className="hidden sm:inline">Edit</span>
+                <Edit3 className="w-2.5 h-2.5" />
               </button>
             ) : !isAdmin ? (
               <span
-                className="opacity-0 group-hover:opacity-60 text-indigo-600 text-[10px] flex items-center gap-0.5 font-medium no-print"
+                className="opacity-0 group-hover:opacity-60 text-indigo-600 text-[9px] flex items-center no-print"
                 title="Click to view full class details"
               >
-                <Info className="w-3 h-3" />
-                <span>Details</span>
+                <Info className="w-2.5 h-2.5" />
               </span>
             ) : (
               <span className="opacity-0 group-hover:opacity-40 text-slate-400 no-print" title="Locked routine">
-                <Lock className="w-3 h-3" />
+                <Lock className="w-2.5 h-2.5" />
               </span>
             )}
           </div>
         </div>
-        )}
       </td>
     );
   };
@@ -374,29 +424,29 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
     if (rooms.length === 0) return null;
 
     return (
-      <div className="mb-8 last:mb-0">
-        <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 last:mb-0">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${badgeColor}`}></div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+            <div className={`w-2 h-2 rounded-full ${badgeColor}`}></div>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900">
               {title}
             </h2>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-[11px] text-slate-500 font-medium">
               ({rooms.length} Classrooms)
             </span>
           </div>
 
-          <span className="text-xs text-slate-500 hidden sm:inline">
-            5 Daily Periods / Room (40 min each)
+          <span className="text-[11px] text-slate-500 hidden sm:inline">
+            5 Periods / Room (40 min each)
           </span>
         </div>
 
         {/* Mobile Horizontal Swipe Guidance */}
-        <div className="sm:hidden flex items-center justify-between text-[11px] text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg mb-2 border border-slate-200">
+        <div className="sm:hidden flex items-center justify-between text-[10px] text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg mb-1.5 border border-slate-200">
           <span className="flex items-center gap-1 font-medium">
             👉 Swipe horizontally for Periods 1–5
           </span>
-          <span className="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px]">
+          <span className="font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[9px]">
             Room Fixed
           </span>
         </div>
@@ -405,7 +455,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           <table className="w-full border-collapse text-left min-w-[760px] sm:min-w-[860px]">
             <thead>
               <tr className="bg-slate-100/95 border-b border-slate-200 text-slate-700 text-xs font-semibold">
-                <th className="p-2 sm:p-2.5 w-32 sm:w-44 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">
+                <th className="p-1.5 sm:p-2 w-28 sm:w-36 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">
                   Classroom / Capacity
                 </th>
                 {PERIOD_TIMINGS.map((p) => {
@@ -413,17 +463,17 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                   return (
                     <th
                       key={p.period}
-                      className={`p-2 sm:p-2.5 border-r border-slate-200 last:border-r-0 transition-colors ${
+                      className={`p-1.5 sm:p-2 border-r border-slate-200 last:border-r-0 transition-colors ${
                         isPeriodSelected ? 'bg-amber-100/70 text-amber-950 font-bold' : ''
                       }`}
                     >
-                      <div className="font-bold text-slate-900 flex items-center justify-between">
+                      <div className="font-bold text-slate-900 flex items-center justify-between text-xs">
                         <span>{p.label}</span>
                         {isPeriodSelected && (
-                          <span className="text-[10px] text-amber-700 font-normal">Filtered</span>
+                          <span className="text-[9px] text-amber-700 font-normal">Filtered</span>
                         )}
                       </div>
-                      <div className="text-[10px] sm:text-[11px] text-slate-500 font-normal font-mono tabular-nums">
+                      <div className="text-[10px] text-slate-500 font-normal font-mono tabular-nums">
                         {p.time}
                       </div>
                     </th>
@@ -443,15 +493,15 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                     }`}
                   >
                     <td
-                      className={`p-2 sm:p-2.5 border-r border-slate-200 text-xs sticky left-0 z-10 shadow-xs transition-colors ${
+                      className={`p-1.5 sm:p-2 border-r border-slate-200 text-xs sticky left-0 z-10 shadow-xs transition-colors ${
                         selectedRoomHighlight === room.id
                           ? 'bg-amber-100 text-amber-950 font-bold border-l-4 border-l-amber-500'
                           : 'bg-slate-50 text-slate-900'
                       }`}
                     >
-                      <div className="font-bold text-slate-900 text-xs sm:text-sm">{room.name}</div>
-                      <div className="text-[10px] sm:text-[11px] text-slate-600 mt-0.5 font-mono">
-                        Capacity: <span className="font-bold text-slate-800">{room.capacity}</span>
+                      <div className="font-bold text-slate-900 text-xs">{room.name}</div>
+                      <div className="text-[10px] text-slate-600 mt-0.5 font-mono">
+                        Cap: <span className="font-bold text-slate-800">{room.capacity}</span>
                       </div>
                     </td>
 
@@ -467,10 +517,10 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5 animate-fade-in">
       {/* PROMINENT ADMIN ACTIVE ROUTINE CONTROL STRIP (USER REQUEST: CLEAR EDIT & RECREATE OPTIONS) */}
       {isAdmin && (
-        <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white p-3.5 sm:p-4 rounded-xl shadow-xs border border-indigo-800/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs no-print">
+        <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white p-2.5 sm:p-3 rounded-xl shadow-xs border border-indigo-800/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5 text-xs no-print">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300 font-bold">
               <Sparkles className="w-4 h-4" />
@@ -498,32 +548,27 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             </div>
           </div>
 
-          {/* Direct prominent actions to Lock/Publish, Recreate, Edit, and Swap */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Direct prominent actions to Lock/Publish, Recreate, Edit, and Swap (Icon-only with tooltip) */}
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end md:self-center">
             {onToggleLockRoutine && (
               <button
                 onClick={() => onToggleLockRoutine(routine.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg shadow-xs transition-colors ${
+                className={`p-2 rounded-lg shadow-xs transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 ${
                   routine.isLocked
                     ? 'bg-white/10 text-amber-300 border border-amber-300/40 hover:bg-white/20'
                     : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500'
                 }`}
                 title={
                   routine.isLocked
-                    ? 'Unlock to make routine editable (will hide from users while unlocked)'
-                    : 'Lock routine and publish to all users'
+                    ? 'Unlock to Edit (Make routine editable)'
+                    : 'Lock & Publish (Publish routine to all users)'
                 }
+                aria-label={routine.isLocked ? 'Unlock to Edit' : 'Lock & Publish'}
               >
                 {routine.isLocked ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Unlock to Edit</span>
-                  </>
+                  <Unlock className="w-4 h-4 text-amber-400" />
                 ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5 text-white" />
-                    <span>Lock & Publish to Users</span>
-                  </>
+                  <Lock className="w-4 h-4 text-white" />
                 )}
               </button>
             )}
@@ -531,11 +576,11 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
             {isEditable && onRecreateRoutine && (
               <button
                 onClick={onRecreateRoutine}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs transition-colors"
-                title="Re-run scheduler for this active day with modified leaves or excluded subjects"
+                className="p-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95"
+                title={`Recreate Routine (Day ${routine.dayNumber}) — Re-run scheduler with latest leaves & rules`}
+                aria-label="Recreate Routine"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Recreate Routine (Day {routine.dayNumber})</span>
+                <RefreshCw className="w-4 h-4" />
               </button>
             )}
 
@@ -545,41 +590,41 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
                   setIsSwapModeActive(!isSwapModeActive);
                   setSwapSelectedSlot(null);
                 }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                className={`p-2 rounded-lg border transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 ${
                   isSwapModeActive
                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs ring-2 ring-indigo-400'
                     : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
                 }`}
-                title="Swap two slots directly"
+                title={isSwapModeActive ? 'Cancel Slot Swap' : 'Quick Swap Slots (Swap two class periods)'}
+                aria-label="Quick Swap Slots"
               >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span>{isSwapModeActive ? 'Cancel Swap' : 'Quick Swap Slots'}</span>
+                <ArrowLeftRight className="w-4 h-4" />
               </button>
             )}
 
             {onOpenLeaveManager && (
               <button
                 onClick={onOpenLeaveManager}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 text-rose-200 border border-rose-400/30 hover:bg-rose-500/30 transition-colors"
-                title="Faculty Unavailability Register (Absent / Leave / Duty / Sick)"
+                className="p-2 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-400/30 hover:bg-rose-500/30 transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95"
+                title="Faculty Unavailability Register (Mark absent, on leave, duty, or sick)"
+                aria-label="Unavailable Register"
               >
-                <UserX className="w-3.5 h-3.5 text-rose-300" />
-                <span>Unavailable Register</span>
+                <UserX className="w-4 h-4 text-rose-300" />
               </button>
             )}
 
             {isEditable && (
               <button
                 onClick={() => setIsQuickEditVisible(!isQuickEditVisible)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                className={`p-2 rounded-lg border transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 ${
                   isQuickEditVisible
-                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30'
+                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30 ring-1 ring-emerald-400'
                     : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
                 }`}
-                title="Toggle visibility of Edit buttons on slot cells"
+                title={`Toggle Edit Badges on Slots (Currently: ${isQuickEditVisible ? 'Always Visible' : 'Visible on Hover'})`}
+                aria-label="Toggle Edit Badges"
               >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Badges: {isQuickEditVisible ? 'Visible' : 'Hover'}</span>
+                <Edit3 className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -587,41 +632,39 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
       )}
 
       {/* Routine Filter Toolbar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 no-print">
+      <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2 no-print">
         {/* Top Filter Controls: Building & Search Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
-          {/* Building Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+          {/* Building Pills (Connected Dynamically to Master Data Buildings) */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg shrink-0 w-full sm:w-auto overflow-x-auto scrollbar-none">
             <button
               onClick={() => setBuildingFilter('ALL')}
-              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
+              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center whitespace-nowrap cursor-pointer ${
                 buildingFilter === 'ALL'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All 15 Rooms
+              All Buildings ({classrooms.length})
             </button>
-            <button
-              onClick={() => setBuildingFilter('OLD')}
-              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
-                buildingFilter === 'OLD'
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Old Bldg (8)
-            </button>
-            <button
-              onClick={() => setBuildingFilter('NEW')}
-              className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center ${
-                buildingFilter === 'NEW'
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              New Bldg (7)
-            </button>
+            {buildings.map((b) => {
+              const bldgRoomCount = classrooms.filter((r) => r.building === b.id).length;
+              const isActive = buildingFilter === b.id;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => setBuildingFilter(b.id)}
+                  className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 font-semibold rounded-md transition-colors text-center whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title={`${b.name} (${b.code})`}
+                >
+                  {b.name} ({bldgRoomCount})
+                </button>
+              );
+            })}
           </div>
 
           {/* Quick Search Input */}
@@ -673,7 +716,7 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
               aria-label="Filter by Instructor"
             >
               <option value="ALL">All Instructors ({teachers.length}: T1–T{teachers.length})</option>
-              {teachers.map((t) => (
+              {[...teachers].sort(compareTeacherCodes).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.code} - {t.name}
                 </option>
@@ -694,12 +737,15 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
               }`}
               aria-label="Filter by Classroom"
             >
-              <option value="ALL">All 15 Rooms</option>
-              {classrooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.building === 'OLD' ? 'Old' : 'New'}: {r.name}
-                </option>
-              ))}
+              <option value="ALL">All Classrooms ({sortedClassrooms.length})</option>
+              {sortedClassrooms.map((r) => {
+                const bldg = buildings.find((b) => b.id === r.building);
+                return (
+                  <option key={r.id} value={r.id}>
+                    {bldg ? bldg.name : r.building}: {r.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -863,17 +909,36 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           </div>
         ) : (
           <>
-            {renderBuildingTable(
-              'Old School Building (8 Classrooms)',
-              oldBuildingRooms,
-              'bg-amber-500'
-            )}
+            {buildings.map((bldg, idx) => {
+              const bRooms = filteredRooms.filter((r) => r.building === bldg.id);
+              if (bRooms.length === 0) return null;
+              const badgeColor = BUILDING_BADGE_COLORS[idx % BUILDING_BADGE_COLORS.length];
+              return (
+                <React.Fragment key={bldg.id}>
+                  {renderBuildingTable(
+                    `${bldg.name} (${bRooms.length} Classroom${bRooms.length > 1 ? 's' : ''})`,
+                    bRooms,
+                    badgeColor
+                  )}
+                </React.Fragment>
+              );
+            })}
 
-            {renderBuildingTable(
-              'New School Building (7 Classrooms)',
-              newBuildingRooms,
-              'bg-indigo-600'
-            )}
+            {/* Classrooms in other buildings */}
+            {(() => {
+              const knownIds = new Set(buildings.map((b) => b.id));
+              const orphanRooms = filteredRooms.filter((r) => !knownIds.has(r.building));
+              if (orphanRooms.length === 0) return null;
+              return (
+                <React.Fragment key="other-facilities">
+                  {renderBuildingTable(
+                    `Other Facilities (${orphanRooms.length} Classroom${orphanRooms.length > 1 ? 's' : ''})`,
+                    orphanRooms,
+                    'bg-slate-600'
+                  )}
+                </React.Fragment>
+              );
+            })()}
           </>
         )}
       </div>
@@ -974,6 +1039,11 @@ export const RoutineMatrix: React.FC<RoutineMatrixProps> = ({
           classroom={roomMap.get(inspectingSlot.roomId)}
           paper={paperMap.get(inspectingSlot.paperId)}
           teacher={teacherMap.get(inspectingSlot.teacherId)}
+          sessionNumber={
+            sessionNumbersMap.get(inspectingSlot.id) ||
+            sessionNumbersMap.get(`${inspectingSlot.roomId}_${inspectingSlot.period}`) ||
+            0
+          }
           onClose={() => setInspectingSlot(null)}
         />
       )}

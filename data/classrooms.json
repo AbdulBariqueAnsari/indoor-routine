@@ -1,8 +1,8 @@
 [
   {
     "id": "OB-1",
-    "code": "OB-01",
     "name": "Room No. 1",
+    "code": "OB-01",
     "building": "OLD",
     "roomNumber": 1,
     "floor": 1,
@@ -10,8 +10,8 @@
   },
   {
     "id": "OB-2",
-    "code": "OB-02",
     "name": "Room No. 2",
+    "code": "OB-02",
     "building": "OLD",
     "roomNumber": 2,
     "floor": 1,
@@ -19,8 +19,8 @@
   },
   {
     "id": "OB-3",
-    "code": "OB-03",
     "name": "Room No. 3",
+    "code": "OB-03",
     "building": "OLD",
     "roomNumber": 3,
     "floor": 1,
@@ -28,8 +28,8 @@
   },
   {
     "id": "OB-4",
-    "code": "OB-04",
     "name": "Room No. 4",
+    "code": "OB-04",
     "building": "OLD",
     "roomNumber": 4,
     "floor": 1,
@@ -37,8 +37,8 @@
   },
   {
     "id": "OB-5",
-    "code": "OB-05",
     "name": "Room No. 5",
+    "code": "OB-05",
     "building": "OLD",
     "roomNumber": 5,
     "floor": 2,
@@ -46,8 +46,8 @@
   },
   {
     "id": "OB-6",
-    "code": "OB-06",
     "name": "Room No. 6",
+    "code": "OB-06",
     "building": "OLD",
     "roomNumber": 6,
     "floor": 2,
@@ -55,8 +55,8 @@
   },
   {
     "id": "OB-7",
-    "code": "OB-07",
     "name": "Room No. 7",
+    "code": "OB-07",
     "building": "OLD",
     "roomNumber": 7,
     "floor": 2,
@@ -64,8 +64,8 @@
   },
   {
     "id": "OB-8",
-    "code": "OB-08",
     "name": "Room No. 8",
+    "code": "OB-08",
     "building": "OLD",
     "roomNumber": 8,
     "floor": 2,
@@ -73,35 +73,35 @@
   },
   {
     "id": "NB-1",
-    "code": "NB-01",
     "name": "Room No. 9",
+    "code": "NB-01",
     "building": "NEW",
-    "roomNumber": 1,
+    "roomNumber": 9,
     "floor": 1,
     "capacity": 52
   },
   {
     "id": "NB-2",
-    "code": "NB-02",
     "name": "Room No. 10",
+    "code": "NB-02",
     "building": "NEW",
-    "roomNumber": 2,
+    "roomNumber": 10,
     "floor": 1,
     "capacity": 52
   },
   {
     "id": "NB-3",
-    "code": "NB-03",
     "name": "Room No. 11",
+    "code": "NB-03",
     "building": "NEW",
-    "roomNumber": 3,
+    "roomNumber": 11,
     "floor": 1,
     "capacity": 52
   },
   {
     "id": "CR-NB-12-1793034850769",
-    "code": "NB-12",
     "name": "Room No. 12",
+    "code": "NB-12",
     "building": "NEW",
     "roomNumber": 12,
     "floor": 1,
@@ -109,8 +109,8 @@
   },
   {
     "id": "CR-NB-13-1793034866049",
-    "code": "NB-13",
     "name": "Room No. 13",
+    "code": "NB-13",
     "building": "NEW",
     "roomNumber": 13,
     "floor": 2,
@@ -118,8 +118,8 @@
   },
   {
     "id": "CR-NB-14-1793034895859",
-    "code": "NB-14",
     "name": "Room No. 14",
+    "code": "NB-14",
     "building": "NEW",
     "roomNumber": 14,
     "floor": 2,
@@ -127,8 +127,8 @@
   },
   {
     "id": "CR-NB-15-1793034922650",
-    "code": "NB-15",
     "name": "Room No. 15",
+    "code": "NB-15",
     "building": "NEW",
     "roomNumber": 15,
     "floor": 2,

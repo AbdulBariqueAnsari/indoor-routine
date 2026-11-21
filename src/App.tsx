@@ -4,9 +4,9 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AppSettings, BuildingInfo, Classroom, ClassSlot, DailyRoutine, Paper, RoutineRuleConfig, Teacher } from './types';
+import { AppSettings, BuildingInfo, Classroom, ClassSlot, compareClassrooms, compareTeacherCodes, DailyRoutine, Paper, PracticalSubject, RoutineRuleConfig, Teacher } from './types';
 import { api } from './utils/api';
-import { APP_DEVELOPER_MAINTAINER, DEFAULT_APP_SETTINGS, DEFAULT_ROUTINE_RULES, INITIAL_BUILDINGS } from './data/initialData';
+import { APP_DEVELOPER_MAINTAINER, DEFAULT_APP_SETTINGS, DEFAULT_ROUTINE_RULES, INITIAL_BUILDINGS, INITIAL_PRACTICAL_SUBJECTS } from './data/initialData';
 import { isRoutineEditable, validateRoutine } from './utils/routineValidator';
 import { Header } from './components/Header';
 import { ConflictBanner } from './components/ConflictBanner';
@@ -29,6 +29,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { UnavailableRegisterModal } from './components/UnavailableRegisterModal';
 import { modularLocalStorage } from './utils/storage';
+import { useToast } from './context/ToastContext';
 import { Clock, Database, Loader2, Shield, ShieldCheck, User } from 'lucide-react';
 
 function syncPapersWithTeachers(currentPapers: Paper[], currentTeachers: Teacher[]): Paper[] {
@@ -62,6 +63,7 @@ function syncPapersWithTeachers(currentPapers: Paper[], currentTeachers: Teacher
 }
 
 export default function App() {
+  const { showToast } = useToast();
   const [buildings, setBuildings] = useState<BuildingInfo[]>(INITIAL_BUILDINGS);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -98,10 +100,10 @@ export default function App() {
       try {
         setIsLoading(true);
         const data = await api.loadAllData();
-        const loadedTeachers = data.teachers || [];
+        const loadedTeachers = (data.teachers || []).sort(compareTeacherCodes);
         const loadedPapers = syncPapersWithTeachers(data.papers || [], loadedTeachers);
         setBuildings(data.buildings || INITIAL_BUILDINGS);
-        setClassrooms(data.classrooms || []);
+        setClassrooms((data.classrooms || []).sort(compareClassrooms));
         setPapers(loadedPapers);
         setTeachers(loadedTeachers);
         setAllRoutines(data.routines || []);
@@ -116,10 +118,10 @@ export default function App() {
         console.error('Failed to load data from server backend, trying modular localStorage:', err);
         const localData = modularLocalStorage.loadFromLocal();
         if (localData) {
-          const loadedTeachers = localData.teachers || [];
+          const loadedTeachers = (localData.teachers || []).sort(compareTeacherCodes);
           const loadedPapers = syncPapersWithTeachers(localData.papers || [], loadedTeachers);
           setBuildings(localData.buildings || INITIAL_BUILDINGS);
-          setClassrooms(localData.classrooms || []);
+          setClassrooms((localData.classrooms || []).sort(compareClassrooms));
           setPapers(loadedPapers);
           setTeachers(loadedTeachers);
           setAllRoutines(localData.routines || []);
@@ -173,8 +175,18 @@ export default function App() {
     setEditingSlot(null);
     try {
       await api.saveRoutines(updatedAll);
-    } catch (err) {
+      showToast({
+        title: 'Slot Correction Saved',
+        caption: `Period ${updatedSlot.period} in ${updatedSlot.roomId} committed to SQL database`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving slot correction to server:', err);
+      showToast({
+        title: 'Error Saving Slot',
+        caption: err.message || 'Failed to commit slot to SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -221,8 +233,54 @@ export default function App() {
     setAllRoutines(updatedAll);
     try {
       await api.saveRoutines(updatedAll);
-    } catch (err) {
+      showToast({
+        title: 'Slots Swapped Successfully',
+        caption: 'Slot interchange committed to SQL database without page refresh',
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving swapped slots to server:', err);
+      showToast({
+        title: 'Error Swapping Slots',
+        caption: err.message || 'Failed to update SQL database',
+        type: 'error',
+      });
+    }
+  };
+
+  // Sync database directly from JSON storage files
+  const handleSyncFromJson = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const data = await api.syncFromJson();
+      const loadedTeachers = (data.teachers || []).sort(compareTeacherCodes);
+      const loadedPapers = syncPapersWithTeachers(data.papers || [], loadedTeachers);
+      setBuildings(data.buildings || INITIAL_BUILDINGS);
+      setClassrooms((data.classrooms || []).sort(compareClassrooms));
+      setPapers(loadedPapers);
+      setTeachers(loadedTeachers);
+      setAllRoutines(data.routines || []);
+      setRules(data.rules || DEFAULT_ROUTINE_RULES);
+      if (data.settings) {
+        setSettings((prev) => ({ ...prev, ...data.settings }));
+      }
+      modularLocalStorage.syncFromServer({ ...data, papers: loadedPapers, teachers: loadedTeachers });
+      showToast({
+        title: 'Database Synced from JSON',
+        caption: 'Storage JSON files reloaded and committed to SQL database successfully',
+        type: 'success',
+      });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to sync from JSON:', err);
+      showToast({
+        title: 'Sync Error',
+        caption: err.message || 'Could not sync from JSON files',
+        type: 'error',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -233,8 +291,18 @@ export default function App() {
     setAllRoutines(updatedAll);
     try {
       await api.saveRoutines(updatedAll);
-    } catch (err) {
+      showToast({
+        title: 'Routine Updated',
+        caption: `Day ${updatedRoutine.dayNumber} changes successfully saved to SQL database`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error updating routine on server:', err);
+      showToast({
+        title: 'Failed to Update Routine',
+        caption: err.message || 'Error updating SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -284,14 +352,26 @@ export default function App() {
       await api.saveRoutines(updatedAll);
       const latestId = batchList[batchList.length - 1].id;
       await api.saveSettings({ activeRoutineId: latestId });
-    } catch (err) {
+      showToast({
+        title: batchList.length > 1 ? `${batchList.length} Routines Generated & Saved` : 'New Routine Generated & Saved',
+        caption: 'Committed to SQL Database (data/routine_scheduler.sql & SQLite DB)',
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving generated routine to server:', err);
+      showToast({
+        title: 'Failed to Save Routine',
+        caption: err.message || 'Error writing to SQL database',
+        type: 'error',
+      });
     }
   };
 
   // Handle lock/unlock routine toggle (saved to server and modular storage)
   const handleToggleLockRoutine = async (routineId: string) => {
     if (!isAdmin) return;
+    const target = allRoutines.find((r) => r.id === routineId);
+    const nextLockState = target ? !target.isLocked : false;
     const updatedAll = allRoutines.map((r) =>
       r.id === routineId
         ? { ...r, isLocked: !r.isLocked, updatedAt: new Date().toISOString() }
@@ -301,8 +381,18 @@ export default function App() {
     modularLocalStorage.saveRoutines(updatedAll);
     try {
       await api.saveRoutines(updatedAll);
-    } catch (err) {
+      showToast({
+        title: nextLockState ? 'Routine Published & Locked' : 'Routine Unlocked for Editing',
+        caption: `Day ${target?.dayNumber || ''} status updated in SQL database`,
+        type: 'info',
+      });
+    } catch (err: any) {
       console.error('Error toggling routine lock on server:', err);
+      showToast({
+        title: 'Error Updating Routine Status',
+        caption: err.message || 'Failed to update SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -316,8 +406,18 @@ export default function App() {
     }
     try {
       await api.deleteRoutine(routineId);
-    } catch (err) {
+      showToast({
+        title: 'Routine Deleted',
+        caption: 'Routine record successfully removed from SQL database',
+        type: 'info',
+      });
+    } catch (err: any) {
       console.error('Error deleting routine on server:', err);
+      showToast({
+        title: 'Error Deleting Routine',
+        caption: err.message || 'Failed to delete from SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -326,8 +426,18 @@ export default function App() {
     setClassrooms(updatedClassrooms);
     try {
       await api.saveClassrooms(updatedClassrooms);
-    } catch (err) {
+      showToast({
+        title: 'Classrooms Saved',
+        caption: `${updatedClassrooms.length} classrooms updated in SQL database (data/routine_scheduler.sql)`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving classrooms to server:', err);
+      showToast({
+        title: 'Error Saving Classrooms',
+        caption: err.message || 'Failed to save to SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -336,8 +446,18 @@ export default function App() {
     setBuildings(updatedBuildings);
     try {
       await api.saveBuildings(updatedBuildings);
-    } catch (err) {
+      showToast({
+        title: 'Buildings Saved',
+        caption: `${updatedBuildings.length} buildings updated in SQL database (data/routine_scheduler.sql)`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving buildings to server:', err);
+      showToast({
+        title: 'Error Saving Buildings',
+        caption: err.message || 'Failed to save to SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -347,21 +467,42 @@ export default function App() {
     setPapers(syncedPapers);
     try {
       await api.savePapers(syncedPapers);
-    } catch (err) {
+      showToast({
+        title: 'Subjects / Papers Saved',
+        caption: `${syncedPapers.length} curriculum subjects updated in SQL database (data/routine_scheduler.sql)`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving papers to server:', err);
+      showToast({
+        title: 'Error Saving Papers',
+        caption: err.message || 'Failed to save to SQL database',
+        type: 'error',
+      });
     }
   };
 
   // Handle teacher assignments update (saved to server)
   const handleUpdateTeachers = async (updatedTeachers: Teacher[]) => {
-    setTeachers(updatedTeachers);
-    const updatedPapers = syncPapersWithTeachers(papers, updatedTeachers);
+    const sorted = [...updatedTeachers].sort(compareTeacherCodes);
+    setTeachers(sorted);
+    const updatedPapers = syncPapersWithTeachers(papers, sorted);
     setPapers(updatedPapers);
     try {
-      await api.saveTeachers(updatedTeachers);
+      await api.saveTeachers(sorted);
       await api.savePapers(updatedPapers);
-    } catch (err) {
+      showToast({
+        title: 'Instructors Saved',
+        caption: `${updatedTeachers.length} instructors and subject linkages updated in SQL database`,
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving teachers to server:', err);
+      showToast({
+        title: 'Error Saving Instructors',
+        caption: err.message || 'Failed to save to SQL database',
+        type: 'error',
+      });
     }
   };
 
@@ -370,8 +511,18 @@ export default function App() {
     setRules(updatedRules);
     try {
       await api.saveRules(updatedRules);
-    } catch (err) {
+      showToast({
+        title: 'Routine Rules Saved',
+        caption: 'Algorithmic scheduling constraints updated in SQL database (data/routine_scheduler.sql)',
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving routine rules to server:', err);
+      showToast({
+        title: 'Error Saving Rules',
+        caption: err.message || 'Failed to save to SQL database',
+        type: 'error',
+      });
       throw err;
     }
   };
@@ -383,10 +534,24 @@ export default function App() {
     modularLocalStorage.saveSettings(merged);
     try {
       await api.saveSettings(merged);
-    } catch (err) {
+      showToast({
+        title: 'Settings Saved Successfully',
+        caption: 'Institutional presentation & page setup saved to SQL database (data/routine_scheduler.sql)',
+        type: 'success',
+      });
+    } catch (err: any) {
       console.error('Error saving page setup settings to server:', err);
+      showToast({
+        title: 'Failed to Save Settings',
+        caption: err.message || 'Error saving to SQL database',
+        type: 'error',
+      });
       throw err;
     }
+  };
+
+  const handleUpdatePracticalSubjects = async (practicalSubjects: PracticalSubject[]) => {
+    await handleSaveSettings({ practicalSubjects });
   };
 
   // Handle routine selection
@@ -416,9 +581,9 @@ export default function App() {
       setIsLoading(true);
       const store = await api.resetAllData();
       setBuildings(store.buildings || INITIAL_BUILDINGS);
-      setClassrooms(store.classrooms);
+      setClassrooms((store.classrooms || []).sort(compareClassrooms));
       setPapers(store.papers);
-      setTeachers(store.teachers);
+      setTeachers((store.teachers || []).sort(compareTeacherCodes));
       setAllRoutines(store.routines);
       setRules(store.rules);
       if (store.settings) {
@@ -426,8 +591,18 @@ export default function App() {
       }
       setActiveRoutineId(store.settings.activeRoutineId);
       setActiveTab('matrix');
-    } catch (err) {
+      showToast({
+        title: 'Database Reset to Defaults',
+        caption: 'SQL database successfully re-seeded with initial clean records (data/routine_scheduler.sql)',
+        type: 'info',
+      });
+    } catch (err: any) {
       console.error('Error resetting server data:', err);
+      showToast({
+        title: 'Error Resetting Database',
+        caption: err.message || 'Failed to reset SQL database',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -443,7 +618,7 @@ export default function App() {
         <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
         <div className="text-center">
           <h2 className="text-lg font-bold">STC, SAP 4th Bn</h2>
-          <p className="text-xs text-slate-400 mt-1">Connecting to Server Database (`data/routine_store.json`)...</p>
+          <p className="text-xs text-slate-400 mt-1">Connecting to SQL Database (`data/routine_scheduler.sql` & SQLite)...</p>
         </div>
       </div>
     );
@@ -477,8 +652,8 @@ export default function App() {
           tagline={settings.tagline}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        {/* Main Content Area (Full wide browser coverage at 100% zoom with compact padding) */}
+        <main className="flex-1 w-full max-w-[1920px] mx-auto px-2.5 sm:px-4 2xl:px-6 py-2.5 sm:py-3.5 no-print">
           {/* Verification / Conflict Alerts - Admin Only */}
           {isAdmin && currentRoutine && (
             <ConflictBanner
@@ -522,6 +697,8 @@ export default function App() {
               classrooms={classrooms}
               papers={papers}
               teachers={teachers}
+              buildings={buildings}
+              allRoutines={allRoutines}
               isEditable={isCurrentEditable}
               isAdmin={isAdmin}
               onEditSlot={(slot) => {
@@ -611,6 +788,7 @@ export default function App() {
               teachers={teachers}
               papers={papers}
               classrooms={classrooms}
+              buildings={buildings}
               currentRoutine={currentRoutine}
               isAdmin={isAdmin}
               onUpdateTeachers={handleUpdateTeachers}
@@ -643,9 +821,9 @@ export default function App() {
         />
 
         {/* Faculty Unavailability Register (Admin only) */}
-        {isAdmin && isLeaveManagerOpen && currentRoutine && (
+        {currentRoutine && (
           <UnavailableRegisterModal
-            isOpen={isLeaveManagerOpen}
+            isOpen={Boolean(isAdmin && isLeaveManagerOpen)}
             onClose={() => setIsLeaveManagerOpen(false)}
             routine={currentRoutine}
             teachers={teachers}
@@ -656,7 +834,7 @@ export default function App() {
         )}
 
         {/* Slot Correction Modal (Admin only) */}
-        {isAdmin && editingSlot && currentRoutine && (
+        {currentRoutine && (
           <SlotEditModal
             slot={editingSlot}
             routine={currentRoutine}
@@ -669,32 +847,29 @@ export default function App() {
         )}
 
         {/* Routine Generator & Recreate Modal (Admin only) */}
-        {isAdmin && (
-          <RoutineGeneratorModal
-            isOpen={isGeneratorOpen}
-            onClose={() => {
-              setIsGeneratorOpen(false);
-              setRecreatingRoutine(null);
-            }}
-            onRoutineGenerated={handleRoutineGenerated}
-            classrooms={classrooms}
-            papers={papers}
-            teachers={teachers}
-            historicalRoutines={allRoutines}
-            recreatingRoutine={recreatingRoutine}
-            rules={rules}
-          />
-        )}
+        <RoutineGeneratorModal
+          isOpen={Boolean(isAdmin && isGeneratorOpen)}
+          onClose={() => {
+            setIsGeneratorOpen(false);
+            setRecreatingRoutine(null);
+          }}
+          onRoutineGenerated={handleRoutineGenerated}
+          classrooms={classrooms}
+          papers={papers}
+          teachers={teachers}
+          historicalRoutines={allRoutines}
+          recreatingRoutine={recreatingRoutine}
+          rules={rules}
+          practicalSubjects={settings.practicalSubjects || INITIAL_PRACTICAL_SUBJECTS}
+        />
 
         {/* Routine Rules & Constraint Checks Modal (Admin only) */}
-        {isAdmin && (
-          <RoutineRulesModal
-            isOpen={isRulesModalOpen}
-            onClose={() => setIsRulesModalOpen(false)}
-            rules={rules}
-            onSaveRules={handleSaveRules}
-          />
-        )}
+        <RoutineRulesModal
+          isOpen={Boolean(isAdmin && isRulesModalOpen)}
+          onClose={() => setIsRulesModalOpen(false)}
+          rules={rules}
+          onSaveRules={handleSaveRules}
+        />
 
         {/* Master Data Setup Modal */}
         <MasterDataModal
@@ -704,11 +879,16 @@ export default function App() {
           classrooms={classrooms}
           papers={papers}
           teachers={teachers}
+          practicalSubjects={settings.practicalSubjects || INITIAL_PRACTICAL_SUBJECTS}
+          historicalRoutines={allRoutines}
+          currentRoutine={currentRoutine}
           isAdmin={isAdmin}
           onUpdateBuildings={handleUpdateBuildings}
           onUpdateClassrooms={handleUpdateClassrooms}
           onUpdatePapers={handleUpdatePapers}
           onUpdateTeachers={handleUpdateTeachers}
+          onUpdatePracticalSubjects={handleUpdatePracticalSubjects}
+          onSyncFromJson={handleSyncFromJson}
           onOpenTeacherMapping={() => {
             setIsMasterDataOpen(false);
             setActiveTab('mapping');
@@ -716,45 +896,39 @@ export default function App() {
         />
 
         {/* Page Setup Modal (Admin only) */}
-        {isAdmin && isPageSetupOpen && (
-          <PageSetupModal
-            isOpen={isPageSetupOpen}
-            onClose={() => setIsPageSetupOpen(false)}
-            settings={settings}
-            onSaveSettings={handleSaveSettings}
-            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
-          />
-        )}
+        <PageSetupModal
+          isOpen={Boolean(isAdmin && isPageSetupOpen)}
+          onClose={() => setIsPageSetupOpen(false)}
+          settings={settings}
+          onSaveSettings={handleSaveSettings}
+          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        />
 
         {/* Change Admin Password Modal (Admin only) */}
-        {isAdmin && isChangePasswordOpen && (
-          <ChangePasswordModal
-            isOpen={isChangePasswordOpen}
-            onClose={() => setIsChangePasswordOpen(false)}
-            currentAdminPassword={settings.adminPassword || 'admin123'}
-            onSavePassword={async (newPassword) => {
-              await handleSaveSettings({ adminPassword: newPassword });
-            }}
-          />
-        )}
+        <ChangePasswordModal
+          isOpen={Boolean(isAdmin && isChangePasswordOpen)}
+          onClose={() => setIsChangePasswordOpen(false)}
+          currentAdminPassword={settings.adminPassword || 'admin123'}
+          onSavePassword={async (newPassword) => {
+            await handleSaveSettings({ adminPassword: newPassword });
+          }}
+        />
 
         {/* Downloads & Reports Export Hub (Admin only) */}
-        {isAdmin && isDownloadsOpen && (
-          <DownloadsModal
-            isOpen={isDownloadsOpen}
-            onClose={() => setIsDownloadsOpen(false)}
-            teachers={teachers}
-            papers={papers}
-            classrooms={classrooms}
-            allRoutines={allRoutines}
-            currentRoutine={currentRoutine}
-            settings={settings}
-          />
-        )}
+        <DownloadsModal
+          isOpen={Boolean(isAdmin && isDownloadsOpen)}
+          onClose={() => setIsDownloadsOpen(false)}
+          teachers={teachers}
+          papers={papers}
+          classrooms={classrooms}
+          allRoutines={allRoutines}
+          currentRoutine={currentRoutine}
+          settings={settings}
+        />
 
         {/* Clean Footer */}
         <footer className="border-t border-slate-200 bg-white py-4 mt-8 no-print">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 2xl:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <div>
               <span>
                 {settings.institutionName || 'STC, SAP 4th Bn'} · {classrooms.length} Classrooms · {teachers.length} Instructors · {papers.length} Subject Papers · 40 min / Period
@@ -766,9 +940,9 @@ export default function App() {
                 <User className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Developer & Maintainer: <strong className="text-slate-900 font-bold">{APP_DEVELOPER_MAINTAINER}</strong></span>
               </span>
-              <span className="flex items-center gap-1 text-blue-700 font-medium">
-                <Database className="w-3.5 h-3.5" />
-                <span>Server Storage Active</span>
+              <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                <Database className="w-3.5 h-3.5 text-emerald-600" />
+                <span>SQL Database Active (data/routine_scheduler.sql)</span>
               </span>
               <span className="flex items-center gap-1 text-emerald-700 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -780,15 +954,16 @@ export default function App() {
       </div>
 
       {/* Modal Print Preview */}
-      {isPrintPreviewOpen && currentRoutine && (
+      {currentRoutine && (
         <PrintableRoutine
           routine={currentRoutine}
           classrooms={classrooms}
           papers={papers}
           teachers={teachers}
+          allRoutines={allRoutines}
           settings={settings}
           language="en"
-          isModalPreview={true}
+          isModalPreview={isPrintPreviewOpen}
           printLayoutMode={printLayoutMode}
           onChangePrintLayoutMode={setPrintLayoutMode}
           onClosePreview={() => setIsPrintPreviewOpen(false)}
@@ -802,6 +977,7 @@ export default function App() {
           classrooms={classrooms}
           papers={papers}
           teachers={teachers}
+          allRoutines={allRoutines}
           settings={settings}
           language="en"
           isModalPreview={false}

@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Classroom, ClassSlot, DailyRoutine, Paper, Teacher } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { Classroom, ClassSlot, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import { AlertCircle, AlertTriangle, Check, Info, Sparkles, Trash2, UserCheck, X } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface SlotEditModalProps {
   slot: ClassSlot | null;
@@ -27,19 +28,37 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
   onClose,
   onSave,
 }) => {
-  if (!slot) return null;
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(Boolean(slot));
+  const lastSlotRef = useRef(slot);
+  if (slot) {
+    lastSlotRef.current = slot;
+  }
+  const currentSlot = slot || lastSlotRef.current;
 
-  const room = classrooms.find((c) => c.id === slot.roomId);
-  const timing = PERIOD_TIMINGS.find((p) => p.period === slot.period);
+  const [selectedPaperId, setSelectedPaperId] = useState<string>(() => currentSlot?.paperId || '');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(() => currentSlot?.teacherId || '');
+  const [substituteReason, setSubstituteReason] = useState<string>(() => currentSlot?.substituteReason || '');
+  const [isPriority, setIsPriority] = useState<boolean>(() => currentSlot?.isPriority || false);
+  const [practicalName, setPracticalName] = useState<string>(() => currentSlot?.practicalName || '');
 
-  const [selectedPaperId, setSelectedPaperId] = useState<string>(slot.paperId);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(slot.teacherId);
-  const [substituteReason, setSubstituteReason] = useState<string>(slot.substituteReason || '');
-  const [isPriority, setIsPriority] = useState<boolean>(slot.isPriority || false);
+  useEffect(() => {
+    if (slot) {
+      setSelectedPaperId(slot.paperId);
+      setSelectedTeacherId(slot.teacherId);
+      setSubstituteReason(slot.substituteReason || '');
+      setIsPriority(slot.isPriority || false);
+      setPracticalName(slot.practicalName || '');
+    }
+  }, [slot]);
+
+  if (!shouldRender || !currentSlot) return null;
+
+  const room = classrooms.find((c) => c.id === currentSlot.roomId);
+  const timing = PERIOD_TIMINGS.find((p) => p.period === currentSlot.period);
 
   // Calculate busy teachers in this exact period across other rooms
   const otherSlotsInPeriod = routine.slots.filter(
-    (s) => s.period === slot.period && s.roomId !== slot.roomId
+    (s) => s.period === currentSlot.period && s.roomId !== currentSlot.roomId
   );
   const busyTeacherToRoom = new Map<string, string>();
   for (const s of otherSlotsInPeriod) {
@@ -93,21 +112,22 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
     }
 
     const updated: ClassSlot = {
-      ...slot,
+      ...currentSlot,
       paperId: selectedPaperId,
       teacherId: selectedTeacherId,
       isSubstitute: isSub,
       originalTeacherId: isSub ? originalTeacherId : undefined,
       substituteReason: isSub ? reason : undefined,
       isPriority: isPriority,
+      practicalName: practicalName.trim() || undefined,
     };
 
     onSave(updated);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden max-h-[92vh] flex flex-col ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div>
@@ -184,6 +204,7 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
               {papers.map((p) => {
                 const pTeacherCodes = teachers
                   .filter((t) => p.primaryTeacherIds.includes(t.id) || t.primaryPaperIds.includes(p.id))
+                  .sort(compareTeacherCodes)
                   .map((t) => t.code)
                   .join(', ');
                 return (
@@ -235,12 +256,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
             >
               <option value="">-- No Instructor (Leave Blank / Vacant) --</option>
               <optgroup label="Primary Instructors for this Paper">
-                {teachers
+                {[...teachers]
                   .filter((t) =>
                     selectedPaper &&
                     (selectedPaper.primaryTeacherIds.includes(t.id) ||
                       t.primaryPaperIds.includes(selectedPaper.id))
                   )
+                  .sort(compareTeacherCodes)
                   .map((t) => {
                     const isBusy = busyTeacherToRoom.has(t.id);
                     const bRoom = isBusy ? classrooms.find((c) => c.id === busyTeacherToRoom.get(t.id)) : null;
@@ -253,12 +275,13 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
               </optgroup>
 
               <optgroup label={`All Other Available Instructors (T1–T${teachers.length})`}>
-                {teachers
+                {[...teachers]
                   .filter((t) =>
                     !selectedPaper ||
                     (!selectedPaper.primaryTeacherIds.includes(t.id) &&
                       !t.primaryPaperIds.includes(selectedPaper.id))
                   )
+                  .sort(compareTeacherCodes)
                   .map((t) => {
                     const isBusy = busyTeacherToRoom.has(t.id);
                     const bRoom = isBusy ? classrooms.find((c) => c.id === busyTeacherToRoom.get(t.id)) : null;
@@ -327,6 +350,20 @@ export const SlotEditModal: React.FC<SlotEditModalProps> = ({
               />
             </div>
           )}
+
+          {/* Practical Venue / Custom Name */}
+          <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-1.5">
+            <label className="block text-xs font-semibold text-emerald-900">
+              Practical / Workshop Venue Title (Optional)
+            </label>
+            <input
+              type="text"
+              value={practicalName}
+              onChange={(e) => setPracticalName(e.target.value)}
+              placeholder="e.g. Computer Lab, Forensics Lab, Cyber Crime..."
+              className="w-full text-xs rounded-lg border border-emerald-300 px-3 py-1.5 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
         </div>
 
         {/* Footer */}

@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
-import { INITIAL_TEACHERS } from '../data/initialData';
+import { BuildingInfo, Classroom, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
+import { INITIAL_BUILDINGS, INITIAL_TEACHERS } from '../data/initialData';
+import { ConfirmModal } from './ConfirmModal';
 import {
   BookOpen,
   CheckCircle2,
@@ -23,6 +24,7 @@ interface TeacherMappingViewProps {
   teachers: Teacher[];
   papers: Paper[];
   classrooms: Classroom[];
+  buildings?: BuildingInfo[];
   currentRoutine: DailyRoutine | null;
   isAdmin: boolean;
   onUpdateTeachers: (updated: Teacher[]) => void;
@@ -33,17 +35,27 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
   teachers,
   papers,
   classrooms,
+  buildings = INITIAL_BUILDINGS,
   currentRoutine,
   isAdmin,
   onUpdateTeachers,
   onRequireAdmin,
 }) => {
-  // Local editable copy of teachers
-  const [editingList, setEditingList] = useState<Teacher[]>(() => [...teachers]);
+  // Local editable copy of teachers sorted in natural T1..Tn sequence
+  const [editingList, setEditingList] = useState<Teacher[]>(() => [...teachers].sort(compareTeacherCodes));
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPaperId, setFilterPaperId] = useState('ALL');
+  const [selectedOffDay, setSelectedOffDay] = useState<string>('default');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   const paperMap = new Map(papers.map((p) => [p.id, p]));
   const roomMap = new Map(classrooms.map((r) => [r.id, r]));
@@ -100,21 +112,27 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
       return;
     }
 
-    if (
-      window.confirm(
-        `Are you sure you want to restore original academy instructor names and designations for T1 to T${teachers.length}?`
-      )
-    ) {
-      setEditingList([...INITIAL_TEACHERS]);
-      onUpdateTeachers([...INITIAL_TEACHERS]);
-      setHasUnsavedChanges(false);
-      setSaveSuccessMsg(`Restored original academy instructors for T1 to T${teachers.length}.`);
-      setTimeout(() => setSaveSuccessMsg(''), 5000);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Restore Default Instructors Confirmation',
+      message: `Are you sure you want to restore original academy instructor names and designations for T1 to T${teachers.length}? Any custom teacher names entered will be reset to police academy defaults.`,
+      confirmText: 'Restore Defaults',
+      variant: 'warning',
+      onConfirm: () => {
+        setEditingList([...INITIAL_TEACHERS]);
+        onUpdateTeachers([...INITIAL_TEACHERS]);
+        setHasUnsavedChanges(false);
+        setSaveSuccessMsg(`Restored original academy instructors for T1 to T${teachers.length}.`);
+        setTimeout(() => setSaveSuccessMsg(''), 5000);
+        setConfirmModal(null);
+      },
+    });
   };
 
-  // Filter list
-  const filteredTeachers = editingList.filter((t) => {
+  // Filter list in natural T1..Tn sequence
+  const filteredTeachers = [...editingList]
+    .sort(compareTeacherCodes)
+    .filter((t) => {
     const q = searchTerm.toLowerCase();
     const matchesQuery =
       t.code.toLowerCase().includes(q) ||
@@ -376,6 +394,36 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
                 <th className="p-3 w-64 border-r border-slate-200">Assigned Teacher Name</th>
                 <th className="p-3 w-44 border-r border-slate-200">Campus / Building Role</th>
                 <th className="p-3 border-r border-slate-200">Main Subject & Backup Subject Assignments</th>
+                <th className="p-3 w-48 text-center border-r border-slate-200">
+                  <div className="font-semibold text-slate-800">Excused Off Periods</div>
+                  <div className="flex items-center justify-center gap-0.5 mt-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOffDay('default')}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
+                        selectedOffDay === 'default'
+                          ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      Default
+                    </button>
+                    {[1, 2, 3, 4, 5, 6].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSelectedOffDay(String(d))}
+                        className={`px-1 py-0.5 rounded text-[9px] font-bold border transition-all ${
+                          selectedOffDay === String(d)
+                            ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
+                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        D{d}
+                      </button>
+                    ))}
+                  </div>
+                </th>
                 <th className="p-3 w-24 text-center border-r border-slate-200">Max Periods</th>
                 <th className="p-3 w-28 text-center">Active Duty Load</th>
               </tr>
@@ -433,26 +481,29 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
                           onChange={(e) => handleFieldChange(t.id, 'assignedBuilding', e.target.value)}
                           className="w-full px-2 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-md text-xs font-semibold text-slate-800 focus:outline-indigo-500 transition-colors"
                         >
-                          <option value="OLD">Old School Bldg</option>
-                          <option value="NEW">New School Bldg</option>
-                          <option value="FLOATING">Floating (Both Bldgs)</option>
+                          <option value="FLOATING">Floating (All Buildings)</option>
+                          {buildings.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name} ({b.code})
+                            </option>
+                          ))}
                         </select>
                       ) : (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                            t.assignedBuilding === 'OLD'
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : t.assignedBuilding === 'NEW'
-                              ? 'bg-sky-100 text-sky-900 border border-sky-300'
-                              : 'bg-purple-100 text-purple-900 border border-purple-300'
-                          }`}
-                        >
-                          {t.assignedBuilding === 'OLD'
-                            ? 'Old School Bldg'
-                            : t.assignedBuilding === 'NEW'
-                            ? 'New School Bldg'
-                            : 'Floating (Both)'}
-                        </span>
+                        (() => {
+                          if (!t.assignedBuilding || t.assignedBuilding === 'FLOATING') {
+                            return (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300">
+                                Floating (All)
+                              </span>
+                            );
+                          }
+                          const bldg = buildings.find((b) => b.id === t.assignedBuilding);
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-300">
+                              {bldg ? `${bldg.name} (${bldg.code})` : t.assignedBuilding}
+                            </span>
+                          );
+                        })()
                       )}
                     </td>
 
@@ -614,6 +665,73 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
                       </div>
                     </td>
 
+                    {/* Excused Off Periods (Rule 25 Protection) */}
+                    <td className="p-3 border-r border-slate-200 align-top text-center">
+                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                        {[1, 2, 3, 4, 5].map((pNum) => {
+                          const activeOffList =
+                            selectedOffDay === 'default'
+                              ? t.offPeriods || []
+                              : t.dayOffPeriods?.[selectedOffDay] || [];
+                          const isOff = activeOffList.includes(pNum);
+                          return (
+                            <button
+                              key={pNum}
+                              type="button"
+                              onClick={() => {
+                                if (!isAdmin) {
+                                  onRequireAdmin();
+                                  return;
+                                }
+                                if (selectedOffDay === 'default') {
+                                  const cur = t.offPeriods || [];
+                                  const updated = isOff
+                                    ? cur.filter((p) => p !== pNum)
+                                    : [...cur, pNum].sort((a, b) => a - b);
+                                  handleFieldChange(t.id, 'offPeriods', updated);
+                                } else {
+                                  const curMap = { ...(t.dayOffPeriods || {}) };
+                                  const cur = curMap[selectedOffDay] || [];
+                                  const updated = isOff
+                                    ? cur.filter((p) => p !== pNum)
+                                    : [...cur, pNum].sort((a, b) => a - b);
+                                  if (updated.length > 0) curMap[selectedOffDay] = updated;
+                                  else delete curMap[selectedOffDay];
+                                  handleFieldChange(t.id, 'dayOffPeriods', curMap);
+                                }
+                              }}
+                              title={
+                                isOff
+                                  ? `Period ${pNum} Excused/Off (${selectedOffDay === 'default' ? 'Default' : `Day ${selectedOffDay}`}). Click to remove.`
+                                  : `Period ${pNum} Active. Click to excuse.`
+                              }
+                              className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold border transition-all interactive-tap ${
+                                isOff
+                                  ? 'bg-rose-600 text-white border-rose-700 shadow-xs ring-1 ring-rose-400'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              P{pNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="text-[9px] mt-1 font-mono text-slate-500">
+                        {selectedOffDay === 'default'
+                          ? t.offPeriods && t.offPeriods.length > 0
+                            ? `Default: P${t.offPeriods.sort().join(', P')}`
+                            : 'Full Duty'
+                          : t.dayOffPeriods?.[selectedOffDay] && t.dayOffPeriods[selectedOffDay].length > 0
+                          ? `D${selectedOffDay}: P${t.dayOffPeriods[selectedOffDay].sort().join(', P')}`
+                          : `D${selectedOffDay}: Full Duty`}
+                      </div>
+                      {selectedOffDay === 'default' && t.dayOffPeriods && Object.keys(t.dayOffPeriods).some((k) => (t.dayOffPeriods![k] || []).length > 0) && (
+                        <div className="text-[8px] text-purple-600 font-semibold mt-0.5">
+                          {Object.entries(t.dayOffPeriods).filter(([_, arr]) => arr.length > 0).length} custom days set
+                        </div>
+                      )}
+                    </td>
+
                     {/* Max Daily Periods */}
                     <td className="p-3 text-center border-r border-slate-200 align-top">
                       {isAdmin ? (
@@ -686,6 +804,18 @@ export const TeacherMappingView: React.FC<TeacherMappingViewProps> = ({
           )}
         </div>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          variant={confirmModal.variant}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 };

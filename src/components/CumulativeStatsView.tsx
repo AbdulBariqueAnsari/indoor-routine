@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { Classroom, compareClassrooms, DailyRoutine, Paper, Teacher } from '../types';
 import {
   calculateClassroomCumulativeStats,
   calculateCumulativeStats,
@@ -84,82 +84,84 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
     totalAllTarget > 0 ? Math.round((grandTotalCompleted / totalAllTarget) * 100) : 0;
 
   // Filter classrooms for room pills
-  const filteredRooms = classrooms.filter((r) => {
-    if (buildingFilter === 'ALL') return true;
-    return r.building === buildingFilter;
-  });
+  const filteredRooms = classrooms
+    .filter((r) => {
+      if (buildingFilter === 'ALL') return true;
+      return r.building === buildingFilter;
+    })
+    .sort(compareClassrooms);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Overview Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-5 shadow-sm border border-slate-800">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-3.5 sm:p-4 shadow-2xs border border-slate-800">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-white/10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-amber-400 text-slate-950 tracking-wider">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-400 text-slate-950 tracking-wider">
                 STC, SAP 4th Bn Curriculum
               </span>
-              <span className="text-xs text-indigo-200">
+              <span className="text-[11px] text-indigo-200">
                 174 Basic Training Days · 5 Sessions/Day Schedule · 15 Classrooms
               </span>
             </div>
-            <h2 className="text-lg font-bold text-white mt-1">
+            <h2 className="text-base sm:text-lg font-bold text-white mt-0.5">
               Classroom Session Counter & Quota Tracking
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
+            <p className="text-[11px] text-slate-300 mt-0.5 max-w-2xl">
               Track syllabus completion per individual classroom, or view consolidated progress for all 15 classrooms where targets are multiplied by 15.
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <div className="text-xs text-slate-400 uppercase font-semibold">All Classes Target Formula</div>
-              <div className="text-base font-bold font-mono text-emerald-400">15 × Subject Quota</div>
+              <div className="text-[10px] text-slate-400 uppercase font-semibold">All Classes Target Formula</div>
+              <div className="text-sm font-bold font-mono text-emerald-400">15 × Subject Quota</div>
             </div>
-            <div className="h-8 w-px bg-white/20"></div>
+            <div className="h-7 w-px bg-white/20"></div>
             <div className="text-right">
-              <div className="text-xs text-slate-400 uppercase font-semibold">Total Classrooms</div>
-              <div className="text-xl font-bold font-mono text-amber-300">15 Rooms</div>
+              <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Classrooms</div>
+              <div className="text-lg font-bold font-mono text-amber-300">15 Rooms</div>
             </div>
           </div>
         </div>
 
         {/* 4 Pillars of Training Targets */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 text-xs">
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="text-slate-400 text-[11px]">Single Classroom Target</div>
-            <div className="text-xl font-bold font-mono text-white mt-0.5">623 Sessions</div>
-            <div className="text-[10px] text-slate-400 mt-1">435 Theory (12 Papers) + 188 Practical</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-3 text-xs">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="text-slate-400 text-[10px]">Single Classroom Target</div>
+            <div className="text-lg font-bold font-mono text-white mt-0.5">623 Sessions</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">435 Theory (12 Papers) + 188 Practical</div>
           </div>
 
-          <div className="bg-indigo-500/20 rounded-lg p-3 border border-indigo-400/30">
-            <div className="text-indigo-200 text-[11px] font-semibold">All 15 Classrooms Target</div>
-            <div className="text-xl font-bold font-mono text-emerald-300 mt-0.5">9,345 Sessions</div>
-            <div className="text-[10px] text-indigo-200 mt-1">15 Rooms × 623 Total Sessions</div>
+          <div className="bg-indigo-500/20 rounded-lg p-2.5 border border-indigo-400/30">
+            <div className="text-indigo-200 text-[10px] font-semibold">All 15 Classrooms Target</div>
+            <div className="text-lg font-bold font-mono text-emerald-300 mt-0.5">9,345 Sessions</div>
+            <div className="text-[10px] text-indigo-200 mt-0.5">15 Rooms × 623 Total Sessions</div>
           </div>
 
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="text-slate-400 text-[11px]">Consolidated Completed</div>
-            <div className="text-xl font-bold font-mono text-white mt-0.5">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="text-slate-400 text-[10px]">Consolidated Completed</div>
+            <div className="text-lg font-bold font-mono text-white mt-0.5">
               {grandTotalCompleted} Sessions
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">
+            <div className="text-[10px] text-slate-400 mt-0.5">
               Past: {totalCompletedBeforeToday} · Today: {totalToday}
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="text-slate-400 text-[11px]">Consolidated Remaining</div>
-            <div className="text-xl font-bold font-mono text-amber-200 mt-0.5">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="text-slate-400 text-[10px]">Consolidated Remaining</div>
+            <div className="text-lg font-bold font-mono text-amber-200 mt-0.5">
               {totalRemaining} Sessions
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">Overall: {overallPercentage}% Completed</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Overall: {overallPercentage}% Completed</div>
           </div>
         </div>
       </div>
 
       {/* Mode Navigation Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
           <button
             onClick={() => setViewMode('all_classes')}
@@ -261,19 +263,19 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
               <table className="w-full text-left border-collapse text-xs min-w-[750px] sm:min-w-full">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-700">
-                    <th className="p-3 w-48 sm:w-64 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">Paper & Title</th>
-                    <th className="p-3 text-center border-r border-slate-200">Per Room Target</th>
-                    <th className="p-3 text-right border-r border-slate-200 font-bold text-indigo-900 bg-indigo-50/50">
+                    <th className="p-2 sm:p-2.5 w-44 sm:w-60 border-r border-slate-200 sticky left-0 z-20 bg-slate-100 shadow-xs">Paper & Title</th>
+                    <th className="p-2 sm:p-2.5 text-center border-r border-slate-200">Per Room Target</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-bold text-indigo-900 bg-indigo-50/50">
                       All 15 Rooms Target (15×)
                     </th>
-                    <th className="p-3 text-right border-r border-slate-200">Past Completed</th>
-                    <th className="p-3 text-right border-r border-slate-200">Conducted Today</th>
-                    <th className="p-3 text-right border-r border-slate-200 font-bold text-emerald-700">
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Past Completed</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Conducted Today</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-bold text-emerald-700">
                       Total Done
                     </th>
-                    <th className="p-3 text-right border-r border-slate-200">Remaining</th>
-                    <th className="p-3 w-44 border-r border-slate-200">Consolidated Progress</th>
-                    <th className="p-3 text-left min-w-44">Primary Instructors Assigned</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Remaining</th>
+                    <th className="p-2 sm:p-2.5 w-40 border-r border-slate-200">Consolidated Progress</th>
+                    <th className="p-2 sm:p-2.5 text-left min-w-40">Primary Instructors Assigned</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -288,7 +290,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
 
                     return (
                       <tr key={item.paperId} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-white shadow-xs">
+                        <td className="p-2 sm:p-2.5 border-r border-slate-200 sticky left-0 z-10 bg-white shadow-xs">
                           <div className="flex items-center gap-2">
                             <span
                               className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -310,34 +312,34 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                           </div>
                         </td>
 
-                        <td className="p-3 text-center border-r border-slate-200 font-mono text-slate-600">
+                        <td className="p-2 sm:p-2.5 text-center border-r border-slate-200 font-mono text-slate-600">
                           {item.singleRoomTarget || item.targetSessions / 15}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono font-bold text-indigo-900 bg-indigo-50/30">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono font-bold text-indigo-900 bg-indigo-50/30">
                           {item.targetSessions}{' '}
                           <span className="text-[10px] font-normal text-slate-500">
                             (15 × {item.singleRoomTarget || item.targetSessions / 15})
                           </span>
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-slate-700">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-slate-700">
                           {item.completedSessions}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-amber-600 font-semibold">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-amber-600 font-semibold">
                           {item.todaySessions > 0 ? `+${item.todaySessions}` : '0'}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono font-bold text-emerald-700">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono font-bold text-emerald-700">
                           {item.completedSessions + item.todaySessions}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-slate-800">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-slate-800">
                           {item.remainingSessions}
                         </td>
 
-                        <td className="p-3 border-r border-slate-200">
+                        <td className="p-2 sm:p-2.5 border-r border-slate-200">
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-[10px]">
                               <span className="font-mono font-bold text-slate-700">
@@ -359,7 +361,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                           </div>
                         </td>
 
-                        <td className="p-3 text-slate-600 text-[11px]">
+                        <td className="p-2 sm:p-2.5 text-slate-600 text-[11px]">
                           {instructorNames || (
                             <span className="italic text-emerald-700 font-semibold">
                               All {teachers.length} Instructors Available (Practical)
@@ -434,17 +436,17 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-700">
-                    <th className="p-3 w-64 border-r border-slate-200">Paper & Title</th>
-                    <th className="p-3 text-center border-r border-slate-200">Category</th>
-                    <th className="p-3 text-right border-r border-slate-200">Room Quota Target</th>
-                    <th className="p-3 text-right border-r border-slate-200">Past in Room</th>
-                    <th className="p-3 text-right border-r border-slate-200">Today in Room</th>
-                    <th className="p-3 text-right border-r border-slate-200 font-bold text-emerald-700">
+                    <th className="p-2 sm:p-2.5 w-60 border-r border-slate-200">Paper & Title</th>
+                    <th className="p-2 sm:p-2.5 text-center border-r border-slate-200">Category</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Room Quota Target</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Past in Room</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Today in Room</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-bold text-emerald-700">
                       Total Done
                     </th>
-                    <th className="p-3 text-right border-r border-slate-200">Remaining</th>
-                    <th className="p-3 w-40 border-r border-slate-200">Room Progress</th>
-                    <th className="p-3 text-left">Primary Instructors Assigned</th>
+                    <th className="p-2 sm:p-2.5 text-right border-r border-slate-200">Remaining</th>
+                    <th className="p-2 sm:p-2.5 w-36 border-r border-slate-200">Room Progress</th>
+                    <th className="p-2 sm:p-2.5 text-left">Primary Instructors Assigned</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -459,7 +461,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
 
                     return (
                       <tr key={item.paperId} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 border-r border-slate-200">
+                        <td className="p-2 sm:p-2.5 border-r border-slate-200">
                           <div className="flex items-center gap-2">
                             <span
                               className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -481,31 +483,31 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                           </div>
                         </td>
 
-                        <td className="p-3 text-center border-r border-slate-200 text-slate-500">
+                        <td className="p-2 sm:p-2.5 text-center border-r border-slate-200 text-slate-500">
                           {item.category}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono font-bold text-slate-900">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono font-bold text-slate-900">
                           {item.targetSessions}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-slate-700">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-slate-700">
                           {item.completedSessions}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-amber-600 font-semibold">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-amber-600 font-semibold">
                           {item.todaySessions > 0 ? `+${item.todaySessions}` : '0'}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono font-bold text-emerald-700">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono font-bold text-emerald-700">
                           {item.totalCompleted}
                         </td>
 
-                        <td className="p-3 text-right border-r border-slate-200 font-mono text-slate-800">
+                        <td className="p-2 sm:p-2.5 text-right border-r border-slate-200 font-mono text-slate-800">
                           {item.remainingSessions}
                         </td>
 
-                        <td className="p-3 border-r border-slate-200">
+                        <td className="p-2 sm:p-2.5 border-r border-slate-200">
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-[10px]">
                               <span className="font-mono font-bold text-slate-700">
@@ -527,7 +529,7 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                           </div>
                         </td>
 
-                        <td className="p-3 text-slate-600 text-[11px]">
+                        <td className="p-2 sm:p-2.5 text-slate-600 text-[11px]">
                           {instructorNames || (
                             <span className="italic text-emerald-700 font-semibold">
                               All {teachers.length} Instructors Available (Practical)
@@ -579,31 +581,115 @@ export const CumulativeStatsView: React.FC<CumulativeStatsViewProps> = ({
                         {rStat.classroom.building === 'OLD' ? 'Old Bldg' : 'New Bldg'}
                       </div>
                     </td>
-                    {rStat.paperProgress.map((pProg) => (
-                      <td
-                        key={pProg.paperId}
-                        className={`p-2 border-r border-slate-200 last:border-r-0 font-mono ${
-                          pProg.todaySessions > 0
-                            ? 'bg-amber-50 font-bold text-amber-950'
-                            : pProg.totalCompleted > 0
-                            ? 'text-slate-800'
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        <div>{pProg.totalCompleted}</div>
-                        {pProg.todaySessions > 0 && (
-                          <div className="text-[9px] text-amber-600 font-sans font-bold">
-                            (+{pProg.todaySessions} today)
+                    {rStat.paperProgress.map((pProg) => {
+                      const isComplete = pProg.progressPercent >= 100;
+                      return (
+                        <td
+                          key={pProg.paperId}
+                          title={`${rStat.classroom.name} • ${pProg.paperCode} (${pProg.title}): ${pProg.totalCompleted} of ${pProg.targetSessions} periods completed (${pProg.progressPercent}%)`}
+                          className={`p-2 border-r border-slate-200 last:border-r-0 font-mono transition-colors ${
+                            pProg.todaySessions > 0
+                              ? 'bg-amber-50 font-bold text-amber-950'
+                              : isComplete
+                              ? 'bg-emerald-50/60 font-semibold text-emerald-950'
+                              : pProg.totalCompleted > 0
+                              ? 'text-slate-800 font-medium'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-1 flex-wrap">
+                            <span className="font-bold">{pProg.totalCompleted}</span>
+                            <span
+                              className={`text-[10px] font-sans font-semibold ${
+                                isComplete
+                                  ? 'text-emerald-700 font-bold'
+                                  : pProg.todaySessions > 0
+                                  ? 'text-amber-800'
+                                  : pProg.totalCompleted > 0
+                                  ? 'text-slate-500'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              ({pProg.progressPercent}%)
+                            </span>
                           </div>
-                        )}
-                      </td>
-                    ))}
-                    <td className="p-2 font-mono font-bold text-indigo-700 bg-indigo-50/30">
-                      {rStat.totalCompleted} / {rStat.totalTargetSessions}
+                          {pProg.todaySessions > 0 && (
+                            <div className="text-[9px] text-amber-600 font-sans font-bold mt-0.5">
+                              (+{pProg.todaySessions} today)
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td
+                      title={`${rStat.classroom.name} Total: ${rStat.totalCompleted} of ${rStat.totalTargetSessions} periods completed (${rStat.progressPercent}%)`}
+                      className="p-2 font-mono font-bold text-indigo-700 bg-indigo-50/30 text-center"
+                    >
+                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <span className="font-extrabold text-indigo-950">{rStat.totalCompleted}</span>
+                        <span className="text-[10px] font-sans font-bold text-indigo-700">
+                          ({rStat.progressPercent}%)
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                        / {rStat.totalTargetSessions}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="bg-slate-100/95 border-t-2 border-slate-300 font-bold text-slate-800">
+                <tr>
+                  <td className="p-2.5 text-left border-r border-slate-300 font-bold text-slate-900 bg-slate-200/60">
+                    <div>Consolidated Total</div>
+                    <div className="text-[10px] text-slate-500 font-normal">All 15 Classrooms</div>
+                  </td>
+                  {papers.map((p) => {
+                    const acStat = academyStats.find((s) => s.paperId === p.id);
+                    const totalAcrossRooms = acStat ? acStat.completedSessions + acStat.todaySessions : 0;
+                    const targetAcrossRooms = acStat ? acStat.targetSessions : p.totalTargetSessions * 15;
+                    const pctAcrossRooms =
+                      targetAcrossRooms > 0
+                        ? Math.min(100, Math.round((totalAcrossRooms / targetAcrossRooms) * 100))
+                        : 0;
+                    const todayAcrossRooms = acStat ? acStat.todaySessions : 0;
+
+                    return (
+                      <td
+                        key={p.id}
+                        title={`All 15 Rooms • ${p.code}: ${totalAcrossRooms} of ${targetAcrossRooms} periods (${pctAcrossRooms}%)`}
+                        className="p-2 border-r border-slate-300 last:border-r-0 font-mono bg-slate-100"
+                      >
+                        <div className="flex items-center justify-center gap-1 flex-wrap">
+                          <span className="font-bold text-slate-900">{totalAcrossRooms}</span>
+                          <span className="text-[10px] font-sans font-semibold text-slate-600">
+                            ({pctAcrossRooms}%)
+                          </span>
+                        </div>
+                        {todayAcrossRooms > 0 && (
+                          <div className="text-[9px] text-amber-700 font-sans font-bold mt-0.5">
+                            (+{todayAcrossRooms} today)
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td
+                    title={`All Classrooms Combined Grand Total: ${grandTotalCompleted} of ${totalAllTarget} periods (${overallPercentage}%)`}
+                    className="p-2 font-mono font-extrabold text-indigo-950 bg-indigo-100/70 text-center border-slate-300"
+                  >
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                      <span>{grandTotalCompleted}</span>
+                      <span className="text-[10px] font-sans font-bold text-indigo-700">
+                        ({overallPercentage}%)
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-600 font-normal mt-0.5">
+                      / {totalAllTarget}
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

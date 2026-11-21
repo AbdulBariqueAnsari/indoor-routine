@@ -34,6 +34,16 @@ app.get('/api/data', (req, res) => {
   }
 });
 
+// POST & GET /api/sync-from-json
+app.all('/api/sync-from-json', (req, res) => {
+  try {
+    const store = serverStorage.syncFromJson();
+    res.json({ success: true, message: 'Database successfully synced from edited JSON files', store });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/teachers
 app.post('/api/teachers', (req, res) => {
   try {

@@ -2,6 +2,9 @@
   "id": "routine-day-2",
   "dayNumber": 2,
   "date": "2026-10-28",
+  "status": "published",
+  "isLocked": true,
+  "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - Batch generated (7 days)",
   "absentTeacherIds": [],
   "priorityPaperIds": [],
   "roomPriorityPaperIds": {
@@ -38,6 +41,8 @@
   },
   "prioritySubjectMinPeriods": {},
   "excludedPaperIds": [],
+  "teacherOffPeriods": {},
+  "practicalConfig": {},
   "slots": [
     {
       "id": "slot-2-OB-1-P1",
@@ -716,9 +721,5 @@
     }
   ],
   "createdAt": "2026-10-28T17:34:10.512Z",
-  "updatedAt": "2026-10-29T13:40:39.124Z",
-  "isLocked": true,
-  "status": "published",
-  "notes": "STC, SAP 4th Bn Day 2 Routine (2026-10-28) - Batch generated (7 days)",
-  "unavailableTeachers": []
+  "updatedAt": "2026-10-29T13:40:39.124Z"
 }

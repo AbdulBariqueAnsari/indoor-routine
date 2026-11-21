@@ -3,43 +3,73 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Classroom,
   ClassSlot,
+  compareClassrooms,
+  compareTeacherCodes,
   DailyRoutine,
+  ExamConfig,
   Paper,
+  PracticalClassConfig,
+  PracticalConfig,
+  PracticalSubject,
   RoutineRuleConfig,
   SubjectPriorityTier,
   Teacher,
   UnavailableInstructor,
+  UnavailabilityConfigItem,
   UnavailabilityType,
 } from '../types';
 import { calculateCumulativeStats, generateDailyRoutine } from '../utils/scheduler';
-import { DEFAULT_ROUTINE_RULES, MASTER_ROUTINE_RULES, isRuleDisabled, normalizeRuleConfig } from '../data/initialData';
+import {
+  DEFAULT_ROUTINE_RULES,
+  INITIAL_PRACTICAL_SUBJECTS,
+  MASTER_ROUTINE_RULES,
+  isRuleDisabled,
+  normalizeRuleConfig,
+} from '../data/initialData';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 import {
   AlertCircle,
   Ban,
   Briefcase,
   Calendar,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   FilePlus,
+  FileText,
   Filter,
+  FlaskConical,
   HeartPulse,
   Info,
   Layers,
+  Plus,
   RefreshCw,
   Search,
   Sliders,
   Sparkles,
+  Trash2,
   UserCheck,
   UserMinus,
   Users,
   UserX,
   X,
 } from 'lucide-react';
+
+export interface PracticalConfigItemUI {
+  id: string;
+  practicalSubjectId: string;
+  name: string;
+  teacherId: string;
+  roomId: string;
+  duration?: 1 | 2;
+  periods: number[];
+  targetDayOrDate: string; // 'ALL' or specific date string 'YYYY-MM-DD'
+}
 
 interface RoutineGeneratorModalProps {
   isOpen: boolean;
@@ -51,6 +81,7 @@ interface RoutineGeneratorModalProps {
   historicalRoutines: DailyRoutine[];
   recreatingRoutine?: DailyRoutine | null;
   rules?: RoutineRuleConfig;
+  practicalSubjects?: PracticalSubject[];
 }
 
 export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
@@ -63,8 +94,9 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
   historicalRoutines,
   recreatingRoutine,
   rules,
+  practicalSubjects,
 }) => {
-  if (!isOpen) return null;
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
 
   const [localRules, setLocalRules] = useState<RoutineRuleConfig>(
     normalizeRuleConfig(rules || DEFAULT_ROUTINE_RULES)
@@ -91,70 +123,207 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
   };
 
   const [date, setDate] = useState<string>(getDefaultDate());
-  const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>(
-    recreatingRoutine?.absentTeacherIds || []
-  );
 
-  // New Generation Mode: 'single' | 'multiple' | 'blank'
+  // Generation Mode: 'single' | 'multiple' | 'blank'
+  // When recreating an active routine, strictly locked to 'single'
   const [generationMode, setGenerationMode] = useState<'single' | 'multiple' | 'blank'>('single');
   const [multiDayCount, setMultiDayCount] = useState<number>(3);
 
-  // Unavailable Register remarks: map teacherId -> type ('ABSENT' | 'LEAVE' | 'DUTY' | 'SICK')
-  const [unavailableTypes, setUnavailableTypes] = useState<Record<string, UnavailabilityType>>(() => {
-    const map: Record<string, UnavailabilityType> = {};
-    if (recreatingRoutine?.unavailableTeachers) {
-      for (const u of recreatingRoutine.unavailableTeachers) {
-        map[u.teacherId] = u.type;
-      }
-    }
-    for (const tid of recreatingRoutine?.absentTeacherIds || []) {
-      if (!map[tid]) map[tid] = 'ABSENT';
-    }
-    return map;
-  });
+  // Format date helper for UI
+  const formatDisplayDate = (dStr: string): string => {
+    if (!dStr) return '';
+    const [y, m, d] = dStr.split('-');
+    if (!y || !m || !d) return dStr;
+    return `${d}/${m}/${y}`;
+  };
 
-  const [unavailableRemarks, setUnavailableRemarks] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    if (recreatingRoutine?.unavailableTeachers) {
-      for (const u of recreatingRoutine.unavailableTeachers) {
-        if (u.remark) map[u.teacherId] = u.remark;
-      }
-    }
-    return map;
-  });
-
-  const handleSetTeacherStatus = (teacherId: string, status: 'AVAILABLE' | UnavailabilityType) => {
-    if (status === 'AVAILABLE') {
-      setAbsentTeacherIds((prev) => prev.filter((id) => id !== teacherId));
-      setUnavailableTypes((prev) => {
-        const copy = { ...prev };
-        delete copy[teacherId];
-        return copy;
+  // Pre-calculated batch dates for multi-day mode
+  const batchDates = useMemo(() => {
+    const list: { dayNum: number; dateStr: string }[] = [];
+    for (let d = 0; d < multiDayCount; d++) {
+      const dDate = new Date(date);
+      dDate.setDate(dDate.getDate() + d);
+      list.push({
+        dayNum: dayNumber + d,
+        dateStr: dDate.toISOString().split('T')[0],
       });
-    } else {
-      setAbsentTeacherIds((prev) => (prev.includes(teacherId) ? prev : [...prev, teacherId]));
-      setUnavailableTypes((prev) => ({ ...prev, [teacherId]: status }));
-      if (!unavailableRemarks[teacherId]) {
-        const defaultNotes: Record<UnavailabilityType, string> = {
-          ABSENT: 'Absent',
-          LEAVE: 'Sanctioned Leave',
-          DUTY: 'Special Duty',
-          SICK: 'Medical / Sick',
-          REST: 'Rest (Standby Reserve in PDF)',
-        };
-        setUnavailableRemarks((prev) => ({ ...prev, [teacherId]: defaultNotes[status] }));
-      }
     }
+    return list;
+  }, [date, dayNumber, multiDayCount]);
+
+  // Unavailability Items state (Date/Day wise with custom note, just like practical items)
+  const [unavailabilityItems, setUnavailabilityItems] = useState<UnavailabilityConfigItem[]>(() => {
+    if (recreatingRoutine?.unavailableTeachers && recreatingRoutine.unavailableTeachers.length > 0) {
+      return recreatingRoutine.unavailableTeachers.map((u, idx) => ({
+        id: `unavail-${idx + 1}`,
+        teacherId: u.teacherId,
+        targetDayOrDate: u.date || recreatingRoutine.date,
+        type: u.type,
+        remark: u.remark || '',
+      }));
+    }
+    if (recreatingRoutine?.absentTeacherIds && recreatingRoutine.absentTeacherIds.length > 0) {
+      return recreatingRoutine.absentTeacherIds.map((tid, idx) => ({
+        id: `unavail-${idx + 1}`,
+        teacherId: tid,
+        targetDayOrDate: recreatingRoutine.date,
+        type: 'ABSENT',
+        remark: '',
+      }));
+    }
+    return [];
+  });
+
+  const addUnavailabilityItem = () => {
+    const nextIdx = unavailabilityItems.length + 1;
+    const usedIds = new Set(unavailabilityItems.map((u) => u.teacherId));
+    const firstFreeTeacher = teachers.find((t) => !usedIds.has(t.id)) || teachers[0];
+    const newItem: UnavailabilityConfigItem = {
+      id: `unavail-${Date.now()}-${nextIdx}`,
+      teacherId: firstFreeTeacher ? firstFreeTeacher.id : '',
+      targetDayOrDate: generationMode === 'multiple' ? 'ALL' : date,
+      type: 'LEAVE',
+      remark: 'Casual Leave',
+    };
+    setUnavailabilityItems((prev) => [...prev, newItem]);
+  };
+
+  const updateUnavailabilityItem = (index: number, updates: Partial<UnavailabilityConfigItem>) => {
+    setUnavailabilityItems((prev) => {
+      const copy = [...prev];
+      if (copy[index]) {
+        copy[index] = { ...copy[index], ...updates };
+      }
+      return copy;
+    });
+  };
+
+  const removeUnavailabilityItem = (index: number) => {
+    setUnavailabilityItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uniqueUnavailableTeacherCount = useMemo(() => {
+    return new Set(unavailabilityItems.map((u) => u.teacherId).filter(Boolean)).size;
+  }, [unavailabilityItems]);
+
+  const availableTeachersCount = Math.max(0, teachers.length - uniqueUnavailableTeacherCount);
+
+  // Backward compatibility getter for any logic that reads absentTeacherIds
+  const absentTeacherIds = useMemo(() => {
+    return Array.from(new Set(unavailabilityItems.map((u) => u.teacherId).filter(Boolean)));
+  }, [unavailabilityItems]);
+
+  // Classroom natural numeric sorting (Room No. 1 to Room No. 15)
+  const sortedClassrooms = useMemo(() => [...classrooms].sort(compareClassrooms), [classrooms]);
+
+  // Exam Sessions Configuration state (Always in last period, Period 5, for all classrooms)
+  const [isExamEnabled, setIsExamEnabled] = useState<boolean>(() => {
+    if (recreatingRoutine?.examConfig !== undefined) {
+      return Boolean(recreatingRoutine.examConfig.enabled);
+    }
+    return false;
+  });
+  const [examName, setExamName] = useState<string>(() => {
+    return recreatingRoutine?.examConfig?.name || 'Examination / Assessment';
+  });
+
+  // Practical Sessions Configuration state (Rule 9: Consecutive double-period)
+  const [isPracticalEnabled, setIsPracticalEnabled] = useState<boolean>(() => {
+    if (recreatingRoutine?.practicalConfig !== undefined) {
+      return recreatingRoutine.practicalConfig.enabled;
+    }
+    return localRules.enablePracticalConsecutiveDoublePeriodLimit !== false;
+  });
+
+  const [practicalItems, setPracticalItems] = useState<PracticalConfigItemUI[]>(() => {
+    if (recreatingRoutine?.practicalConfig?.items && recreatingRoutine.practicalConfig.items.length > 0) {
+      return recreatingRoutine.practicalConfig.items.map((item, idx) => {
+        const itemPeriods = item.periods && item.periods.length > 0 ? item.periods : (idx % 2 === 0 ? [2, 3] : [4, 5]);
+        const itemDuration = item.duration || (itemPeriods.length === 1 ? 1 : 2);
+        return {
+          id: item.id || `prac-${idx + 1}`,
+          practicalSubjectId: item.practicalSubjectId || '',
+          name: item.name || 'Practical Lab',
+          teacherId: item.teacherId || '',
+          roomId: item.roomId || '',
+          duration: itemDuration as 1 | 2,
+          periods: itemPeriods,
+          targetDayOrDate: 'ALL',
+        };
+      });
+    }
+    const subs = practicalSubjects && practicalSubjects.length > 0 ? practicalSubjects : INITIAL_PRACTICAL_SUBJECTS;
+    const initialSub = subs[0];
+    const initialDur = initialSub?.defaultDuration || 2;
+    return [
+      {
+        id: `prac-1`,
+        practicalSubjectId: initialSub?.id || 'prac-sub-1',
+        name: initialSub?.name || 'Computer Lab & CCTNS Live Data Entry',
+        teacherId: initialSub?.defaultTeacherId || '',
+        roomId: '', // Auto-balance
+        duration: initialDur,
+        periods: initialDur === 1 ? [2] : [2, 3],
+        targetDayOrDate: 'ALL',
+      },
+    ];
+  });
+
+  const addPracticalItem = () => {
+    const nextIdx = practicalItems.length + 1;
+    const subs = practicalSubjects && practicalSubjects.length > 0 ? practicalSubjects : INITIAL_PRACTICAL_SUBJECTS;
+    const usedSubIds = new Set(practicalItems.map((p) => p.practicalSubjectId));
+    const nextSub = subs.find((s) => !usedSubIds.has(s.id)) || subs[0];
+    const defaultDur = nextSub?.defaultDuration || 2;
+    const newItem: PracticalConfigItemUI = {
+      id: `prac-${Date.now()}-${nextIdx}`,
+      practicalSubjectId: nextSub ? nextSub.id : '',
+      name: nextSub ? nextSub.name : 'Practical Session',
+      teacherId: nextSub?.defaultTeacherId || '',
+      roomId: '',
+      duration: defaultDur,
+      periods: defaultDur === 1 ? [2] : (nextIdx % 2 === 0 ? [4, 5] : [2, 3]),
+      targetDayOrDate: generationMode === 'multiple' ? 'ALL' : date,
+    };
+    setPracticalItems((prev) => [...prev, newItem]);
+  };
+
+  const updatePracticalItem = (index: number, updates: Partial<PracticalConfigItemUI>) => {
+    setPracticalItems((prev) => {
+      const copy = [...prev];
+      if (copy[index]) {
+        if (updates.practicalSubjectId && updates.practicalSubjectId !== copy[index].practicalSubjectId) {
+          const subs = practicalSubjects && practicalSubjects.length > 0 ? practicalSubjects : INITIAL_PRACTICAL_SUBJECTS;
+          const found = subs.find((s) => s.id === updates.practicalSubjectId);
+          if (found) {
+            updates.name = found.name;
+            if (!updates.teacherId && found.defaultTeacherId) {
+              updates.teacherId = found.defaultTeacherId;
+            }
+            if (found.defaultDuration && !updates.duration) {
+              updates.duration = found.defaultDuration;
+              updates.periods = found.defaultDuration === 1 ? [2] : [2, 3];
+            }
+          }
+        }
+        copy[index] = { ...copy[index], ...updates };
+      }
+      return copy;
+    });
+  };
+
+  const removePracticalItem = (index: number) => {
+    setPracticalItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Priority tiers per paper: 'HIGH' | 'MEDIUM' | 'LOW' | 'NORMAL' | 'EXCLUDE'
   const [subjectTiers, setSubjectTiers] = useState<Record<string, SubjectPriorityTier>>(() => {
     const initial: Record<string, SubjectPriorityTier> = {};
-    if (recreatingRoutine?.subjectPriorityTiers) {
-      return { ...recreatingRoutine.subjectPriorityTiers };
-    }
+    const existingTiers = recreatingRoutine?.subjectPriorityTiers || {};
     for (const p of papers) {
-      if (recreatingRoutine?.excludedPaperIds?.includes(p.id)) {
+      if (existingTiers[p.id]) {
+        initial[p.id] = existingTiers[p.id];
+      } else if (recreatingRoutine?.excludedPaperIds?.includes(p.id)) {
         initial[p.id] = 'EXCLUDE';
       } else if (recreatingRoutine?.priorityPaperIds?.includes(p.id)) {
         initial[p.id] = 'HIGH';
@@ -191,6 +360,46 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
     classrooms.length > 0 ? classrooms[0].id : ''
   );
 
+  // Synchronize state when recreatingRoutine or isOpen changes
+  useEffect(() => {
+    if (isOpen) {
+      if (recreatingRoutine) {
+        setGenerationMode('single'); // Recreate routine is ALWAYS strictly single day
+        setDate(recreatingRoutine.date);
+        setNotes(recreatingRoutine.notes || '');
+        setRoomPriorityMap(recreatingRoutine.roomPriorityPaperIds || {});
+        if (recreatingRoutine.unavailableTeachers && recreatingRoutine.unavailableTeachers.length > 0) {
+          setUnavailabilityItems(
+            recreatingRoutine.unavailableTeachers.map((u, idx) => ({
+              id: `unavail-${idx + 1}`,
+              teacherId: u.teacherId,
+              targetDayOrDate: u.date || recreatingRoutine.date,
+              type: u.type,
+              remark: u.remark || '',
+            }))
+          );
+        } else if (recreatingRoutine.absentTeacherIds && recreatingRoutine.absentTeacherIds.length > 0) {
+          setUnavailabilityItems(
+            recreatingRoutine.absentTeacherIds.map((tid, idx) => ({
+              id: `unavail-${idx + 1}`,
+              teacherId: tid,
+              targetDayOrDate: recreatingRoutine.date,
+              type: 'ABSENT',
+              remark: '',
+            }))
+          );
+        } else {
+          setUnavailabilityItems([]);
+        }
+      } else {
+        setGenerationMode('single');
+        setDate(getDefaultDate());
+        setNotes('');
+        setUnavailabilityItems([]);
+      }
+    }
+  }, [isOpen, recreatingRoutine]);
+
   // History excluding current one if recreating
   const effectiveHistory = isRecreating
     ? historicalRoutines.filter((r) => r.id !== recreatingRoutine.id)
@@ -199,11 +408,6 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
   // Calculate cumulative stats to guide deficit scheduling
   const cumulativeStats = calculateCumulativeStats(papers, effectiveHistory, []);
 
-  const toggleAbsentTeacher = (teacherId: string) => {
-    setAbsentTeacherIds((prev) =>
-      prev.includes(teacherId) ? prev.filter((id) => id !== teacherId) : [...prev, teacherId]
-    );
-  };
 
   const setPaperTier = (paperId: string, tier: SubjectPriorityTier) => {
     setSubjectTiers((prev) => ({
@@ -274,14 +478,16 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
     setRoomPriorityMap({});
   };
 
-  const filteredTeachers = teachers.filter((t) => {
-    const q = teacherSearch.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.code.toLowerCase().includes(q) ||
-      t.designation.toLowerCase().includes(q)
-    );
-  });
+  const filteredTeachers = [...teachers]
+    .sort(compareTeacherCodes)
+    .filter((t) => {
+      const q = teacherSearch.toLowerCase();
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.code.toLowerCase().includes(q) ||
+        t.designation.toLowerCase().includes(q)
+      );
+    });
 
   const handleGenerate = () => {
     const derivedExcluded = Object.entries(subjectTiers)
@@ -292,20 +498,8 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
       .filter(([_, t]) => t === 'HIGH')
       .map(([id]) => id);
 
-    const unavailableTeachersList: UnavailableInstructor[] = absentTeacherIds.map((tid) => ({
-      teacherId: tid,
-      type: unavailableTypes[tid] || 'ABSENT',
-      remark: unavailableRemarks[tid] || (
-        unavailableTypes[tid] === 'LEAVE' ? 'Sanctioned Leave' :
-        unavailableTypes[tid] === 'DUTY' ? 'Special Duty' :
-        unavailableTypes[tid] === 'SICK' ? 'Sick' :
-        unavailableTypes[tid] === 'REST' ? 'Rest / Standby Reserve' : 'Absent'
-      ),
-      date,
-    }));
-
-    // 1. BLANK ROUTINE CREATION
-    if (generationMode === 'blank') {
+    // 1. BLANK ROUTINE CREATION (Only when NOT recreating)
+    if (!isRecreating && generationMode === 'blank') {
       const blankSlots: ClassSlot[] = [];
       for (const room of classrooms) {
         for (let p = 1; p <= 5; p++) {
@@ -321,13 +515,25 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
         }
       }
 
+      const blankUnavail = unavailabilityItems.filter(
+        (u) => u.teacherId && (u.targetDayOrDate === 'ALL' || u.targetDayOrDate === date)
+      );
+      const blankAbsentIds = Array.from(new Set(blankUnavail.map((u) => u.teacherId)));
+      const blankUnavailableList: UnavailableInstructor[] = blankUnavail.map((u) => ({
+        teacherId: u.teacherId,
+        type: u.type,
+        remark: u.remark || 'Absent',
+        date,
+      }));
+
       const blankRoutine: DailyRoutine = {
-        id: isRecreating && recreatingRoutine ? recreatingRoutine.id : `routine-day-${dayNumber}-${Date.now()}`,
+        id: `routine-day-${dayNumber}-${Date.now()}`,
         dayNumber,
         date,
-        absentTeacherIds,
-        unavailableTeachers: unavailableTeachersList,
+        absentTeacherIds: blankAbsentIds,
+        unavailableTeachers: blankUnavailableList,
         priorityPaperIds: [],
+        practicalConfig: { enabled: false, items: [] },
         slots: blankSlots,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -340,8 +546,8 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
       return;
     }
 
-    // 2. MULTIPLE DAYS BATCH CREATION
-    if (generationMode === 'multiple') {
+    // 2. MULTIPLE DAYS BATCH CREATION (NEVER when recreating!)
+    if (!isRecreating && generationMode === 'multiple') {
       const generatedBatch: DailyRoutine[] = [];
       let currentHistory = [...effectiveHistory];
 
@@ -351,16 +557,61 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
         dDate.setDate(dDate.getDate() + d);
         const dateStr = dDate.toISOString().split('T')[0];
 
+        // Filter date/day-specific unavailable entries
+        const dayUnavail = unavailabilityItems.filter(
+          (u) => u.teacherId && (u.targetDayOrDate === 'ALL' || u.targetDayOrDate === dateStr)
+        );
+        const dayAbsentTeacherIds = Array.from(new Set(dayUnavail.map((u) => u.teacherId)));
+        const dayUnavailableTeachersList: UnavailableInstructor[] = dayUnavail.map((u) => ({
+          teacherId: u.teacherId,
+          type: u.type,
+          remark: u.remark || (
+            u.type === 'LEAVE' ? 'Sanctioned Leave' :
+            u.type === 'DUTY' ? 'Special Duty' :
+            u.type === 'SICK' ? 'Sick' :
+            u.type === 'REST' ? 'Rest / Standby Reserve' : 'Absent'
+          ),
+          date: dateStr,
+        }));
+
+        // Filter date/day-specific practical entries
+        const dayPracItems = practicalItems.filter(
+          (p) => p.targetDayOrDate === 'ALL' || p.targetDayOrDate === dateStr
+        );
+        const dayPracticalConfig: PracticalConfig = {
+          enabled: isPracticalEnabled && dayPracItems.length > 0,
+          items: isPracticalEnabled
+            ? dayPracItems.map((item) => ({
+                id: item.id,
+                name: item.name,
+                teacherId: item.teacherId || undefined,
+                roomId: item.roomId || undefined,
+                duration: item.duration || (item.periods?.length === 1 ? 1 : 2),
+                periods: item.periods,
+                practicalSubjectId: item.practicalSubjectId || undefined,
+              }))
+            : [],
+        };
+
+        const currentExamConfig: ExamConfig = {
+          enabled: isExamEnabled,
+          name: examName.trim() || 'Examination / Assessment',
+          targetSessions: 30,
+          period: 5,
+        };
+
         const r = generateDailyRoutine({
           classrooms,
           papers,
           teachers,
-          absentTeacherIds,
+          absentTeacherIds: dayAbsentTeacherIds,
           priorityPaperIds: derivedHighPriority,
           roomPriorityPaperIds: priorityMode === 'roomWise' ? roomPriorityMap : {},
           subjectPriorityTiers: subjectTiers,
           prioritySubjectMinPeriods: subjectMinPeriods,
           excludedPaperIds: derivedExcluded,
+          practicalConfig: dayPracticalConfig,
+          examConfig: currentExamConfig,
           rules: localRules,
           historicalRoutines: currentHistory,
           targetDayNumber: currentDayNumber,
@@ -370,7 +621,10 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             `STC, SAP 4th Bn Day ${currentDayNumber} Routine (${dateStr}) - Batch generated (${multiDayCount} days)`,
         });
 
-        r.unavailableTeachers = unavailableTeachersList.map((u) => ({ ...u, date: dateStr }));
+        r.absentTeacherIds = dayAbsentTeacherIds;
+        r.unavailableTeachers = dayUnavailableTeachersList;
+        r.practicalConfig = dayPracticalConfig;
+        r.examConfig = currentExamConfig;
         generatedBatch.push(r);
         currentHistory.push(r);
       }
@@ -379,27 +633,73 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
       return;
     }
 
-    // 3. SINGLE DAY STANDARD GENERATION
+    // 3. SINGLE DAY STANDARD GENERATION (Also strictly applies for Recreate Routine)
+    const singleUnavail = unavailabilityItems.filter(
+      (u) => u.teacherId && (u.targetDayOrDate === 'ALL' || u.targetDayOrDate === date)
+    );
+    const singleAbsentIds = Array.from(new Set(singleUnavail.map((u) => u.teacherId)));
+    const singleUnavailableList: UnavailableInstructor[] = singleUnavail.map((u) => ({
+      teacherId: u.teacherId,
+      type: u.type,
+      remark: u.remark || (
+        u.type === 'LEAVE' ? 'Sanctioned Leave' :
+        u.type === 'DUTY' ? 'Special Duty' :
+        u.type === 'SICK' ? 'Sick' :
+        u.type === 'REST' ? 'Rest / Standby Reserve' : 'Absent'
+      ),
+      date,
+    }));
+
+    const singlePracItems = practicalItems.filter(
+      (p) => p.targetDayOrDate === 'ALL' || p.targetDayOrDate === date
+    );
+    const singlePracticalConfig: PracticalConfig = {
+      enabled: isPracticalEnabled && singlePracItems.length > 0,
+      items: isPracticalEnabled
+        ? singlePracItems.map((item) => ({
+            id: item.id,
+            name: item.name,
+            teacherId: item.teacherId || undefined,
+            roomId: item.roomId || undefined,
+            duration: item.duration || (item.periods?.length === 1 ? 1 : 2),
+            periods: item.periods,
+            practicalSubjectId: item.practicalSubjectId || undefined,
+          }))
+        : [],
+    };
+
+    const singleExamConfig: ExamConfig = {
+      enabled: isExamEnabled,
+      name: examName.trim() || 'Examination / Assessment',
+      targetSessions: 30,
+      period: 5,
+    };
+
     const newRoutine = generateDailyRoutine({
       classrooms,
       papers,
       teachers,
-      absentTeacherIds,
+      absentTeacherIds: singleAbsentIds,
       priorityPaperIds: derivedHighPriority,
       roomPriorityPaperIds: priorityMode === 'roomWise' ? roomPriorityMap : {},
       subjectPriorityTiers: subjectTiers,
       prioritySubjectMinPeriods: subjectMinPeriods,
       excludedPaperIds: derivedExcluded,
+      practicalConfig: singlePracticalConfig,
+      examConfig: singleExamConfig,
       rules: localRules,
       historicalRoutines: effectiveHistory,
       targetDayNumber: dayNumber,
       targetDate: date,
       notes:
         notes ||
-        `STC, SAP 4th Bn Day ${dayNumber} Routine (${date}) - ${absentTeacherIds.length} instructors unavailable, ${derivedExcluded.length} subjects excluded`,
+        `STC, SAP 4th Bn Day ${dayNumber} Routine (${date}) - ${singleAbsentIds.length} instructors unavailable, ${derivedExcluded.length} subjects excluded`,
     });
 
-    newRoutine.unavailableTeachers = unavailableTeachersList;
+    newRoutine.absentTeacherIds = singleAbsentIds;
+    newRoutine.unavailableTeachers = singleUnavailableList;
+    newRoutine.practicalConfig = singlePracticalConfig;
+    newRoutine.examConfig = singleExamConfig;
 
     if (isRecreating && recreatingRoutine) {
       newRoutine.id = recreatingRoutine.id;
@@ -407,8 +707,6 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
 
     onRoutineGenerated(newRoutine);
   };
-
-  const availableTeachersCount = teachers.length - absentTeacherIds.length;
 
   // Counts of tiers
   const tierCounts = {
@@ -418,9 +716,11 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
     EXCLUDE: Object.values(subjectTiers).filter((t) => t === 'EXCLUDE').length,
   };
 
+  if (!shouldRender) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden ${modalAnimationClass}`}>
         {/* Modal Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -452,7 +752,22 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
         {/* Modal Body */}
         <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
           {/* Generation Mode Selector */}
-          {!isRecreating && (
+          {isRecreating ? (
+            <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-xl flex items-start gap-3 text-xs text-amber-950">
+              <RefreshCw className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold flex items-center gap-1.5">
+                  <span>Recreating Selected Routine: Day {dayNumber} ({formatDisplayDate(date)})</span>
+                  <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wide">
+                    Single Routine Locked
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  Only this specific selected routine will be regenerated and overwritten. Multi-day batch creation is disabled during recreate to prevent unintended routine overwrites.
+                </p>
+              </div>
+            </div>
+          ) : (
             <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
               <label className="block text-xs font-bold text-indigo-950">
                 Routine Creation Mode:
@@ -560,145 +875,227 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
             </div>
           </div>
 
-          {/* Section 1: Instructor Absences & Unavailability */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          {/* Section 1: Instructor Absences & Unavailability (Compact Card List with Date/Day and Remarks) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <UserX className="w-4 h-4 text-rose-600" />
-                <label className="text-xs font-bold text-slate-800">
-                  1. Instructor Unavailability & Leave Remarks:
+                <label className="text-xs font-bold text-slate-900">
+                  1. Faculty Leaves, Special Duties & Medical Absences:
                 </label>
               </div>
-              <span className="text-[11px] font-semibold text-slate-600">
-                {availableTeachersCount}/{teachers.length} Available · {absentTeacherIds.length} Unavailable
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-600">
+                  {uniqueUnavailableTeacherCount} Unavailable · {availableTeachersCount}/{teachers.length} Active
+                </span>
+                <button
+                  type="button"
+                  onClick={addUnavailabilityItem}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg shadow-2xs transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Leave / Duty / Sick</span>
+                </button>
+              </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 mb-2">
-              Mark instructors as Absent, on Leave, on Special Duty, or Sick / Medical. Unavailable instructors are strictly excluded from generation.
+            <p className="text-[11px] text-slate-500">
+              Mark faculty on leave, special law &amp; order duty, or medical rest. For multi-day schedules, you can assign absences to &apos;All Days&apos; or to a specific training date with custom remarks.
             </p>
 
-            <input
-              type="text"
-              placeholder="Search instructor by name or code..."
-              value={teacherSearch}
-              onChange={(e) => setTeacherSearch(e.target.value)}
-              className="w-full text-xs rounded-lg border border-slate-200 px-2.5 py-1.5 mb-2 bg-slate-50 text-slate-800 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
-              {filteredTeachers.map((t) => {
-                const isAbsent = absentTeacherIds.includes(t.id);
-                const currentType = unavailableTypes[t.id] || 'ABSENT';
-
-                return (
-                  <div
-                    key={t.id}
-                    className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-1 transition-colors ${
-                      isAbsent
-                        ? currentType === 'ABSENT'
-                          ? 'bg-rose-50 border-rose-300 text-rose-900'
-                          : currentType === 'LEAVE'
-                          ? 'bg-amber-50 border-amber-300 text-amber-900'
-                          : currentType === 'DUTY'
-                          ? 'bg-blue-50 border-blue-300 text-blue-900'
-                          : currentType === 'SICK'
-                          ? 'bg-purple-50 border-purple-300 text-purple-900'
-                          : 'bg-teal-50 border-teal-300 text-teal-900'
-                        : 'bg-white border-slate-200 text-slate-800'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-semibold">{t.name}</p>
-                      <p className="text-[9px] text-slate-500 font-mono">
-                        {t.code} · {t.designation}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'AVAILABLE')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          !isAbsent
-                            ? 'bg-emerald-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-emerald-50'
-                        }`}
-                      >
-                        Avail
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'ABSENT')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          isAbsent && currentType === 'ABSENT'
-                            ? 'bg-rose-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-rose-50'
-                        }`}
-                      >
-                        Abs
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'LEAVE')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          isAbsent && currentType === 'LEAVE'
-                            ? 'bg-amber-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-amber-50'
-                        }`}
-                      >
-                        Leave
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'DUTY')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          isAbsent && currentType === 'DUTY'
-                            ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-blue-50'
-                        }`}
-                      >
-                        Duty
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'SICK')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          isAbsent && currentType === 'SICK'
-                            ? 'bg-purple-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-purple-50'
-                        }`}
-                      >
-                        Sick
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetTeacherStatus(t.id, 'REST')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition ${
-                          isAbsent && currentType === 'REST'
-                            ? 'bg-teal-600 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-teal-50'
-                        }`}
-                        title="Rest: Excluded from routine, shown as available free/reserve in PDF"
-                      >
-                        Rest
-                      </button>
-                    </div>
+            {unavailabilityItems.length === 0 ? (
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <span className="text-xs font-bold text-emerald-950">All Faculty Available</span>
+                    <p className="text-[11px] text-emerald-700">
+                      No leaves or external duties recorded. All instructors are eligible for routine assignment.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addUnavailabilityItem}
+                  className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-lg shadow-2xs transition-colors shrink-0 flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>+ Add Leave / Duty / Sick</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="space-y-2 max-h-56 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                  {unavailabilityItems.map((item, idx) => {
+                    const currentTeacher = teachers.find((t) => t.id === item.teacherId);
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-2"
+                      >
+                        {/* Entry Header */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+                              Entry #{idx + 1}
+                            </span>
+                            <span className="font-bold text-slate-800 text-[11px]">
+                              {currentTeacher
+                                ? `[${currentTeacher.code}] ${currentTeacher.name} (${currentTeacher.designation || 'Instructor'})`
+                                : 'Select Instructor'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeUnavailabilityItem(idx)}
+                            className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                            title="Remove unavailability entry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+
+                        {/* Fields Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                          {/* Instructor Selector */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              Faculty Member:
+                            </label>
+                            <select
+                              value={item.teacherId}
+                              onChange={(e) => updateUnavailabilityItem(idx, { teacherId: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white text-slate-800 font-medium focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer"
+                            >
+                              <option value="">-- Choose Instructor --</option>
+                              {[...teachers].sort(compareTeacherCodes).map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  [{t.code}] {t.name} ({t.designation})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Date / Day Selector */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              Applicable Training Day:
+                            </label>
+                            {generationMode === 'multiple' ? (
+                              <select
+                                value={item.targetDayOrDate}
+                                onChange={(e) => updateUnavailabilityItem(idx, { targetDayOrDate: e.target.value })}
+                                className="w-full px-2 py-1 text-xs border border-indigo-200 rounded-lg bg-indigo-50/60 text-indigo-950 font-semibold focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer"
+                              >
+                                <option value="ALL">
+                                  All {multiDayCount} Days (Day {dayNumber} to {dayNumber + multiDayCount - 1})
+                                </option>
+                                {batchDates.map((b) => (
+                                  <option key={b.dateStr} value={b.dateStr}>
+                                    Day {b.dayNum} ({formatDisplayDate(b.dateStr)})
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-100 text-slate-700 font-semibold truncate">
+                                Day {dayNumber} ({formatDisplayDate(date)})
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Status Type Selector */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                              Status / Absence Reason:
+                            </label>
+                            <select
+                              value={item.type}
+                              onChange={(e) => {
+                                const newType = e.target.value as UnavailabilityType;
+                                const defaultRemark =
+                                  newType === 'LEAVE' ? 'Casual Leave' :
+                                  newType === 'DUTY' ? 'Special Duty (Law & Order)' :
+                                  newType === 'SICK' ? 'Medical Sick Rest' :
+                                  newType === 'REST' ? 'Rest / Standby' : 'Absent';
+                                updateUnavailabilityItem(idx, { type: newType, remark: item.remark || defaultRemark });
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white text-slate-800 font-semibold focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer"
+                            >
+                              <option value="LEAVE">Leave (CL / Earned Leave)</option>
+                              <option value="DUTY">Special Duty / VIP Bandobast</option>
+                              <option value="SICK">Medical Rest / Sick</option>
+                              <option value="REST">Scheduled Rest / Reserve</option>
+                              <option value="ABSENT">Absent (General)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Note / Remark with Quick Chips */}
+                        <div>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <label className="text-[10px] font-bold text-slate-600">
+                              Note / Specific Remark:
+                            </label>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {['Casual Leave', 'Special Duty', 'Court Evidence', 'Medical Sick', 'Rest Standby'].map((chip) => (
+                                <button
+                                  key={chip}
+                                  type="button"
+                                  onClick={() => updateUnavailabilityItem(idx, { remark: chip })}
+                                  className={`px-1.5 py-0.2 text-[9px] font-medium rounded border transition-colors ${
+                                    item.remark === chip
+                                      ? 'bg-indigo-600 text-white border-indigo-700'
+                                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {chip}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <input
+                            type="text"
+                            value={item.remark || ''}
+                            onChange={(e) => updateUnavailabilityItem(idx, { remark: e.target.value })}
+                            placeholder="e.g. Casual Leave, Law & Order Duty, Court Evidence..."
+                            className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white text-slate-800 font-medium placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-0.5 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={addUnavailabilityItem}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-white hover:bg-rose-50 border border-rose-300 rounded-lg shadow-2xs transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-rose-600" />
+                    <span>+ Add Another Unavailable / Leave Entry</span>
+                  </button>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {unavailabilityItems.length} {unavailabilityItems.length === 1 ? 'entry' : 'entries'} recorded
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Section 2: Subject Priority Tiers & Inclusions Controller */}
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-indigo-600" />
-                <label className="text-xs font-bold text-slate-900">
-                  2. Subject Priority & Inclusion Tiers:
-                </label>
-              </div>
+          {/* Section 2: Subject Priority Tiers & Inclusions Controller (Hidden when Rule 8 Teacher Equalization is ON) */}
+          {!localRules.enableTeacherLoadEqualizationPriority && (
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <label className="text-xs font-bold text-slate-900">
+                    2. Subject Priority & Inclusion Tiers:
+                  </label>
+                </div>
 
               {/* Mode Toggle: Priority Tiers vs Room-wise */}
               <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-2xs">
@@ -921,7 +1318,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                  {classrooms.map((r) => {
+                  {sortedClassrooms.map((r) => {
                     const isSelected = r.id === selectedRoomIdForPriority;
                     const count = (roomPriorityMap[r.id] || []).length;
                     return (
@@ -989,9 +1386,368 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                 </div>
               </div>
             )}
+            </div>
+          )}
+
+          {/* Section 3: Practical Sessions Setup & Allotment (Rule 9) */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                  <FlaskConical className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-slate-900">
+                      3. Practical Sessions Setup & Allotment:
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Rule 9: 2x2 = 4 slots
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Consecutive double-period practical class (e.g. Computer Lab, Forensics). Instructor exempt from theory.
+                  </p>
+                </div>
+              </div>
+
+              {/* Enable / Disable Practical Toggle */}
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={isPracticalEnabled}
+                    onChange={(e) => setIsPracticalEnabled(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Enable Practical</span>
+                </label>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    isPracticalEnabled
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                  }`}
+                >
+                  {isPracticalEnabled ? `${practicalItems.length} Configured` : 'Disabled'}
+                </span>
+              </div>
+            </div>
+
+            {isPracticalEnabled && (
+              <div className="space-y-2.5">
+                {practicalItems.length === 0 ? (
+                  <div className="p-3 text-center bg-white rounded-lg border border-dashed border-slate-300 text-slate-500 text-xs">
+                    No practical sessions added yet. Click "+ Add Practical Session" to schedule a practical class.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {practicalItems.map((item, idx) => {
+                      const allSubs =
+                        practicalSubjects && practicalSubjects.length > 0
+                          ? practicalSubjects
+                          : INITIAL_PRACTICAL_SUBJECTS;
+                      const selectedSub = allSubs.find((s) => s.id === item.practicalSubjectId);
+                      const subColor = selectedSub?.color || '#059669';
+
+                      return (
+                        <div
+                          key={item.id || idx}
+                          className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2"
+                        >
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: subColor }}
+                              />
+                              <span className="text-xs font-bold text-slate-800">
+                                Practical Session #{idx + 1}
+                              </span>
+                              {selectedSub && (
+                                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                  {selectedSub.code}
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removePracticalItem(idx)}
+                              className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete practical session"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                            {/* Practical Subject Dropdown */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                Practical Subject / Lab:
+                              </label>
+                              <select
+                                value={item.practicalSubjectId || ''}
+                                onChange={(e) => updatePracticalItem(idx, { practicalSubjectId: e.target.value })}
+                                className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                              >
+                                {allSubs.map((sub) => (
+                                  <option key={sub.id} value={sub.id}>
+                                    {sub.code}: {sub.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Practical Duration (Rule 9 / 9A) */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                Duration / Periods:
+                              </label>
+                              <select
+                                value={item.duration || (item.periods?.length === 1 ? 1 : 2)}
+                                onChange={(e) => {
+                                  const dur = Number(e.target.value) as 1 | 2;
+                                  updatePracticalItem(idx, {
+                                    duration: dur,
+                                    periods: dur === 1 ? [2] : [2, 3],
+                                  });
+                                }}
+                                className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                              >
+                                <option value={2}>2 Periods (Double Period)</option>
+                                <option value={1}>1 Period (Single Period)</option>
+                              </select>
+                            </div>
+
+                            {/* Period Selection */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                {(item.duration || (item.periods?.length === 1 ? 1 : 2)) === 1
+                                  ? 'Practical Period:'
+                                  : 'Consecutive Periods (Rule 9):'}
+                              </label>
+                              {(item.duration || (item.periods?.length === 1 ? 1 : 2)) === 1 ? (
+                                <select
+                                  value={item.periods && item.periods.length === 1 ? String(item.periods[0]) : '2'}
+                                  onChange={(e) => {
+                                    const p = Number(e.target.value);
+                                    updatePracticalItem(idx, { duration: 1, periods: [p] });
+                                  }}
+                                  className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                  <option value="1">Period 1 (09:40 - 10:20)</option>
+                                  <option value="2">Period 2 (10:25 - 11:05)</option>
+                                  <option value="3">Period 3 (11:10 - 11:50)</option>
+                                  <option value="4">Period 4 (12:05 - 12:45)</option>
+                                  <option value="5">Period 5 (12:50 - 13:30)</option>
+                                </select>
+                              ) : (
+                                <select
+                                  value={item.periods && item.periods.length === 2 ? `${item.periods[0]}-${item.periods[1]}` : '2-3'}
+                                  onChange={(e) => {
+                                    const [p1, p2] = e.target.value.split('-').map(Number);
+                                    updatePracticalItem(idx, { duration: 2, periods: [p1, p2] });
+                                  }}
+                                  className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                  <option value="2-3">Period 2 & 3 (10:25 - 11:50) [Pre-Recess]</option>
+                                  <option value="4-5">Period 4 & 5 (12:05 - 13:30) [Post-Recess]</option>
+                                </select>
+                              )}
+                            </div>
+
+                            {/* Instructor Dropdown */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                Designated Instructor:
+                              </label>
+                              <select
+                                value={item.teacherId || ''}
+                                onChange={(e) => updatePracticalItem(idx, { teacherId: e.target.value })}
+                                className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                              >
+                                <option value="">Auto-Assign (Lagging Instructor)</option>
+                                {[...teachers].sort(compareTeacherCodes).map((t) => {
+                                  const isAbsent = absentTeacherIds.includes(t.id);
+                                  return (
+                                    <option key={t.id} value={t.id} disabled={isAbsent}>
+                                      {t.code}: {t.name} ({t.assignedBuilding}){isAbsent ? ' (Unavailable)' : ''}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+
+                            {/* Classroom Dropdown */}
+                            <div>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <label className="block text-[10px] font-bold text-slate-600">
+                                  Classroom Venue:
+                                </label>
+                                <span className="text-[9px] text-emerald-700 font-semibold">Max 2 practicals / room</span>
+                              </div>
+                              <select
+                                value={item.roomId || ''}
+                                onChange={(e) => updatePracticalItem(idx, { roomId: e.target.value })}
+                                className="w-full text-xs rounded-lg border border-slate-300 px-2 py-1 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                              >
+                                <option value="">Auto-Balance (Lowest Prior Visits)</option>
+                                {sortedClassrooms.map((c) => {
+                                  const otherItemsForRoom = practicalItems.filter(
+                                    (other, oIdx) => oIdx !== idx && other.roomId === c.id
+                                  );
+                                  const currentPracticalKey = item.practicalSubjectId || item.name;
+                                  const hasSameSubject = otherItemsForRoom.some(
+                                    (other) => (other.practicalSubjectId || other.name) === currentPracticalKey
+                                  );
+                                  const currentPeriodsKey = item.periods ? item.periods.join('-') : '2-3';
+                                  const hasSamePeriods = otherItemsForRoom.some(
+                                    (other) => (other.periods ? other.periods.join('-') : '2-3') === currentPeriodsKey
+                                  );
+                                  const isMaxReached = otherItemsForRoom.length >= 2;
+
+                                  const isDisabled = isMaxReached || hasSameSubject || hasSamePeriods;
+                                  let hint = '';
+                                  if (isMaxReached) hint = ' (Max 2 practicals reached)';
+                                  else if (hasSameSubject) hint = ' (Same practical subject already in room)';
+                                  else if (hasSamePeriods) hint = ' (Period conflict)';
+                                  else if (otherItemsForRoom.length === 1) hint = ' (1 different practical assigned)';
+
+                                  return (
+                                    <option key={c.id} value={c.id} disabled={isDisabled}>
+                                      {c.name} ({c.building === 'OLD' ? 'Old Bldg' : 'New Bldg'})
+                                      {hint}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+
+                            {/* Multi-Day Target Date Selector (when in multi-day mode) */}
+                            {generationMode === 'multiple' && (
+                              <div className="sm:col-span-2 lg:col-span-5 pt-1 border-t border-slate-100 flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-slate-600">
+                                  Applies to Date / Day:
+                                </label>
+                                <select
+                                  value={item.targetDayOrDate || 'ALL'}
+                                  onChange={(e) => updatePracticalItem(idx, { targetDayOrDate: e.target.value })}
+                                  className="text-xs rounded-lg border border-slate-300 px-2 py-0.5 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                  <option value="ALL">All {multiDayCount} Days in Batch</option>
+                                  {batchDates.map((b) => (
+                                    <option key={b.dateStr} value={b.dateStr}>
+                                      Day {b.dayNum} ({formatDisplayDate(b.dateStr)})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="pt-0.5 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={addPracticalItem}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>+ Add Practical Session</span>
+                  </button>
+                  <span className="text-[10px] text-slate-500 font-medium italic">
+                    * Practical instructors are exempted from theory classes on that day.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Section 4: Routine Generation Constraint Checks */}
+          {/* Section 4: Examination & Assessment Session Setup */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-rose-100 flex items-center justify-center text-rose-700 shrink-0">
+                  <FileText className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-slate-900">
+                      4. Examination & Assessment Session Setup:
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                      Last Period (P5: 12:50 - 13:30) · All 15 Classrooms · 30 Target Sessions
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Jab exam session on karenge, hamesha last period (Period 5) me sabhi classrooms me ek exam session add ho jayega. Koi bhi available teacher invigilation duty ke liye detail ho sakta hai.
+                  </p>
+                </div>
+              </div>
+
+              {/* Enable / Disable Exam Toggle */}
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={isExamEnabled}
+                    onChange={(e) => setIsExamEnabled(e.target.checked)}
+                    className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Enable Exam Session</span>
+                </label>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    isExamEnabled
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                  }`}
+                >
+                  {isExamEnabled ? 'Active in Period 5 (15 Rooms)' : 'Disabled'}
+                </span>
+              </div>
+            </div>
+
+            {isExamEnabled && (
+              <div className="p-3 bg-white rounded-xl border border-rose-200 shadow-2xs space-y-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                      Examination / Assessment Title:
+                    </label>
+                    <input
+                      type="text"
+                      value={examName}
+                      onChange={(e) => setExamName(e.target.value)}
+                      placeholder="e.g. Weekly Examination / Assessment"
+                      className="w-full text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white text-slate-800 font-semibold focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                      Period & Classroom Allocation:
+                    </label>
+                    <div className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 font-medium text-[11px] flex items-center justify-between">
+                      <span>Period 5 (12:50 - 13:30) [Last Period]</span>
+                      <span className="font-bold text-rose-700">All 15 Classrooms</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2 rounded-lg bg-rose-50/60 border border-rose-200/60 text-[11px] text-rose-900 flex items-center justify-between">
+                  <span>✓ 15 active instructors will be flexibly assigned across Old and New building classrooms for exam duty.</span>
+                  <span className="font-mono font-bold">Quota: 30 Sessions</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 5: Routine Generation Constraint Checks */}
           <div className="border border-slate-200 rounded-xl bg-slate-50/70 overflow-hidden">
             <button
               type="button"
@@ -1002,7 +1758,7 @@ export const RoutineGeneratorModal: React.FC<RoutineGeneratorModalProps> = ({
                 <Sliders className="w-4 h-4 text-indigo-600" />
                 <div>
                   <span className="text-xs font-bold text-slate-800">
-                    4. Routine Generation Rules & Constraint Checks
+                    5. Routine Generation Rules & Constraint Checks
                   </span>
                   <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                     {MASTER_ROUTINE_RULES.filter((r) => Boolean(localRules[r.key])).length}/{MASTER_ROUTINE_RULES.length} Active

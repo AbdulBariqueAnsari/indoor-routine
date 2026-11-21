@@ -6,6 +6,8 @@
 import { Plugin } from 'vite';
 import { serverStorage } from './serverStorage.ts';
 import url from 'url';
+import fs from 'fs';
+import path from 'path';
 
 export function viteApiPlugin(): Plugin {
   return {
@@ -53,6 +55,13 @@ export function viteApiPlugin(): Plugin {
             const store = serverStorage.getStore();
             res.statusCode = 200;
             return res.end(JSON.stringify(store));
+          }
+
+          // 1B. POST/GET /api/sync-from-json - Manually sync database from edited JSON files
+          if (pathname === '/api/sync-from-json') {
+            const store = serverStorage.syncFromJson();
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, message: 'Database successfully synced from edited JSON files', store }));
           }
 
           // 2. POST /api/teachers - Save teachers list
@@ -166,6 +175,40 @@ export function viteApiPlugin(): Plugin {
             const store = serverStorage.resetToDefault();
             res.statusCode = 200;
             return res.end(JSON.stringify({ success: true, store }));
+          }
+
+          // 15. POST /api/export - Save exported Excel or PDF file directly to exports folder (replaces if existing)
+          if (pathname === '/api/export' && req.method === 'POST') {
+            const body = await readBody();
+            const { fileName, content, isBase64 } = body;
+            if (!fileName || !content) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'fileName and content are required' }));
+            }
+
+            const exportsDir = path.resolve(process.cwd(), 'exports');
+            if (!fs.existsSync(exportsDir)) {
+              fs.mkdirSync(exportsDir, { recursive: true });
+            }
+
+            const safeName = path.basename(fileName);
+            const targetPath = path.resolve(exportsDir, safeName);
+
+            if (isBase64) {
+              let base64Data = content;
+              if (base64Data.includes(';base64,')) {
+                base64Data = base64Data.split(';base64,')[1];
+              } else if (base64Data.startsWith('data:')) {
+                base64Data = base64Data.replace(/^data:.*?;base64,/, '');
+              }
+              fs.writeFileSync(targetPath, Buffer.from(base64Data.trim(), 'base64'));
+            } else {
+              fs.writeFileSync(targetPath, content, 'utf8');
+            }
+
+            console.log(`[ViteApiPlugin Export] Successfully saved to exports folder: ${targetPath}`);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, fileName: safeName, path: targetPath }));
           }
 
           // 14. GET /api/health

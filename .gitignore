@@ -6,5 +6,6 @@ scratch/
 coverage/
 .DS_Store
 *.log
+_data/
 .env*
 !.env.example

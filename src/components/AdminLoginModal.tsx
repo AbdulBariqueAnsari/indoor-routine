@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, Lock, X } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -19,11 +20,12 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   onLoginSuccess,
   adminPassword = 'admin123',
 }) => {
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +40,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">

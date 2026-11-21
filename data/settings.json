@@ -2,12 +2,388 @@
   "institutionName": "STC, SAP 4th Bn",
   "battalionUnit": "SAP 4th Battalion",
   "trainingCenterName": "Subsidiary Training Centre",
-  "subTitle": "Daily Indoor Class Routine & Instructor Assignment Master Sheet",
+  "subTitle": "Daily Indoor Class Routine & Instructor Assignment",
   "location": "SAP 4th Bn, Kasba, Raiganj, Uttar Dinajpur",
+  "address": "Kasba, Raiganj, Uttar Dinajpur - 733123",
   "signatoryDesignation": "O/C STC (Indoor)",
   "tagline": "Daily Indoor Class Routine Scheduler",
-  "activeRoutineId": "routine-day-6",
+  "activeRoutineId": "routine-day-1",
   "language": "en",
-  "address": "Kasba, Raiganj, Uttar Dinajpur - 733123",
-  "adminPassword": "admin123"
+  "adminPassword": "admin123",
+  "downloadsConfig": {
+    "reports": {
+      "indoor-routine": {
+        "id": "indoor-routine",
+        "name": "Daily Indoor Class Routine Master Sheet",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true,
+        "columns": [
+          {
+            "key": "roomName",
+            "defaultLabel": "Room Name",
+            "customLabel": "Room Name",
+            "enabled": true
+          },
+          {
+            "key": "roomCode",
+            "defaultLabel": "Room Code",
+            "customLabel": "Room Code",
+            "enabled": false
+          },
+          {
+            "key": "building",
+            "defaultLabel": "Building",
+            "customLabel": "Building",
+            "enabled": false
+          },
+          {
+            "key": "capacity",
+            "defaultLabel": "Capacity",
+            "customLabel": "Capacity",
+            "enabled": false
+          },
+          {
+            "key": "p1",
+            "defaultLabel": "Period 1 (09:40-10:20)",
+            "customLabel": "Period 1 (09:40-10:20)",
+            "enabled": true
+          },
+          {
+            "key": "p2",
+            "defaultLabel": "Period 2 (10:25-11:05)",
+            "customLabel": "Period 2 (10:25-11:05)",
+            "enabled": true
+          },
+          {
+            "key": "p3",
+            "defaultLabel": "Period 3 (11:10-11:50)",
+            "customLabel": "Period 3 (11:10-11:50)",
+            "enabled": true
+          },
+          {
+            "key": "p4",
+            "defaultLabel": "Period 4 (12:05-12:45)",
+            "customLabel": "Period 4 (12:05-12:45)",
+            "enabled": true
+          },
+          {
+            "key": "p5",
+            "defaultLabel": "Period 5 (12:50-13:30)",
+            "customLabel": "Period 5 (12:50-13:30)",
+            "enabled": true
+          }
+        ]
+      },
+      "session-counter": {
+        "id": "session-counter",
+        "name": "Session Counter (Room-wise Subject Progress)",
+        "enabled": true,
+        "orientation": "landscape",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      },
+      "deployment-tracker": {
+        "id": "deployment-tracker",
+        "name": "Instructor Deployment Tracker (Classroom Visits)",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      },
+      "instructor-ledger": {
+        "id": "instructor-ledger",
+        "name": "Instructor Academic Workload Ledger",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true,
+        "columns": [
+          {
+            "key": "slNo",
+            "defaultLabel": "Sl No",
+            "customLabel": "Sl No",
+            "enabled": true
+          },
+          {
+            "key": "teacherCode",
+            "defaultLabel": "Teacher Code",
+            "customLabel": "Teacher Code",
+            "enabled": true
+          },
+          {
+            "key": "teacherName",
+            "defaultLabel": "Instructor Name",
+            "customLabel": "Instructor Name",
+            "enabled": true
+          },
+          {
+            "key": "primarySubject",
+            "defaultLabel": "Primary Subject(s)",
+            "customLabel": "Primary Subject(s)",
+            "enabled": true
+          },
+          {
+            "key": "pastLoad",
+            "defaultLabel": "Past Days Load",
+            "customLabel": "Past Days Load",
+            "enabled": true
+          },
+          {
+            "key": "todayLoad",
+            "defaultLabel": "Today's Load",
+            "customLabel": "Today's Load",
+            "enabled": true
+          },
+          {
+            "key": "cumulativeTotal",
+            "defaultLabel": "Cumulative Total",
+            "customLabel": "Cumulative Total",
+            "enabled": true
+          },
+          {
+            "key": "dailyAverage",
+            "defaultLabel": "Daily Average",
+            "customLabel": "Daily Average",
+            "enabled": true
+          },
+          {
+            "key": "equalizationStatus",
+            "defaultLabel": "Equalization Status",
+            "customLabel": "Equalization Status",
+            "enabled": false
+          }
+        ]
+      },
+      "instructor-duty": {
+        "id": "instructor-duty",
+        "name": "Instructor Daily Duty Roster",
+        "enabled": true,
+        "orientation": "landscape",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      },
+      "instructor-mapping": {
+        "id": "instructor-mapping",
+        "name": "Instructor Mapping Matrix (Faculty Profiles)",
+        "enabled": true,
+        "orientation": "landscape",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      },
+      "subject-main-teachers": {
+        "id": "subject-main-teachers",
+        "name": "Subject-wise Primary Instructors Directory",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true,
+        "columns": [
+          {
+            "key": "paperCode",
+            "defaultLabel": "Paper Code",
+            "customLabel": "Paper Code",
+            "enabled": true
+          },
+          {
+            "key": "subjectTitle",
+            "defaultLabel": "Subject Title",
+            "customLabel": "Subject Title",
+            "enabled": true
+          },
+          {
+            "key": "category",
+            "defaultLabel": "Category",
+            "customLabel": "Category",
+            "enabled": false
+          },
+          {
+            "key": "quotaSessions",
+            "defaultLabel": "Quota Sessions",
+            "customLabel": "Quota Sessions",
+            "enabled": true
+          },
+          {
+            "key": "primaryInstructors",
+            "defaultLabel": "Main / Primary Instructors",
+            "customLabel": "Main / Primary Instructors",
+            "enabled": false
+          },
+          {
+            "key": "mainCount",
+            "defaultLabel": "Main Faculty Count",
+            "customLabel": "Main Faculty Count",
+            "enabled": true
+          },
+          {
+            "key": "teacherCodes",
+            "defaultLabel": "Teacher Codes",
+            "customLabel": "Teacher Codes",
+            "enabled": false
+          },
+          {
+            "key": "contacts",
+            "defaultLabel": "Instructor Contact Numbers",
+            "customLabel": "Instructor Contact Numbers",
+            "enabled": true
+          }
+        ]
+      },
+      "subject-hierarchy": {
+        "id": "subject-hierarchy",
+        "name": "Subject-wise Staffing Hierarchy (Main + Backups)",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      },
+      "instructor-directory": {
+        "id": "instructor-directory",
+        "name": "Faculty Contact & Telephone Directory",
+        "enabled": true,
+        "orientation": "portrait",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": false,
+        "columns": [
+          {
+            "key": "slNo",
+            "defaultLabel": "Sl No",
+            "customLabel": "Sl No",
+            "enabled": true
+          },
+          {
+            "key": "teacherCode",
+            "defaultLabel": "Teacher Code",
+            "customLabel": "Teacher Code",
+            "enabled": true
+          },
+          {
+            "key": "teacherName",
+            "defaultLabel": "Instructor Name",
+            "customLabel": "Instructor Name",
+            "enabled": true
+          },
+          {
+            "key": "rank",
+            "defaultLabel": "Rank / Designation",
+            "customLabel": "Rank / Designation",
+            "enabled": false
+          },
+          {
+            "key": "phone",
+            "defaultLabel": "Mobile / Telephone Number",
+            "customLabel": "Mobile / Telephone Number",
+            "enabled": true
+          },
+          {
+            "key": "campusBase",
+            "defaultLabel": "Campus Base",
+            "customLabel": "Campus Base",
+            "enabled": false
+          },
+          {
+            "key": "primaryCode",
+            "defaultLabel": "Primary Subject Code",
+            "customLabel": "Primary Subject Code",
+            "enabled": true
+          },
+          {
+            "key": "primaryTitle",
+            "defaultLabel": "Subject Title",
+            "customLabel": "Subject Title",
+            "enabled": true
+          },
+          {
+            "key": "dutyStatus",
+            "defaultLabel": "Duty Status",
+            "customLabel": "Duty Status",
+            "enabled": false
+          },
+          {
+            "key": "email",
+            "defaultLabel": "Official Email",
+            "customLabel": "Official Email",
+            "enabled": false
+          }
+        ]
+      },
+      "instructor-unavailability": {
+        "id": "instructor-unavailability",
+        "name": "Faculty Unavailability Incident Log",
+        "enabled": true,
+        "orientation": "landscape",
+        "paperSize": "a4",
+        "includeHeader": true,
+        "includeSignatures": true
+      }
+    },
+    "browserPrint": {
+      "orientation": "portrait",
+      "paperSize": "a4",
+      "showTimings": true,
+      "showCapacities": false,
+      "showTeacherCodes": false,
+      "showSubjectCodes": true,
+      "showPriorityBadge": true,
+      "showSubstituteBadge": true,
+      "showHeader": true,
+      "showSignatures": true,
+      "showReserveTable": true,
+      "showLeaveTable": true,
+      "customTitle": "Subsidiary Training Centre",
+      "customSubtitle": "Daily Indoor Class Routine & Instructor Assignment"
+    }
+  },
+  "practicalSubjects": [
+    {
+      "id": "PRAC-01",
+      "code": "PRAC-01",
+      "name": "Computer Lab & CCTNS Live Data Entry",
+      "targetSessions": 48,
+      "color": "#0284c7",
+      "description": "CCTNS portal training, online FIR registration, digital GD entry, ICJS integration & case tracking"
+    },
+    {
+      "id": "PRAC-02",
+      "code": "PRAC-02",
+      "name": "Crime Scene Management & Forensics Lab",
+      "targetSessions": 46,
+      "color": "#16a34a",
+      "description": "Crime scene cordon, physical evidence collection, fingerprint lifting, ballistics & forensic kit handling"
+    },
+    {
+      "id": "PRAC-03",
+      "code": "PRAC-03",
+      "name": "Moot Court, Legal Procedures & Case Diary Drafting",
+      "targetSessions": 46,
+      "color": "#d97706",
+      "description": "Mock court examination, cross-examination, case diary (CD) drafting, seizure list & inquest preparation"
+    },
+    {
+      "id": "PRAC-04",
+      "code": "PRAC-04",
+      "name": "Cyber Crime, Digital Evidence & IT",
+      "targetSessions": 48,
+      "color": "#7c3aed",
+      "description": "Digital evidence seizure (65B certification), mobile extraction, CDR/IPDR analysis & cyber fraud investigation"
+    },
+    {
+      "id": "PRAC-05",
+      "code": "PRAC-05",
+      "name": "Module - A01",
+      "targetSessions": 15,
+      "color": "#0284c7",
+      "description": ""
+    }
+  ]
 }

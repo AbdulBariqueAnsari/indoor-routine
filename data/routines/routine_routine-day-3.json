@@ -2,6 +2,9 @@
   "id": "routine-day-3",
   "dayNumber": 3,
   "date": "2026-10-29",
+  "status": "published",
+  "isLocked": true,
+  "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - 2 instructors unavailable, 1 subjects excluded",
   "absentTeacherIds": [
     "T2",
     "T17"
@@ -43,6 +46,8 @@
   "excludedPaperIds": [
     "P13"
   ],
+  "teacherOffPeriods": {},
+  "practicalConfig": {},
   "slots": [
     {
       "id": "slot-3-OB-1-P1",
@@ -722,22 +727,5 @@
     }
   ],
   "createdAt": "2026-10-29T13:41:59.825Z",
-  "updatedAt": "2026-10-29T14:02:53.756Z",
-  "isLocked": true,
-  "status": "published",
-  "notes": "STC, SAP 4th Bn Day 3 Routine (2026-10-29) - 2 instructors unavailable, 1 subjects excluded",
-  "unavailableTeachers": [
-    {
-      "teacherId": "T2",
-      "type": "DUTY",
-      "remark": "Special Duty",
-      "date": "2026-10-29"
-    },
-    {
-      "teacherId": "T17",
-      "type": "DUTY",
-      "remark": "Special Duty",
-      "date": "2026-10-29"
-    }
-  ]
+  "updatedAt": "2026-10-29T14:02:53.756Z"
 }

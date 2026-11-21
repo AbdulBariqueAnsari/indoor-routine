@@ -2,9 +2,17 @@
   "id": "routine-day-4-1793283043268",
   "dayNumber": 4,
   "date": "2026-10-30",
+  "status": "draft",
+  "isLocked": true,
+  "notes": "Manual Blank Routine for Day 4 (2026-10-30) - ready for slot assignment",
   "absentTeacherIds": [],
-  "unavailableTeachers": [],
   "priorityPaperIds": [],
+  "roomPriorityPaperIds": {},
+  "subjectPriorityTiers": {},
+  "prioritySubjectMinPeriods": {},
+  "excludedPaperIds": [],
+  "teacherOffPeriods": {},
+  "practicalConfig": {},
   "slots": [
     {
       "id": "slot-4-OB-1-P1",
@@ -683,8 +691,5 @@
     }
   ],
   "createdAt": "2026-10-29T14:10:43.268Z",
-  "updatedAt": "2026-10-29T15:05:48.149Z",
-  "isLocked": true,
-  "status": "draft",
-  "notes": "Manual Blank Routine for Day 4 (2026-10-30) - ready for slot assignment"
+  "updatedAt": "2026-10-29T15:05:48.149Z"
 }

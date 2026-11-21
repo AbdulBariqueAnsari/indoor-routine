@@ -3,10 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AppSettings, Classroom, DailyRoutine, Paper, Teacher, UnavailableInstructor, UnavailabilityType } from '../types';
+import { AppSettings, Classroom, compareClassrooms, compareTeacherCodes, DailyRoutine, Paper, Teacher, UnavailableInstructor, UnavailabilityType } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { api } from './api';
+import { buildRoutineSessionNumbersMap } from './scheduler';
 
 export interface ReportDefinition {
   id: string;
+  slug?: string;
   title: string;
   subtitle: string;
   category: 'Faculty' | 'Curriculum' | 'Daily Operations';
@@ -25,11 +30,102 @@ export interface ReportDefinition {
 }
 
 /**
- * Triggers instant browser download of a clean formatted Excel (.xls) file.
- * Uses an XML/HTML table spreadsheet format with UTF-8 encoding that natively opens
- * in Microsoft Excel, Google Sheets, LibreOffice, and Apple Numbers with headers, borders and styles.
+ * Formats date into DD.MM.YYYY format (e.g. 2026-10-11 -> 11.10.2026)
  */
-export function exportToExcel(
+export function formatRoutineDateDDMMYYYY(dateStr?: string): string {
+  if (!dateStr) {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  const clean = dateStr.trim();
+  // YYYY-MM-DD
+  const ymd = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ymd) {
+    const dd = ymd[3].padStart(2, '0');
+    const mm = ymd[2].padStart(2, '0');
+    const yyyy = ymd[1];
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  // DD.MM.YYYY
+  const dmy = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (dmy) {
+    const dd = dmy[1].padStart(2, '0');
+    const mm = dmy[2].padStart(2, '0');
+    const yyyy = dmy[3];
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  return clean;
+}
+
+/**
+ * Generates official filename in format:
+ * <slug>_d<dayNumber>_(<DD.MM.YYYY>)
+ * e.g. indoor_routine_d5_(11.10.2026)
+ */
+export function formatReportFileName(
+  slug: string,
+  dayNumber?: number,
+  dateStr?: string
+): string {
+  const day = dayNumber ? `_d${dayNumber}` : '';
+  const formattedDate = formatRoutineDateDDMMYYYY(dateStr);
+  return `${slug}${day}_(${formattedDate})`;
+}
+
+/**
+ * Extracts and formats active day detail for display at the top of PDF & Excel exports
+ */
+export function resolveActiveDayDetail(
+  meta?: { activeDayNumber?: number; activeDayDate?: string; date?: string },
+  fileName?: string,
+  sheetTitle?: string
+): string | null {
+  let dayNum: number | string | undefined = meta?.activeDayNumber;
+  let dayDate: string | undefined = meta?.activeDayDate;
+
+  if (!dayNum && fileName) {
+    const m = fileName.match(/_d(\d+)_/i);
+    if (m) dayNum = m[1];
+  }
+  if (!dayNum && sheetTitle) {
+    const m = sheetTitle.match(/Day\s*(\d+)/i);
+    if (m) dayNum = m[1];
+  }
+  if (!dayDate && fileName) {
+    const m = fileName.match(/\(([\d.]+)\)/);
+    if (m) dayDate = m[1];
+  }
+  if (!dayDate && meta?.date) {
+    dayDate = meta.date;
+  }
+
+  if (dayNum && dayDate) {
+    return `DAY ${dayNum} (${formatRoutineDateDDMMYYYY(dayDate)})`;
+  }
+  if (dayNum) {
+    return `DAY ${dayNum}`;
+  }
+  if (dayDate) {
+    return `DATE: ${formatRoutineDateDDMMYYYY(dayDate)}`;
+  }
+  return null;
+}
+
+/**
+ * Triggers instant download of a clean formatted Excel (.xls) file
+ * and simultaneously saves directly to the server's exports directory (replaces if exists).
+ */
+export async function exportToExcel(
   fileName: string,
   sheetTitle: string,
   headers: string[],
@@ -39,10 +135,14 @@ export function exportToExcel(
     institutionName?: string;
     address?: string;
     date?: string;
-  }
+    activeDayNumber?: number;
+    activeDayDate?: string;
+  },
+  downloadInBrowser: boolean = false
 ) {
   const safeTitle = sheetTitle.replace(/[\\/*?[\]:]/g, ' ');
   const safeFileName = fileName.endsWith('.xls') ? fileName : `${fileName}.xls`;
+  const activeDayText = resolveActiveDayDetail(meta, safeFileName, sheetTitle);
 
   let html = `
   <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -54,7 +154,8 @@ export function exportToExcel(
       .inst-sub { font-size: 11pt; font-weight: bold; text-align: center; color: #0f172a; }
       .inst-addr { font-size: 10pt; text-align: center; color: #475569; }
       .doc-title { font-size: 12pt; font-weight: bold; text-align: center; background-color: #f1f5f9; color: #0f172a; padding: 6px; }
-      .meta-bar { font-size: 9pt; color: #334155; text-align: center; }
+      .active-day-bar { font-size: 10.5pt; font-weight: bold; text-align: center; background-color: #e0e7ff; color: #1e1b4b; padding: 5px; }
+      .meta-bar { font-size: 9pt; color: #475569; text-align: center; padding: 4px; }
       th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 1px solid #000000; text-align: center; padding: 6px 10px; font-size: 10pt; }
       td { border: 1px solid #cbd5e1; padding: 5px 8px; font-size: 9.5pt; color: #0f172a; }
       .center { text-align: center; }
@@ -68,7 +169,8 @@ export function exportToExcel(
       ${meta?.institutionName ? `<tr><td colspan="${headers.length}" class="inst-sub">${meta.institutionName}</td></tr>` : ''}
       ${meta?.address ? `<tr><td colspan="${headers.length}" class="inst-addr">${meta.address}</td></tr>` : ''}
       <tr><td colspan="${headers.length}" class="doc-title">${sheetTitle}</td></tr>
-      ${meta?.date ? `<tr><td colspan="${headers.length}" class="meta-bar">Generated: ${meta.date}</td></tr>` : ''}
+      ${activeDayText ? `<tr><td colspan="${headers.length}" class="active-day-bar">ACTIVE SCHEDULE DAY: ${activeDayText}</td></tr>` : ''}
+      <tr><td colspan="${headers.length}" class="meta-bar">DOCUMENT: OFFICIAL ACADEMIC RECORD &nbsp;&nbsp;|&nbsp;&nbsp; TOTAL ENTRIES: ${rows.length} ROWS &nbsp;&nbsp;|&nbsp;&nbsp; DATE GENERATED: ${meta?.date || new Date().toLocaleDateString('en-GB')}</td></tr>
       <tr><td colspan="${headers.length}"></td></tr>
       <thead>
         <tr>
@@ -93,15 +195,188 @@ export function exportToExcel(
   </body>
   </html>`;
 
-  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = safeFileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // 1. Save directly to server's exports directory (replaces if existing)
+  try {
+    await api.saveExportFile(safeFileName, html, false);
+  } catch (err) {
+    console.warn('[Export] Could not save directly to exports folder:', err);
+  }
+
+  // 2. Browser download only if explicitly requested
+  if (downloadInBrowser) {
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safeFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return { success: true, fileName: safeFileName };
+}
+
+/**
+ * Generates an official styled PDF document, downloads in browser,
+ * and simultaneously saves directly to the server's exports directory (replaces if existing).
+ */
+export async function exportToPdf(
+  fileName: string,
+  sheetTitle: string,
+  headers: string[],
+  rows: (string | number)[][],
+  meta?: {
+    centreName?: string;
+    institutionName?: string;
+    address?: string;
+    date?: string;
+    activeDayNumber?: number;
+    activeDayDate?: string;
+    orientation?: 'landscape' | 'portrait';
+    paperSize?: 'a4' | 'legal' | 'letter';
+    includeHeader?: boolean;
+    includeSignatures?: boolean;
+  },
+  downloadInBrowser: boolean = false
+) {
+  const safeFileName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  const isLandscape = meta?.orientation ? meta.orientation === 'landscape' : headers.length > 6;
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'pt',
+    format: meta?.paperSize || 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const includeHeader = meta?.includeHeader !== false;
+  const includeSignatures = meta?.includeSignatures !== false;
+  const activeDayText = resolveActiveDayDetail(meta, safeFileName, sheetTitle);
+
+  let currentY = 28;
+
+  if (includeHeader) {
+    // Draw Academy Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 58, 138); // navy blue
+    doc.text(meta?.centreName || 'SUBSIDIARY TRAINING CENTRE', pageWidth / 2, 32, { align: 'center' });
+
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text(meta?.institutionName || 'STC, SAP 4TH BN', pageWidth / 2, 47, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(meta?.address || 'Kasba, Raiganj, Uttar Dinajpur', pageWidth / 2, 59, { align: 'center' });
+
+    currentY = 68;
+  }
+
+  // Document Title Box
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.rect(25, currentY, pageWidth - 50, 20, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(sheetTitle.toUpperCase(), pageWidth / 2, currentY + 13, { align: 'center' });
+
+  // Metadata bar with Active Day Details prominently at top
+  currentY += 25;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.text('DOCUMENT: OFFICIAL ACADEMIC RECORD', 25, currentY);
+
+  if (activeDayText) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text(`ACTIVE DAY: ${activeDayText.toUpperCase()}`, pageWidth / 2, currentY, { align: 'center' });
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`TOTAL ENTRIES: ${rows.length} ROWS`, pageWidth - 25, currentY, { align: 'right' });
+
+  currentY += 5;
+
+  // Adjust font size based on column count so wide tables fit neatly
+  const colCount = headers.length;
+  const tableFontSize = colCount > 15 ? 6 : colCount > 10 ? 7 : colCount > 7 ? 7.5 : 8.5;
+  const cellPadding = colCount > 12 ? 2.5 : 3.5;
+
+  autoTable(doc, {
+    startY: currentY + 6,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [30, 41, 59], // slate-800
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      fontSize: tableFontSize,
+      cellPadding,
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0],
+    },
+    bodyStyles: {
+      textColor: [15, 23, 42],
+      fontSize: tableFontSize,
+      cellPadding,
+      lineWidth: 0.5,
+      lineColor: [203, 213, 225],
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252],
+    },
+    margin: { left: 25, right: 25, bottom: includeSignatures ? 40 : 25 },
+    didDrawPage: (data) => {
+      // Bottom footer bar on each page: Date Generated placed on Bottom-Left Corner
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      const dateText = meta?.date ? `Date Generated: ${meta.date}  ·  ` : '';
+      doc.text(
+        `${dateText}STC, SAP 4th Bn · Official Academic Record · Page ${data.pageNumber}`,
+        25,
+        pageHeight - 15
+      );
+      if (includeSignatures) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(
+          'O/C STC (Indoor)',
+          pageWidth - 25,
+          pageHeight - 15,
+          { align: 'right' }
+        );
+      }
+    },
+  });
+
+  // 1. Save directly to server's exports directory (replaces if existing)
+  try {
+    const rawDataUri = doc.output('datauristring');
+    const base64Data = rawDataUri.includes(';base64,') ? rawDataUri.split(';base64,')[1] : rawDataUri;
+    await api.saveExportFile(safeFileName, base64Data, true);
+  } catch (err) {
+    console.warn('[Export] Could not save directly to exports folder:', err);
+  }
+
+  // 2. Trigger browser download only if explicitly requested
+  if (downloadInBrowser) {
+    doc.save(safeFileName);
+  }
+
+  return { success: true, fileName: safeFileName };
 }
 
 /**
@@ -133,8 +408,61 @@ export function exportToCsv(fileName: string, headers: string[], rows: (string |
 }
 
 // =========================================================================
-// DATA GENERATORS FOR THE 8 OFFICIAL DOWNLOAD REPORTS
+// DATA GENERATORS FOR OFFICIAL DOWNLOAD REPORTS
 // =========================================================================
+
+/**
+ * 0. Daily Indoor Class Routine (Active Master Schedule)
+ */
+export function generateIndoorRoutineData(
+  currentRoutine: DailyRoutine | null,
+  classrooms: Classroom[],
+  papers: Paper[],
+  teachers: Teacher[],
+  allRoutines: DailyRoutine[] = []
+): (string | number)[][] {
+  if (!currentRoutine || !currentRoutine.slots) return [];
+
+  const paperMap = new Map(papers.map((p) => [p.id, p]));
+  const teacherMap = new Map(teachers.map((t) => [t.id, t]));
+  const sessionNumbersMap = buildRoutineSessionNumbersMap(currentRoutine, allRoutines);
+
+  const sortedClassrooms = [...classrooms].sort(compareClassrooms);
+  const rows: (string | number)[][] = [];
+
+  for (const room of sortedClassrooms) {
+    const periodSlots: string[] = [];
+    for (let p = 1; p <= 5; p++) {
+      const slot = currentRoutine.slots.find((s) => s.roomId === room.id && s.period === p);
+      if (slot) {
+        const paper = paperMap.get(slot.paperId);
+        const teacher = teacherMap.get(slot.teacherId);
+        const subTag = slot.isSubstitute ? ' (Sub)' : '';
+        const practicalTag = slot.practicalName ? ` (${slot.practicalName})` : '';
+        const examTag = slot.isExam ? ` (${slot.examName || 'Exam'})` : '';
+        const sessionNum = sessionNumbersMap.get(slot.id) || sessionNumbersMap.get(`${slot.roomId}_${slot.period}`) || 0;
+        const sessionTag = sessionNum > 0 ? ` (${sessionNum})` : '';
+        periodSlots.push(`${paper?.code || slot.paperId}${practicalTag}${examTag} - ${teacher?.name || slot.teacherId}${sessionTag}${subTag}`);
+      } else {
+        periodSlots.push('-');
+      }
+    }
+
+    rows.push([
+      room.name,
+      room.code,
+      room.building === 'OLD' ? 'Old Bldg' : 'New Bldg',
+      room.capacity,
+      periodSlots[0],
+      periodSlots[1],
+      periodSlots[2],
+      periodSlots[3],
+      periodSlots[4],
+    ]);
+  }
+
+  return rows;
+}
 
 /**
  * 1. Session Counter (Room-wise Subject Quotas & Completion)
@@ -169,7 +497,7 @@ export function generateSessionCounterData(
     }
   }
 
-  const sortedClassrooms = [...classrooms].sort((a, b) => a.code.localeCompare(b.code));
+  const sortedClassrooms = [...classrooms].sort(compareClassrooms);
   const sortedPapers = [...papers].sort((a, b) => a.code.localeCompare(b.code));
 
   for (const room of sortedClassrooms) {
@@ -178,12 +506,11 @@ export function generateSessionCounterData(
       const completed = roomPaperCounts.get(key) || 0;
       const today = todayCounts.get(key) || 0;
       const total = completed + today;
-      const target = Math.round(paper.totalTargetSessions / classrooms.length) || 12;
+      const target = paper.totalTargetSessions > 0 ? paper.totalTargetSessions : 30;
       const remaining = Math.max(0, target - total);
       const pct = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 100;
 
       rows.push([
-        room.code,
         room.name,
         room.building === 'OLD' ? 'Old Bldg' : 'New Bldg',
         paper.code,
@@ -211,10 +538,11 @@ export function generateDeploymentTrackerData(
   currentRoutine: DailyRoutine | null
 ): (string | number)[][] {
   const rows: (string | number)[][] = [];
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
 
   // Build room-wise delivery map for each teacher
   const teacherRoomDeliveries = new Map<string, Map<string, number>>();
-  for (const t of teachers) {
+  for (const t of sortedTeachers) {
     teacherRoomDeliveries.set(t.id, new Map<string, number>());
   }
 
@@ -228,29 +556,23 @@ export function generateDeploymentTrackerData(
     }
   }
 
-  for (const t of teachers) {
+  const sortedClassrooms = [...classrooms].sort(compareClassrooms);
+
+  for (const t of sortedTeachers) {
     const roomMap = teacherRoomDeliveries.get(t.id) || new Map<string, number>();
     let totalSessions = 0;
-    let roomsVisited = 0;
 
-    const roomCounts = classrooms.map((c) => {
+    const roomCounts = sortedClassrooms.map((c) => {
       const count = roomMap.get(c.id) || 0;
       totalSessions += count;
-      if (count > 0) roomsVisited++;
       return count;
     });
-
-    const coveragePct = classrooms.length > 0 ? Math.round((roomsVisited / classrooms.length) * 100) : 0;
 
     rows.push([
       t.code,
       t.name,
-      t.designation || 'Instructor',
-      t.assignedBuilding || 'FLOATING',
       ...roomCounts,
       totalSessions,
-      `${roomsVisited} / ${classrooms.length}`,
-      `${coveragePct}%`,
     ]);
   }
 
@@ -289,7 +611,8 @@ export function generateInstructorLedgerData(
   }
 
   let idx = 1;
-  for (const t of teachers) {
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
+  for (const t of sortedTeachers) {
     const past = pastLoads.get(t.id) || 0;
     const today = todayLoads.get(t.id) || 0;
     const total = past + today;
@@ -306,9 +629,7 @@ export function generateInstructorLedgerData(
       idx++,
       t.code,
       t.name,
-      t.designation || 'Instructor',
       primarySubjects || 'General',
-      t.assignedBuilding || 'FLOATING',
       past,
       today,
       total,
@@ -334,9 +655,9 @@ export function generateDailyDutyData(
 
   const roomMap = new Map(classrooms.map((c) => [c.id, c]));
   const paperMap = new Map(papers.map((p) => [p.id, p]));
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
 
-  let idx = 1;
-  for (const t of teachers) {
+  for (const t of sortedTeachers) {
     // Check if teacher is marked absent/leave/duty/sick
     let statusText = 'ACTIVE DUTY';
     if (currentRoutine.absentTeacherIds.includes(t.id)) {
@@ -359,18 +680,16 @@ export function generateDailyDutyData(
       if (slot) {
         const room = roomMap.get(slot.roomId);
         const paper = paperMap.get(slot.paperId);
-        pSlots.push(`${room?.code || slot.roomId} [${paper?.code || slot.paperId}]${slot.isSubstitute ? ' (Sub)' : ''}`);
+        const practicalTag = slot.practicalName ? ` (${slot.practicalName})` : '';
+        pSlots.push(`${room?.code || slot.roomId} [${paper?.code || slot.paperId}${practicalTag}]${slot.isSubstitute ? ' (Sub)' : ''}`);
       } else {
         pSlots.push('-');
       }
     }
 
     rows.push([
-      idx++,
       t.code,
       t.name,
-      t.designation || 'Instructor',
-      t.assignedBuilding || 'FLOATING',
       pSlots[0],
       pSlots[1],
       pSlots[2],
@@ -392,7 +711,8 @@ export function generateTeacherMappingData(teachers: Teacher[], papers: Paper[])
   const paperMap = new Map(papers.map((p) => [p.id, p]));
 
   let idx = 1;
-  for (const t of teachers) {
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
+  for (const t of sortedTeachers) {
     const primaryStr = t.primaryPaperIds
       .map((pid) => {
         const p = paperMap.get(pid);
@@ -441,7 +761,9 @@ export function generateSubjectMainTeachersData(papers: Paper[], teachers: Teach
 
   for (const paper of papers) {
     // Find all teachers who have this paper in primaryPaperIds
-    const mainTeachers = teachers.filter((t) => t.primaryPaperIds.includes(paper.id));
+    const mainTeachers = teachers
+      .filter((t) => t.primaryPaperIds.includes(paper.id))
+      .sort(compareTeacherCodes);
 
     if (mainTeachers.length === 0) {
       rows.push([
@@ -483,29 +805,35 @@ export function generateSubjectFullHierarchyData(papers: Paper[], teachers: Teac
 
   for (const paper of papers) {
     // 1. Main Teachers
-    const mainTeachers = teachers.filter((t) => t.primaryPaperIds.includes(paper.id));
+    const mainTeachers = teachers
+      .filter((t) => t.primaryPaperIds.includes(paper.id))
+      .sort(compareTeacherCodes);
     const mainStr =
       mainTeachers.length > 0
         ? mainTeachers.map((t) => `[${t.code}] ${t.name}`).join('; ')
         : 'All Available Instructors (Practical)';
 
     // 2. Backup 1 Teachers (Teachers whose backupPaperIds includes this paper, but not primary)
-    const backup1Teachers = teachers.filter(
-      (t) => !t.primaryPaperIds.includes(paper.id) && t.backupPaperIds && t.backupPaperIds.includes(paper.id)
-    );
+    const backup1Teachers = teachers
+      .filter(
+        (t) => !t.primaryPaperIds.includes(paper.id) && t.backupPaperIds && t.backupPaperIds.includes(paper.id)
+      )
+      .sort(compareTeacherCodes);
     const backup1Str =
       backup1Teachers.length > 0
         ? backup1Teachers.map((t) => `[${t.code}] ${t.name} (${t.assignedBuilding || 'FLT'})`).join('; ')
         : 'Assigned as needed';
 
     // 3. Backup 2 Teachers (Teachers whose secondaryPaperIds includes this paper, or cross-subject backup)
-    const backup2Teachers = teachers.filter(
-      (t) =>
-        !t.primaryPaperIds.includes(paper.id) &&
-        (!t.backupPaperIds || !t.backupPaperIds.includes(paper.id)) &&
-        ((t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id)) ||
-          (t.crossSubjectBackupPaperIds && t.crossSubjectBackupPaperIds.includes(paper.id)))
-    );
+    const backup2Teachers = teachers
+      .filter(
+        (t) =>
+          !t.primaryPaperIds.includes(paper.id) &&
+          (!t.backupPaperIds || !t.backupPaperIds.includes(paper.id)) &&
+          ((t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id)) ||
+            (t.crossSubjectBackupPaperIds && t.crossSubjectBackupPaperIds.includes(paper.id)))
+      )
+      .sort(compareTeacherCodes);
     const backup2Str =
       backup2Teachers.length > 0
         ? backup2Teachers.map((t) => `[${t.code}] ${t.name}`).join('; ')
@@ -534,7 +862,8 @@ export function generateInstructorPhoneDirectoryData(teachers: Teacher[], papers
   const paperMap = new Map(papers.map((p) => [p.id, p]));
 
   let idx = 1;
-  for (const t of teachers) {
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
+  for (const t of sortedTeachers) {
     const primarySubjectCodes = t.primaryPaperIds.map((pid) => paperMap.get(pid)?.code || pid).join(', ');
     const primarySubjectTitles = t.primaryPaperIds.map((pid) => paperMap.get(pid)?.title || pid).join('; ');
 
@@ -587,9 +916,10 @@ export function computeInstructorUnavailabilityStats(
 ): TeacherUnavailabilitySummary[] {
   const sortedRoutines = [...allRoutines].sort((a, b) => a.dayNumber - b.dayNumber);
   const totalRoutinesCount = Math.max(1, sortedRoutines.length);
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
 
   const summaryMap = new Map<string, TeacherUnavailabilitySummary>();
-  for (const t of teachers) {
+  for (const t of sortedTeachers) {
     summaryMap.set(t.id, {
       teacher: t,
       totalUnavailableDays: 0,
@@ -684,7 +1014,7 @@ export function computeInstructorUnavailabilityStats(
     item.attendanceRate = Math.round((presentDays / totalRoutinesCount) * 1000) / 10;
   }
 
-  return Array.from(summaryMap.values());
+  return Array.from(summaryMap.values()).sort((a, b) => compareTeacherCodes(a.teacher, b.teacher));
 }
 
 /**
@@ -756,7 +1086,10 @@ export function generateUnavailabilityIncidentLogData(
     if (a.incident.dayNumber !== b.incident.dayNumber) {
       return a.incident.dayNumber - b.incident.dayNumber;
     }
-    return a.incident.date.localeCompare(b.incident.date);
+    if (a.incident.date !== b.incident.date) {
+      return a.incident.date.localeCompare(b.incident.date);
+    }
+    return compareTeacherCodes(a.teacher, b.teacher);
   });
 
   let idx = 1;

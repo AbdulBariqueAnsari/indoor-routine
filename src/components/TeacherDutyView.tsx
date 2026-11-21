@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { Classroom, ClassSlot, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import { CheckCircle2, Search, User, UserCheck, UserX } from 'lucide-react';
 
@@ -27,8 +27,9 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
   const roomMap = new Map(classrooms.map((r) => [r.id, r]));
   const paperMap = new Map(papers.map((p) => [p.id, p]));
 
-  // Build schedule per teacher
-  const teacherSchedules = teachers.map((teacher) => {
+  // Build schedule per teacher in natural T1..Tn sequence
+  const sortedTeachers = [...teachers].sort(compareTeacherCodes);
+  const teacherSchedules = sortedTeachers.map((teacher) => {
     const isAbsent = routine.absentTeacherIds.includes(teacher.id);
     const unavail = routine.unavailableTeachers?.find((u) => u.teacherId === teacher.id);
     const unavailType = unavail ? unavail.type : isAbsent ? 'ABSENT' : null;
@@ -72,9 +73,9 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
   const avgLoad = activeCount > 0 ? (totalSlotsCovered / activeCount).toFixed(1) : '0';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Summary Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-4 text-xs">
+      <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-4">
           <div>
             <span className="text-slate-500 font-medium">Active Instructors:</span>{' '}
@@ -136,15 +137,15 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
           <table className="w-full text-left border-collapse text-xs min-w-[780px]">
             <thead>
               <tr className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-700">
-                <th className="p-3 w-56 border-r border-slate-200">Instructor Member</th>
-                <th className="p-3 text-center border-r border-slate-200 w-24">Status</th>
+                <th className="p-2 sm:p-2.5 w-52 border-r border-slate-200">Instructor Member</th>
+                <th className="p-2 sm:p-2.5 text-center border-r border-slate-200 w-20">Status</th>
                 {PERIOD_TIMINGS.map((p) => (
-                  <th key={p.period} className="p-2.5 border-r border-slate-200 last:border-r-0 text-center">
+                  <th key={p.period} className="p-2 border-r border-slate-200 last:border-r-0 text-center">
                     <div className="font-bold text-slate-900">{p.label}</div>
                     <div className="text-[10px] text-slate-500 font-normal font-mono tabular-nums">{p.time}</div>
                   </th>
                 ))}
-                <th className="p-3 text-right font-bold w-24">Total Load</th>
+                <th className="p-2 sm:p-2.5 text-right font-bold w-20">Total Load</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -159,7 +160,7 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                     }`}
                   >
                     {/* Instructor Details */}
-                    <td className="p-3 border-r border-slate-200">
+                    <td className="p-2 sm:p-2.5 border-r border-slate-200">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center font-bold text-indigo-700 text-xs shrink-0 font-mono shadow-2xs">
                           {teacher.code}
@@ -193,7 +194,7 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                     </td>
 
                     {/* Status */}
-                    <td className="p-3 text-center border-r border-slate-200">
+                    <td className="p-2 sm:p-2.5 text-center border-r border-slate-200">
                       {isAbsent ? (
                         <span
                           className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${
@@ -281,7 +282,7 @@ export const TeacherDutyView: React.FC<TeacherDutyViewProps> = ({
                     })}
 
                     {/* Total Periods Assigned */}
-                    <td className="p-3 text-right font-mono font-bold border-slate-200 tabular-nums">
+                    <td className="p-2 sm:p-2.5 text-right font-mono font-bold border-slate-200 tabular-nums">
                       <span
                         className={`px-2 py-0.5 rounded ${
                           totalPeriods > 3

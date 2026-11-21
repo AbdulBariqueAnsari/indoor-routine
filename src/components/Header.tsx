@@ -26,6 +26,7 @@ import {
   UserX,
   Wrench,
 } from 'lucide-react';
+import { useDropdownAnimation } from '../hooks/useModalAnimation';
 
 interface HeaderProps {
   currentRoutine: DailyRoutine | null;
@@ -76,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
+  const { shouldRender: shouldRenderAdminMenu, dropdownAnimationClass } = useDropdownAnimation(isAdminMenuOpen, 160);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -113,11 +115,11 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-2xs no-print">
       {/* Tier 1: Brand & Control Action Bar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+      <div className="w-full max-w-[1920px] mx-auto px-2.5 sm:px-4 2xl:px-6">
+        <div className="flex items-center justify-between h-12 sm:h-13 gap-2">
           {/* Brand Identity */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-700 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-700 flex items-center justify-center text-white font-bold shadow-xs shrink-0 hover:rotate-6 hover:scale-105 transition-all duration-200">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
@@ -255,11 +257,12 @@ export const Header: React.FC<HeaderProps> = ({
                     <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform ${isAdminMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* Dropdown Popover */}
-                  {isAdminMenuOpen && (
-                    <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
-                      <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Management Tools
+                  {/* Dropdown Popover with Smooth Entrance & Exit Animations */}
+                  {shouldRenderAdminMenu && (
+                    <div className={`absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs ${dropdownAnimationClass}`}>
+                      <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Management Tools</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                       </div>
 
                       {/* Recreate Routine */}
@@ -270,7 +273,7 @@ export const Header: React.FC<HeaderProps> = ({
                             onRecreateRoutine();
                           }}
                           disabled={!isCurrentEditable}
-                          className={`w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-amber-50/70 transition-colors ${
+                          className={`w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-amber-50/80 transition-all duration-150 group cursor-pointer ${
                             !isCurrentEditable ? 'opacity-50 cursor-not-allowed' : 'text-slate-800'
                           }`}
                           title={
@@ -279,9 +282,9 @@ export const Header: React.FC<HeaderProps> = ({
                               : 'Recreate is only available when the active routine is in Editable/Unlocked mode'
                           }
                         >
-                          <RefreshCw className="w-4 h-4 text-amber-600 shrink-0" />
+                          <RefreshCw className="w-4 h-4 text-amber-600 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
                           <div>
-                            <div className="font-bold text-slate-900">Recreate Routine</div>
+                            <div className="font-bold text-slate-900 group-hover:text-amber-900 transition-colors">Recreate Routine</div>
                             <div className="text-[10px] text-slate-500">
                               {isCurrentEditable ? 'Re-run constraint solver on active day' : 'Unlocked routine only'}
                             </div>
@@ -296,11 +299,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenLeaveManager();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-rose-50/70 text-slate-800 transition-colors"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-rose-50/80 text-slate-800 transition-all duration-150 group cursor-pointer"
                         >
-                          <UserX className="w-4 h-4 text-rose-600 shrink-0" />
+                          <UserX className="w-4 h-4 text-rose-600 shrink-0 group-hover:scale-115 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Unavailable Register</div>
+                            <div className="font-bold text-slate-900 group-hover:text-rose-900 transition-colors">Unavailable Register</div>
                             <div className="text-[10px] text-slate-500">Absent / Leave / Duty / Sick status</div>
                           </div>
                         </button>
@@ -313,11 +316,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenMasterData();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-indigo-50/70 text-slate-800 transition-colors"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-indigo-50/80 text-slate-800 transition-all duration-150 group cursor-pointer"
                         >
-                          <Database className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <Database className="w-4 h-4 text-indigo-600 shrink-0 group-hover:scale-115 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Master Data Setup</div>
+                            <div className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">Master Data Setup</div>
                             <div className="text-[10px] text-slate-500">Rooms, Instructors & Syllabus</div>
                           </div>
                         </button>
@@ -330,11 +333,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenRulesModal();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-blue-50/70 text-slate-800 transition-colors border-t border-slate-100"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-blue-50/80 text-slate-800 transition-all duration-150 border-t border-slate-100 group cursor-pointer"
                         >
-                          <Sliders className="w-4 h-4 text-blue-600 shrink-0" />
+                          <Sliders className="w-4 h-4 text-blue-600 shrink-0 group-hover:scale-115 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Rules & Checks</div>
+                            <div className="font-bold text-slate-900 group-hover:text-blue-900 transition-colors">Rules & Checks</div>
                             <div className="text-[10px] text-slate-500">24 Rules in 3 Priority Tiers</div>
                           </div>
                         </button>
@@ -347,11 +350,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenPageSetup();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-indigo-50/70 text-slate-800 transition-colors border-t border-slate-100"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-indigo-50/80 text-slate-800 transition-all duration-150 border-t border-slate-100 group cursor-pointer"
                         >
-                          <LayoutTemplate className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <LayoutTemplate className="w-4 h-4 text-indigo-600 shrink-0 group-hover:scale-115 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Page Setup</div>
+                            <div className="font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">Page Setup</div>
                             <div className="text-[10px] text-slate-500">STC SAP Bn & Training Centre details</div>
                           </div>
                         </button>
@@ -364,11 +367,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenDownloads();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-emerald-50/70 text-slate-800 transition-colors border-t border-slate-100"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-emerald-50/80 text-slate-800 transition-all duration-150 border-t border-slate-100 group cursor-pointer"
                         >
-                          <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <Download className="w-4 h-4 text-emerald-600 shrink-0 group-hover:translate-y-0.5 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Downloads & Reports</div>
+                            <div className="font-bold text-slate-900 group-hover:text-emerald-900 transition-colors">Downloads & Reports</div>
                             <div className="text-[10px] text-slate-500">PDF & Excel exports for all 8 registers</div>
                           </div>
                         </button>
@@ -381,11 +384,11 @@ export const Header: React.FC<HeaderProps> = ({
                             setIsAdminMenuOpen(false);
                             onOpenChangePassword();
                           }}
-                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-800 transition-colors border-t border-slate-100"
+                          className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-slate-100 text-slate-800 transition-all duration-150 border-t border-slate-100 group cursor-pointer"
                         >
-                          <KeyRound className="w-4 h-4 text-slate-700 shrink-0" />
+                          <KeyRound className="w-4 h-4 text-slate-700 shrink-0 group-hover:scale-115 transition-transform duration-200" />
                           <div>
-                            <div className="font-bold text-slate-900">Change Admin Password</div>
+                            <div className="font-bold text-slate-900 group-hover:text-slate-950 transition-colors">Change Admin Password</div>
                             <div className="text-[10px] text-slate-500">Update security login credentials</div>
                           </div>
                         </button>
@@ -421,19 +424,19 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Tier 2: Tab Navigation Bar (Available for BOTH Public and Admin) */}
       <div className="border-t border-slate-200 bg-slate-50/90">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between overflow-x-auto py-1.5 gap-2 scrollbar-none">
-            <nav className="flex items-center gap-1 sm:gap-2">
+        <div className="w-full max-w-[1920px] mx-auto px-2.5 sm:px-4 2xl:px-6">
+          <div className="flex items-center justify-between overflow-x-auto py-1 gap-1.5 scrollbar-none">
+            <nav className="flex items-center gap-1 sm:gap-1.5">
               {(isAdmin ? adminNavItems : publicNavItems).map((item) => {
                 const isActive = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all duration-150 whitespace-nowrap cursor-pointer hover:scale-105 active:scale-95 ${
                       isActive
-                        ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                        ? 'bg-indigo-600 text-white shadow-xs font-bold ring-2 ring-indigo-300/40'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/80'
                     }`}
                   >
                     {item.label}

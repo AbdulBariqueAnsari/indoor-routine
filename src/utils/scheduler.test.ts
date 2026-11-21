@@ -11,8 +11,12 @@ import {
   INITIAL_CLASSROOMS,
   INITIAL_PAPERS,
   INITIAL_TEACHERS,
+  INITIAL_PRACTICAL_SUBJECTS,
   MASTER_ROUTINE_RULES,
   isRuleDisabled,
+  getRuleDisabledHint,
+  SUBJECT_DETAILMENT_RULES,
+  TEACHER_DETAILMENT_RULES,
   normalizeRuleConfig,
   migrateLegacyRules,
 } from '../data/initialData';
@@ -23,13 +27,17 @@ import {
   calculateCurriculumAllocation,
   generateMultipleDaysRoutines,
   getPaperPrimaryTeachers,
+  buildRoutineSessionNumbersMap,
+  getTeacherClassPaperSessionNumber,
 } from './scheduler';
 import { validateRoutine, validateSlotAssignmentTier1, isRoutineEditable } from './routineValidator';
-import { AppSettings, ClassSlot, DailyRoutine, SubjectPriorityTier } from '../types';
+import { AppSettings, ClassSlot, DailyRoutine, SubjectPriorityTier, UnavailableInstructor, UnavailabilityConfigItem, compareClassrooms, extractRoomNumber } from '../types';
 import {
   computeInstructorUnavailabilityStats,
   generateInstructorUnavailabilityData,
   generateUnavailabilityIncidentLogData,
+  generateIndoorRoutineData,
+  formatRoutineDateDDMMYYYY,
 } from './exportUtils';
 
 test('Routine generator produces exactly 75 slots for 15 classrooms and 5 periods', () => {
@@ -61,7 +69,7 @@ test('Zero teacher double-booking: No teacher is scheduled in 2 classrooms durin
   });
 
   const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.conflicts.length, 0);
 });
 
@@ -79,7 +87,7 @@ test('Absent teachers are strictly excluded from all periods', () => {
   });
 
   const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, absentList);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.conflicts.length, 0);
   assert.equal(validation.absentViolations.length, 0);
 
@@ -152,8 +160,8 @@ test('Classroom-wise session counting computes individual room progress across 1
     assert.equal(rStat.completedBeforeToday, 5);
     assert.equal(rStat.todaySessions, 5);
     assert.equal(rStat.totalCompleted, 10);
-    assert.equal(rStat.totalTargetSessions, 623);
-    assert.equal(rStat.paperProgress.length, 13);
+    assert.equal(rStat.totalTargetSessions, INITIAL_PAPERS.reduce((s, p) => s + p.totalTargetSessions, 0));
+    assert.equal(rStat.paperProgress.length, INITIAL_PAPERS.length);
   }
 });
 
@@ -181,7 +189,7 @@ test('Cumulative stats correctly aggregate across historical days and current da
   });
 
   const stats = calculateCumulativeStats(INITIAL_PAPERS, [day1Routine], day2Routine.slots, ['P05']);
-  assert.equal(stats.length, 13);
+  assert.equal(stats.length, INITIAL_PAPERS.length);
 
   const totalSessionsConducted = stats.reduce((sum, s) => sum + s.completedSessions + s.todaySessions, 0);
   // Day 1 (75) + Day 2 (75) = 150 total sessions
@@ -239,8 +247,8 @@ test('Classroom naming and capacities strictly conform to specs: Old Bldg = 70, 
   }
 });
 
-test('Paper codes strictly formatted as Paper-1 through Paper-13', () => {
-  assert.equal(INITIAL_PAPERS.length, 13);
+test('Paper codes strictly formatted as Paper-1 through Paper-14', () => {
+  assert.equal(INITIAL_PAPERS.length, 14);
   INITIAL_PAPERS.forEach((p, idx) => {
     assert.equal(p.code, `Paper-${idx + 1}`, `Paper ${p.id} should have code Paper-${idx + 1}`);
   });
@@ -335,7 +343,7 @@ test('Instructors distributed strictly across 12 Theory Papers (Paper-1 to Paper
 
   // Collect all assigned primary teachers across P01 to P12
   const theoryAssigned = new Set<string>();
-  const theoryPapers = INITIAL_PAPERS.filter(p => p.id !== 'P13');
+  const theoryPapers = INITIAL_PAPERS.filter(p => p.theoryOrPractical === 'THEORY' || (p.id !== 'P13' && p.id !== 'P14'));
   
   assert.equal(theoryPapers.length, 12);
 
@@ -413,7 +421,7 @@ test('Room-wise priority guarantees subject inclusion and shuffles periods', () 
 
   // Validate zero teacher conflicts
   const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.conflicts.length, 0);
 });
 
@@ -592,6 +600,9 @@ test('Mandatory 1-Period Gap when Changing Buildings (OLD <-> NEW)', () => {
       const next = teacherSlots[i + 1];
 
       if (next.period === cur.period + 1) {
+        // P3 to P4 is exempt due to Rule 4A (Recess Break)
+        if (cur.period === 3 && next.period === 4) continue;
+
         const curRoom = roomMap.get(cur.roomId)!;
         const nextRoom = roomMap.get(next.roomId)!;
 
@@ -606,7 +617,7 @@ test('Mandatory 1-Period Gap when Changing Buildings (OLD <-> NEW)', () => {
 
   // Validate with routineValidator
   const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.buildingConflicts.length, 0);
 });
 
@@ -665,7 +676,7 @@ test('Teacher daily assignment progresses to next room based on previous day', (
 
   assert.equal(day2Routine.slots.length, 75);
   const validation = validateRoutine(day2Routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.buildingConflicts.length, 0);
   assert.equal(validation.conflicts.length, 0);
 });
@@ -1055,7 +1066,7 @@ test('Proportional Remaining Quota Fill-Up & Percentage Priority Scaling (+50% H
 
   // 4. Zero conflict validation
   const validation = validateRoutine(routine.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.conflicts.length, 0);
   assert.equal(validation.buildingConflicts.length, 0);
 });
@@ -1164,7 +1175,7 @@ test('Classroom 100% Syllabus Completion Lockout: Subject is strictly excluded f
   // 3. Exactly 75 total slots generated and 100% valid schedule
   assert.equal(routineWithLock.slots.length, 75);
   const validation = validateRoutine(routineWithLock.slots, INITIAL_TEACHERS, INITIAL_CLASSROOMS, []);
-  assert.equal(validation.isValid, true);
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
   assert.equal(validation.conflicts.length, 0);
 
   // 4. Test when enableRoomQuotaCompletionLock is toggled OFF:
@@ -2235,6 +2246,9 @@ test('Scenario 40: computeInstructorUnavailabilityStats accurately aggregates le
       dayNumber: 1,
       date: '2026-10-27',
       isLocked: true,
+      createdAt: '2026-10-27T00:00:00Z',
+      updatedAt: '2026-10-27T00:00:00Z',
+      status: 'published',
       absentTeacherIds: ['T1', 'T2'],
       unavailableTeachers: [
         { teacherId: 'T1', type: 'LEAVE', remark: 'Casual Leave', date: '2026-10-27' },
@@ -2248,6 +2262,9 @@ test('Scenario 40: computeInstructorUnavailabilityStats accurately aggregates le
       dayNumber: 2,
       date: '2026-10-28',
       isLocked: true,
+      createdAt: '2026-10-28T00:00:00Z',
+      updatedAt: '2026-10-28T00:00:00Z',
+      status: 'published',
       absentTeacherIds: ['T1', 'T3'],
       unavailableTeachers: [
         { teacherId: 'T1', type: 'REST', remark: 'Rest Standby', date: '2026-10-28' },
@@ -2261,6 +2278,9 @@ test('Scenario 40: computeInstructorUnavailabilityStats accurately aggregates le
       dayNumber: 3,
       date: '2026-10-29',
       isLocked: true,
+      createdAt: '2026-10-29T00:00:00Z',
+      updatedAt: '2026-10-29T00:00:00Z',
+      status: 'published',
       absentTeacherIds: ['T4'],
       priorityPaperIds: [],
       slots: [],
@@ -2306,6 +2326,9 @@ test('Scenario 41: generateInstructorUnavailabilityData and generateUnavailabili
       dayNumber: 1,
       date: '2026-10-27',
       isLocked: true,
+      createdAt: '2026-10-27T00:00:00Z',
+      updatedAt: '2026-10-27T00:00:00Z',
+      status: 'published',
       absentTeacherIds: ['T17'],
       unavailableTeachers: [
         { teacherId: 'T17', type: 'DUTY', remark: 'Special Law & Order', date: '2026-10-27' },
@@ -2327,6 +2350,1313 @@ test('Scenario 41: generateInstructorUnavailabilityData and generateUnavailabili
   assert.equal(incidentRows[0][3], 'T17');
   assert.equal(incidentRows[0][6], 'DUTY');
 });
+
+test('Session number in brackets: counts sequential sessions per teacher for that paper in that classroom', () => {
+  const day1Routine: DailyRoutine = {
+    id: 'day-1',
+    dayNumber: 1,
+    date: '2026-10-24',
+    createdAt: '2026-10-24T00:00:00Z',
+    updatedAt: '2026-10-24T00:00:00Z',
+    status: 'published',
+    isLocked: true,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    slots: [
+      { id: 's1-1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+      { id: 's1-2', roomId: 'OB-1', period: 3, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+      { id: 's1-3', roomId: 'OB-2', period: 2, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+    ],
+  };
+
+  const day2Routine: DailyRoutine = {
+    id: 'day-2',
+    dayNumber: 2,
+    date: '2026-10-25',
+    createdAt: '2026-10-25T00:00:00Z',
+    updatedAt: '2026-10-25T00:00:00Z',
+    status: 'draft',
+    isLocked: false,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    slots: [
+      { id: 's2-1', roomId: 'OB-1', period: 1, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+      { id: 's2-2', roomId: 'OB-1', period: 3, paperId: 'P01', teacherId: 'T3', isSubstitute: true },
+      { id: 's2-3', roomId: 'OB-2', period: 5, paperId: 'P01', teacherId: 'T1', isSubstitute: false },
+    ],
+  };
+
+  const allRoutines = [day1Routine, day2Routine];
+  const day2Map = buildRoutineSessionNumbersMap(day2Routine, allRoutines);
+
+  assert.equal(day2Map.get('s2-1'), 3, 'Day 2 Period 1 in OB-1 for T1 teaching P01 is Session 3');
+  assert.equal(day2Map.get('s2-2'), 1, 'Day 2 Period 3 in OB-1 for T3 teaching P01 is Session 1');
+  assert.equal(day2Map.get('s2-3'), 2, 'Day 2 Period 5 in OB-2 for T1 teaching P01 is Session 2');
+
+  const rows = generateIndoorRoutineData(day2Routine, INITIAL_CLASSROOMS, INITIAL_PAPERS, INITIAL_TEACHERS, allRoutines);
+  assert.ok(rows.length > 0);
+  const ob1Row = rows.find((r) => r[1] === 'OB-01');
+  assert.ok(ob1Row, 'OB-1 row must be present in exported routine data');
+  const p1Text = String(ob1Row[4]);
+  assert.ok(p1Text.includes('(3)'), `Period 1 text should include (3), got "${p1Text}"`);
+  const p3Text = String(ob1Row[6]);
+  assert.ok(p3Text.includes('(1)'), `Period 3 text should include (1), got "${p3Text}"`);
+  assert.ok(p3Text.includes('(Sub)'), `Period 3 text should include (Sub), got "${p3Text}"`);
+});
+
+test('Core Rules 1, 2, and 7 are removed from toggleable list but permanently enforced', () => {
+  // 1. Verify Rule 1, Rule 2, and Rule 7 are NOT in MASTER_ROUTINE_RULES (toggleable list)
+  const masterKeys = MASTER_ROUTINE_RULES.map((r) => r.key);
+  assert.equal(masterKeys.includes('enableZeroDoubleBooking'), false, 'Rule 1 must NOT be in toggleable list');
+  assert.equal(masterKeys.includes('enableStrictAbsenteeExclusion'), false, 'Rule 2 must NOT be in toggleable list');
+  assert.equal(masterKeys.includes('enableDailyWorkloadMaxCap'), false, 'Rule 7 must NOT be in toggleable list');
+
+  // 2. Verify normalizeRuleConfig permanently forces them to true
+  const normalizedWithFalses = normalizeRuleConfig({
+    enableZeroDoubleBooking: false,
+    enableStrictAbsenteeExclusion: false,
+    enableDailyWorkloadMaxCap: false,
+  });
+  assert.equal(normalizedWithFalses.enableZeroDoubleBooking, true, 'Rule 1 must be forced true');
+  assert.equal(normalizedWithFalses.enableStrictAbsenteeExclusion, true, 'Rule 2 must be forced true');
+  assert.equal(normalizedWithFalses.enableDailyWorkloadMaxCap, true, 'Rule 7 cap must be forced true');
+
+  // 3. Verify scheduler strictly enforces zero double-booking and absentee exclusion
+  const absentTeacher = INITIAL_TEACHERS[0];
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [absentTeacher.id],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Zero double-booking check
+  for (let p = 1; p <= 5; p++) {
+    const periodSlots = routine.slots.filter((s) => s.period === p && s.teacherId);
+    const teacherIds = periodSlots.map((s) => s.teacherId);
+    const uniqueIds = new Set(teacherIds);
+    assert.equal(teacherIds.length, uniqueIds.size, `No teacher double-booked in period ${p}`);
+  }
+
+  // Absent teacher check
+  const assignedAbsentSlots = routine.slots.filter((s) => s.teacherId === absentTeacher.id);
+  assert.equal(assignedAbsentSlots.length, 0, 'Absent teacher must have 0 assigned slots');
+});
+
+test('Rule 8 dynamic availability: Subject detailment unavailable when ON, Teacher detailment unavailable when OFF', () => {
+  // When Rule 8 is ON:
+  const rulesTeacherFirst = normalizeRuleConfig({
+    enableTeacherLoadEqualizationPriority: true,
+    enableClassroomSubjectEqualization: true,
+    enableWorkloadEqualization: true,
+  });
+
+  // Subject detailment rules (Rules 10-16) must be disabled and normalized to false
+  for (const key of SUBJECT_DETAILMENT_RULES) {
+    assert.equal(isRuleDisabled(key, rulesTeacherFirst), true, `${key} must be disabled when Rule 8 is ON`);
+    assert.equal(rulesTeacherFirst[key], false, `${key} must be normalized to false when Rule 8 is ON`);
+    const hint = getRuleDisabledHint(key, rulesTeacherFirst);
+    assert.ok(hint && hint.includes('Rule 8'), `Hint for ${key} must explain Rule 8 is active`);
+  }
+
+  // Teacher detailment rules must be available when Rule 8 is ON
+  for (const key of TEACHER_DETAILMENT_RULES) {
+    assert.equal(isRuleDisabled(key, rulesTeacherFirst), false, `${key} must be available when Rule 8 is ON`);
+  }
+
+  // When Rule 8 is OFF:
+  const rulesCurriculumFirst = normalizeRuleConfig({
+    enableTeacherLoadEqualizationPriority: false,
+    enableClassroomSubjectEqualization: true,
+    enableWorkloadEqualization: true,
+  });
+
+  // Teacher detailment rules (Rules 17, 18, 22, 24) must be disabled and normalized to false
+  for (const key of TEACHER_DETAILMENT_RULES) {
+    assert.equal(isRuleDisabled(key, rulesCurriculumFirst), true, `${key} must be disabled when Rule 8 is OFF`);
+    assert.equal(rulesCurriculumFirst[key], false, `${key} must be normalized to false when Rule 8 is OFF`);
+    const hint = getRuleDisabledHint(key, rulesCurriculumFirst);
+    assert.ok(hint && hint.includes('Rule 8'), `Hint for ${key} must explain Rule 8 is OFF`);
+  }
+
+  // Subject detailment rules must be available when Rule 8 is OFF
+  for (const key of SUBJECT_DETAILMENT_RULES) {
+    assert.equal(isRuleDisabled(key, rulesCurriculumFirst), false, `${key} must be available when Rule 8 is OFF`);
+  }
+});
+
+test('Practical Class integrity: Practical classes only in scheduled rooms & periods with zero double booking', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableTeacherLoadEqualizationPriority: false, // Curriculum-First mode
+      enablePracticalConsecutiveDoublePeriodLimit: true,
+    },
+    practicalConfig: {
+      enabled: true,
+      name: 'Computer Practical',
+      teacherIds: ['T12'],
+      items: [
+        {
+          id: 'p-1',
+          name: 'Computer Practical',
+          teacherId: 'T12',
+          roomId: 'OB-1',
+          periods: [2, 3],
+        },
+        {
+          id: 'p-2',
+          name: 'Computer Practical',
+          teacherId: 'T12',
+          roomId: 'OB-2',
+          periods: [4, 5],
+        },
+      ],
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Verify practical slots
+  const practicalSlots = routine.slots.filter(
+    (s) => s.paperId === 'P13' || s.practicalName === 'Computer Practical'
+  );
+
+  // Exactly 4 practical slots (2 in OB-1, 2 in OB-2)
+  assert.equal(practicalSlots.length, 4, 'Must have exactly 4 practical slots across campus');
+
+  // Must only be in OB-1 and OB-2
+  for (const s of practicalSlots) {
+    assert.ok(s.roomId === 'OB-1' || s.roomId === 'OB-2', `Practical slot found in unexpected room: ${s.roomId}`);
+    if (s.roomId === 'OB-1') {
+      assert.ok(s.period === 2 || s.period === 3, `OB-1 practical slot found in unexpected period: ${s.period}`);
+    } else {
+      assert.ok(s.period === 4 || s.period === 5, `OB-2 practical slot found in unexpected period: ${s.period}`);
+    }
+  }
+
+  // Check no other room has practical class
+  const unscheduledPracticalSlots = routine.slots.filter(
+    (s) => s.roomId !== 'OB-1' && s.roomId !== 'OB-2' && (s.paperId === 'P13' || s.practicalName)
+  );
+  assert.equal(unscheduledPracticalSlots.length, 0, 'No practical class in unscheduled classrooms');
+
+  // Verify full Tier 1 validation passes
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    routine.practicalConfig
+  );
+  assert.equal(validation.tier1Passed, true, 'Tier 1 validation must pass');
+  assert.equal(validation.conflicts.length, 0, 'Zero conflicts / double-booking');
+});
+
+test('Training day formatted with date in brackets for print and export: DAY <N> (<date>)', () => {
+  const formatted = formatRoutineDateDDMMYYYY('2026-10-27');
+  assert.equal(formatted, '27.10.2026');
+
+  // Verify indoor routine metadata string in export data
+  const mockRoutine: DailyRoutine = {
+    id: 'day-1',
+    dayNumber: 1,
+    date: '2026-10-27',
+    slots: [],
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    createdAt: '2026-10-27T00:00:00Z',
+    updatedAt: '2026-10-27T00:00:00Z',
+    status: 'draft',
+    isLocked: false,
+  };
+
+  const rows = generateIndoorRoutineData(mockRoutine, INITIAL_CLASSROOMS, INITIAL_PAPERS, INITIAL_TEACHERS, [mockRoutine]);
+  assert.ok(rows !== undefined);
+});
+
+test('Rule 8 Teacher-First Detailment: Prioritizes assigning instructor to classroom where they have lowest historical detailment', () => {
+  const rules = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: true,
+  };
+
+  // Day 1
+  const day1 = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+
+  // Pick a teacher who taught in a specific room on Day 1
+  const slotDay1 = day1.slots.find((s) => s.teacherId && s.roomId);
+  assert.ok(slotDay1);
+  const teacherId = slotDay1.teacherId;
+  const visitedRoomId = slotDay1.roomId;
+
+  // Day 2
+  const day2 = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [day1],
+    targetDayNumber: 2,
+    targetDate: '2026-10-25',
+  });
+
+  const teacherDay2Slots = day2.slots.filter((s) => s.teacherId === teacherId);
+  assert.ok(teacherDay2Slots.length > 0);
+
+  // The teacher should prefer other rooms in Day 2 rather than repeating the same room
+  const repeatedRoomSlots = teacherDay2Slots.filter((s) => s.roomId === visitedRoomId);
+  assert.equal(
+    repeatedRoomSlots.length,
+    0,
+    `Teacher ${teacherId} should not repeat room ${visitedRoomId} when other rooms have 0 visits`
+  );
+});
+
+test('Practical Setup & Counters: Initial practical modules targets sum exactly to 188 (matches Paper-13 total target)', () => {
+  const paper13 = INITIAL_PAPERS.find((p) => p.id === 'P13' || p.code === 'Paper-13');
+  assert.ok(paper13, 'Paper-13 must exist in INITIAL_PAPERS');
+
+  const sumTargets = INITIAL_PRACTICAL_SUBJECTS.reduce((acc, curr) => acc + curr.targetSessions, 0);
+  assert.equal(
+    sumTargets,
+    paper13.totalTargetSessions,
+    `Sum of practical subjects targets (${sumTargets}) must equal Paper-13 target (${paper13.totalTargetSessions})`
+  );
+  assert.equal(sumTargets, 188);
+});
+
+test('Practical Consecutive Double-Period Limit: Schedules 2 consecutive periods per practical class', () => {
+  const rules = {
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: true,
+    enablePracticalConsecutiveDoublePeriodLimit: true,
+  };
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules,
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    practicalConfig: {
+      enabled: true,
+      name: 'Computer Lab & CCTNS Live Data Entry',
+      items: [
+        {
+          id: 'prac-item-1',
+          name: 'Computer Lab & CCTNS Live Data Entry',
+          teacherId: 'T25',
+          roomId: 'OB-1',
+          periods: [2, 3],
+        },
+      ],
+    },
+  });
+
+  const pracSlots = routine.slots.filter((s) => s.paperId === 'P13');
+  assert.ok(pracSlots.length >= 2, 'Must have at least 2 practical slots');
+  const ob1PracSlots = pracSlots.filter((s) => s.roomId === 'OB-1');
+  assert.equal(ob1PracSlots.length, 2);
+  const periods = ob1PracSlots.map((s) => s.period).sort();
+  assert.deepEqual(periods, [2, 3], 'Practical periods must be consecutive 2 and 3 (Period 1 is theoretical)');
+  assert.equal(ob1PracSlots[0].practicalName, 'Computer Lab & CCTNS Live Data Entry');
+});
+
+test('Multi-day date-specific unavailability: Faculty absent only on Day 2 is scheduled normally on Day 1 and Day 3, with custom remark saved on Day 2', () => {
+  const classrooms = INITIAL_CLASSROOMS;
+  const papers = INITIAL_PAPERS;
+  const teachers = INITIAL_TEACHERS;
+  const rules = normalizeRuleConfig(DEFAULT_ROUTINE_RULES);
+
+  const unavailabilityConfigs: UnavailabilityConfigItem[] = [
+    {
+      id: 'unavail-1',
+      teacherId: 'T3',
+      targetDayOrDate: '2026-10-25', // Day 2 only
+      type: 'DUTY',
+      remark: 'Special Duty (VIP Bandobast)',
+    },
+    {
+      id: 'unavail-2',
+      teacherId: 'T5',
+      targetDayOrDate: 'ALL', // All days
+      type: 'LEAVE',
+      remark: 'Casual Leave',
+    },
+  ];
+
+  const batchDates = [
+    { dayNum: 1, dateStr: '2026-10-24' },
+    { dayNum: 2, dateStr: '2026-10-25' },
+    { dayNum: 3, dateStr: '2026-10-26' },
+  ];
+
+  const batchRoutines: DailyRoutine[] = [];
+  const history: DailyRoutine[] = [];
+
+  for (const b of batchDates) {
+    const dayUnavail = unavailabilityConfigs.filter(
+      (u) => u.teacherId && (u.targetDayOrDate === 'ALL' || u.targetDayOrDate === b.dateStr)
+    );
+    const dayAbsentTeacherIds = Array.from(new Set(dayUnavail.map((u) => u.teacherId)));
+    const dayUnavailableTeachersList: UnavailableInstructor[] = dayUnavail.map((u) => ({
+      teacherId: u.teacherId,
+      type: u.type,
+      remark: u.remark,
+      date: b.dateStr,
+    }));
+
+    const r = generateDailyRoutine({
+      classrooms,
+      papers,
+      teachers,
+      absentTeacherIds: dayAbsentTeacherIds,
+      rules,
+      historicalRoutines: [...history],
+      targetDayNumber: b.dayNum,
+      targetDate: b.dateStr,
+    });
+
+    r.absentTeacherIds = dayAbsentTeacherIds;
+    r.unavailableTeachers = dayUnavailableTeachersList;
+
+    batchRoutines.push(r);
+    history.push(r);
+  }
+
+  // Day 1: T3 is NOT absent, T5 IS absent
+  assert.equal(batchRoutines[0].absentTeacherIds.includes('T3'), false, 'T3 must be available on Day 1');
+  assert.equal(batchRoutines[0].absentTeacherIds.includes('T5'), true, 'T5 must be absent on Day 1');
+
+  // Day 2: Both T3 and T5 ARE absent
+  assert.equal(batchRoutines[1].absentTeacherIds.includes('T3'), true, 'T3 must be absent on Day 2');
+  assert.equal(batchRoutines[1].absentTeacherIds.includes('T5'), true, 'T5 must be absent on Day 2');
+  const t3RecordDay2 = batchRoutines[1].unavailableTeachers?.find((u) => u.teacherId === 'T3');
+  assert.equal(t3RecordDay2?.type, 'DUTY');
+  assert.equal(t3RecordDay2?.remark, 'Special Duty (VIP Bandobast)');
+  // Verify T3 is NOT assigned in any slot on Day 2
+  const t3SlotsDay2 = batchRoutines[1].slots.filter((s) => s.teacherId === 'T3');
+  assert.equal(t3SlotsDay2.length, 0, 'T3 must not be scheduled in any slot on Day 2');
+
+  // Day 3: T3 is available again, T5 IS absent
+  assert.equal(batchRoutines[2].absentTeacherIds.includes('T3'), false, 'T3 must be available again on Day 3');
+  assert.equal(batchRoutines[2].absentTeacherIds.includes('T5'), true, 'T5 must be absent on Day 3');
+});
+
+test('Recreate Routine: Strict single-day regeneration preserves selected routine ID and does not overwrite other routines', () => {
+  const classrooms = INITIAL_CLASSROOMS;
+  const papers = INITIAL_PAPERS;
+  const teachers = INITIAL_TEACHERS;
+  const rules = normalizeRuleConfig(DEFAULT_ROUTINE_RULES);
+
+  const day1 = generateDailyRoutine({
+    classrooms,
+    papers,
+    teachers,
+    rules,
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+  });
+  day1.id = 'routine-day-1-fixed-id';
+
+  const day2 = generateDailyRoutine({
+    classrooms,
+    papers,
+    teachers,
+    rules,
+    historicalRoutines: [day1],
+    targetDayNumber: 2,
+    targetDate: '2026-10-25',
+  });
+  day2.id = 'routine-day-2-fixed-id';
+
+  // Recreate day 2 with T2 absent
+  const recreatedDay2 = generateDailyRoutine({
+    classrooms,
+    papers,
+    teachers,
+    absentTeacherIds: ['T2'],
+    rules,
+    historicalRoutines: [day1],
+    targetDayNumber: day2.dayNumber,
+    targetDate: day2.date,
+  });
+  recreatedDay2.id = day2.id; // Preserves exact routine ID
+
+  assert.equal(recreatedDay2.id, 'routine-day-2-fixed-id');
+  assert.equal(recreatedDay2.dayNumber, 2);
+  assert.equal(recreatedDay2.date, '2026-10-25');
+  assert.equal(recreatedDay2.slots.some((s) => s.teacherId === 'T2'), false, 'T2 must be excluded in recreated routine');
+});
+
+test('Classroom Exposure Balance Cap: Difference between max-visited and min-visited room for any instructor does not exceed 2', () => {
+  const classrooms = INITIAL_CLASSROOMS;
+  const papers = INITIAL_PAPERS;
+  const teachers = INITIAL_TEACHERS;
+  const rules = normalizeRuleConfig({
+    ...DEFAULT_ROUTINE_RULES,
+    enableTeacherLoadEqualizationPriority: true,
+  });
+
+  const routines = generateMultipleDaysRoutines({
+    classrooms,
+    papers,
+    teachers,
+    rules,
+    startDayNumber: 1,
+    startDate: '2026-10-20',
+    numberOfDays: 5,
+    historicalRoutines: [],
+  });
+
+  teachers.forEach((t) => {
+    const roomCounts: Record<string, number> = {};
+    classrooms.forEach((c) => (roomCounts[c.id] = 0));
+    routines.forEach((r) => {
+      r.slots
+        .filter((s) => s.teacherId === t.id)
+        .forEach((s) => {
+          roomCounts[s.roomId] = (roomCounts[s.roomId] || 0) + 1;
+        });
+    });
+
+    const eligible = classrooms.filter((r) => {
+      if (t.assignedBuilding === 'FLOATING') return true;
+      return t.assignedBuilding === r.building;
+    });
+
+    const counts = eligible.map((r) => roomCounts[r.id] || 0);
+    const max = Math.max(...counts);
+    const min = Math.min(...counts);
+    assert.ok(
+      max - min <= 2,
+      `Instructor ${t.code} (${t.name}) room visits spread exceeds 2: min=${min}, max=${max}, diff=${max - min}`
+    );
+  });
+});
+
+test('Practical Scheduling: Period 1 is always theoretical; Practical pairs are strictly [2, 3] or [4, 5]', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enablePracticalConsecutiveDoublePeriodLimit: true,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    practicalConfig: {
+      enabled: true,
+      name: 'Computer Practical',
+      items: [
+        {
+          id: 'p-1',
+          name: 'Computer Practical',
+          teacherId: 'T12',
+          roomId: 'OB-1',
+          // periods omitted: auto-picks [2, 3]
+        },
+        {
+          id: 'p-2',
+          name: 'Computer Practical',
+          teacherId: 'T14',
+          roomId: 'OB-2',
+          // periods omitted: auto-picks [4, 5]
+        },
+      ],
+    },
+  });
+
+  // 1. Period 1 must NEVER contain a practical slot across all 15 classrooms
+  const p1Slots = routine.slots.filter((s) => s.period === 1);
+  const p1Practical = p1Slots.filter((s) => s.paperId === 'P13' || s.practicalName);
+  assert.equal(p1Practical.length, 0, 'Period 1 must always be theoretical; zero practical in Period 1');
+
+  // 2. Practical slots are strictly in [2, 3] and [4, 5]
+  const practicalSlots = routine.slots.filter((s) => s.paperId === 'P13' || s.practicalName);
+  assert.equal(practicalSlots.length, 4, 'Must have exactly 4 practical periods (2 rooms x 2 periods)');
+
+  const ob1Periods = practicalSlots.filter((s) => s.roomId === 'OB-1').map((s) => s.period).sort();
+  assert.deepEqual(ob1Periods, [2, 3], 'OB-1 auto-allocated practical in [2, 3]');
+
+  const ob2Periods = practicalSlots.filter((s) => s.roomId === 'OB-2').map((s) => s.period).sort();
+  assert.deepEqual(ob2Periods, [4, 5], 'OB-2 auto-allocated practical in [4, 5]');
+
+  // 3. Validation must pass with 0 errors
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    routine.practicalConfig
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+  assert.equal(validation.tier1Passed, true);
+});
+
+test('Practical Room Isolation: A classroom never receives 4 practical periods in one day (max 2 periods per class)', () => {
+  // Test with auto-balance rooms and multiple practical items
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enablePracticalConsecutiveDoublePeriodLimit: true,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    practicalConfig: {
+      enabled: true,
+      items: [
+        {
+          id: 'p-1',
+          name: 'Practical 1',
+          teacherId: 'T1',
+          // auto room
+        },
+        {
+          id: 'p-2',
+          name: 'Practical 2',
+          teacherId: 'T2',
+          // auto room
+        },
+      ],
+    },
+  });
+
+  const practicalSlots = routine.slots.filter((s) => s.paperId === 'P13' || s.practicalName);
+  assert.equal(practicalSlots.length, 4, 'Must have 4 practical periods total across campus');
+
+  // Group by room
+  const roomPracticalCounts = new Map<string, number>();
+  for (const s of practicalSlots) {
+    roomPracticalCounts.set(s.roomId, (roomPracticalCounts.get(s.roomId) || 0) + 1);
+  }
+
+  // Ensure 2 distinct rooms each have exactly 2 practical periods, never 4 in one room
+  assert.equal(roomPracticalCounts.size, 2, 'Practicals must be split across exactly 2 different classrooms');
+  for (const [roomId, count] of roomPracticalCounts.entries()) {
+    assert.equal(count, 2, `Room ${roomId} has ${count} practical periods; must never be 4`);
+  }
+});
+
+test('Practical Variety: A classroom can take 4 practical periods (2+2) if they are DIFFERENT practical subjects', () => {
+  // 1. Two DIFFERENT practical subjects in the same room OB-1: Allowed!
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enablePracticalConsecutiveDoublePeriodLimit: true,
+    },
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    practicalConfig: {
+      enabled: true,
+      items: [
+        {
+          id: 'p-1',
+          name: 'Computer Lab & CCTNS Live Data Entry',
+          practicalSubjectId: 'PRAC-01',
+          teacherId: 'T25',
+          roomId: 'OB-1',
+          periods: [2, 3],
+        },
+        {
+          id: 'p-2',
+          name: 'Crime Scene Management & Forensics Lab',
+          practicalSubjectId: 'PRAC-02',
+          teacherId: 'T26',
+          roomId: 'OB-1',
+          periods: [4, 5],
+        },
+      ],
+    },
+  });
+
+  const ob1PracticalSlots = routine.slots.filter((s) => s.roomId === 'OB-1' && (s.paperId === 'P13' || s.practicalName));
+  assert.equal(ob1PracticalSlots.length, 4, 'OB-1 successfully has 4 practical periods (2+2 sessions)');
+
+  // Period 1 in OB-1 must still be a theory paper!
+  const ob1P1Slot = routine.slots.find((s) => s.roomId === 'OB-1' && s.period === 1);
+  assert.ok(ob1P1Slot && ob1P1Slot.paperId !== 'P13', 'Period 1 in OB-1 must remain theoretical');
+
+  // Must pass Tier 1 validation
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    routine.practicalConfig
+  );
+  assert.equal(validation.isValid, true, 'Validation passes for 2 different practical subjects in same room');
+  assert.equal(validation.tier1Passed, true);
+
+  // 2. But if the SAME practical subject is repeated twice in the same room: Fails variety check!
+  const duplicateSlots = routine.slots.map((s) => {
+    if (s.roomId === 'OB-1' && (s.period === 4 || s.period === 5)) {
+      return {
+        ...s,
+        practicalSubjectId: 'PRAC-01',
+        practicalName: 'Computer Lab & CCTNS Live Data Entry',
+      };
+    }
+    return s;
+  });
+
+  const dupValidation = validateRoutine(
+    duplicateSlots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    routine.practicalConfig
+  );
+  assert.equal(dupValidation.tier1Passed, false, 'Validation must fail when same practical subject repeats twice in same room');
+  assert.ok(
+    dupValidation.roomSubjectViolations.some((v) => v.details.includes('Variety Violation')),
+    'Must report Rule 9 Variety Violation'
+  );
+});
+
+test('Feature: Room Number Sequencing (1 to 15 serial increase)', () => {
+  // 1. All 15 classrooms have consecutive room numbers 1 to 15
+  assert.equal(INITIAL_CLASSROOMS.length, 15);
+  const sorted = [...INITIAL_CLASSROOMS].sort(compareClassrooms);
+  assert.equal(sorted.length, 15);
+
+  for (let i = 0; i < sorted.length; i++) {
+    const expectedNum = i + 1;
+    assert.equal(
+      sorted[i].roomNumber,
+      expectedNum,
+      `Classroom at index ${i} (${sorted[i].name}) must have roomNumber ${expectedNum}`
+    );
+  }
+
+  // 2. Old Building classrooms are Room 1 through Room 8
+  const obRooms = sorted.filter((c) => c.building === 'OLD');
+  assert.equal(obRooms.length, 8);
+  for (let i = 0; i < obRooms.length; i++) {
+    assert.equal(obRooms[i].roomNumber, i + 1);
+    assert.ok(obRooms[i].name.startsWith('OB-') || obRooms[i].name.includes(`Room No. ${i + 1}`));
+  }
+
+  // 3. New Building classrooms are Room 9 through Room 15
+  const nbRooms = sorted.filter((c) => c.building === 'NEW');
+  assert.equal(nbRooms.length, 7);
+  for (let i = 0; i < nbRooms.length; i++) {
+    assert.equal(nbRooms[i].roomNumber, i + 9);
+    assert.ok(nbRooms[i].name.startsWith('NB-') || nbRooms[i].name.includes(`Room No. ${i + 9}`));
+  }
+
+  // 4. extractRoomNumber correctly extracts numeric identifiers from various formats
+  assert.equal(extractRoomNumber('Room No. 1'), 1);
+  assert.equal(extractRoomNumber('Room No. 15'), 15);
+  assert.equal(extractRoomNumber('OB-5'), 5);
+  assert.equal(extractRoomNumber('NB-3'), 3);
+  assert.equal(extractRoomNumber('CR-NB-14'), 14);
+  assert.equal(extractRoomNumber('Classroom 10'), 10);
+});
+
+test('Feature: Paper-14 (Examination & Assessment) is configured with 30 target sessions', () => {
+  const p14 = INITIAL_PAPERS.find((p) => p.id === 'P14');
+  assert.ok(p14, 'Paper-14 (P14) must be defined');
+  assert.equal(p14.code, 'Paper-14');
+  assert.equal(p14.category, 'Examination & Assessment');
+  assert.equal(p14.theoryOrPractical, 'EXAM');
+  assert.equal(p14.totalTargetSessions, 30);
+});
+
+test('Feature: Exam Session Allocation in Last Period (Period 5) for all classrooms', () => {
+  const examName = 'Mid-Term Exam Assessment';
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    examConfig: {
+      enabled: true,
+      name: examName,
+      targetSessions: 30,
+      period: 5,
+    },
+  });
+
+  assert.ok(routine.examConfig?.enabled, 'Routine examConfig must be enabled');
+  assert.equal(routine.examConfig?.name, examName);
+
+  // Filter slots for Period 5
+  const period5Slots = routine.slots.filter((s) => s.period === 5);
+  assert.equal(period5Slots.length, 15, 'All 15 classrooms must have a Period 5 slot');
+
+  // Verify all 15 classrooms have Exam in Period 5
+  const roomIdsWithExam = new Set<string>();
+  const period5Teachers: string[] = [];
+
+  for (const s of period5Slots) {
+    assert.equal(s.isExam, true, `Slot for room ${s.roomId} in period 5 must be marked isExam`);
+    assert.equal(s.paperId, 'P14', `Slot for room ${s.roomId} in period 5 must use paper P14`);
+    assert.equal(s.examName, examName);
+    assert.equal(s.theoryOrPractical, 'EXAM');
+    assert.ok(s.teacherId, `Slot for room ${s.roomId} in period 5 must have a teacher assigned`);
+    roomIdsWithExam.add(s.roomId);
+    period5Teachers.push(s.teacherId);
+  }
+
+  assert.equal(roomIdsWithExam.size, 15, 'All 15 distinct classrooms must have exam in period 5');
+
+  // Zero double booking in Period 5: exactly 15 distinct teachers detailed
+  const uniqueTeachers = new Set(period5Teachers);
+  assert.equal(uniqueTeachers.size, 15, 'Exactly 15 distinct teachers must be detailed across 15 classrooms with zero double-booking');
+
+  // Validate routine passes Tier 1 constraints
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    undefined,
+    routine.examConfig
+  );
+  assert.equal(validation.isValid, true, 'Routine with exam in period 5 must be fully valid');
+  assert.equal(validation.tier1Passed, true);
+  assert.equal(validation.roomSubjectViolations.length, 0);
+});
+
+test('Feature: Exam Session respects Teacher Absences, Excuses, and Daily Workload Caps', () => {
+  // T1, T2 are absent. T3 has excused period 5.
+  const absentees = ['T1', 'T2'];
+  const excusedConfig = [
+    {
+      id: 'excuse-t3',
+      teacherId: 'T3',
+      periods: [5],
+      reason: 'Administrative Meeting',
+      targetDayOrDate: 'ALL',
+    },
+  ];
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: absentees,
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    excusedInstructors: excusedConfig,
+    examConfig: {
+      enabled: true,
+      name: 'Quarterly Assessment',
+      targetSessions: 30,
+      period: 5,
+    },
+  });
+
+  const period5Slots = routine.slots.filter((s) => s.period === 5);
+  for (const s of period5Slots) {
+    assert.equal(absentees.includes(s.teacherId), false, `Absent teacher ${s.teacherId} must not be in Period 5 exam`);
+    assert.notEqual(s.teacherId, 'T3', 'Excused teacher T3 in period 5 must not be assigned to Period 5 exam');
+  }
+
+  // Teacher daily workloads must not exceed 4
+  const teacherLoadMap: Record<string, number> = {};
+  for (const s of routine.slots) {
+    if (s.teacherId) {
+      teacherLoadMap[s.teacherId] = (teacherLoadMap[s.teacherId] || 0) + 1;
+    }
+  }
+  for (const [teacherId, load] of Object.entries(teacherLoadMap)) {
+    assert.ok(load <= 4, `Teacher ${teacherId} load ${load} exceeds hard cap of 4`);
+  }
+});
+
+test('Feature: Exam Session + Practical Interaction (Practical constrained to Periods 2-3, Exam in Period 5)', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    practicalConfig: {
+      enabled: true,
+      items: [
+        {
+          id: 'prac-item-1',
+          name: 'Computer Lab Practical',
+          roomId: 'OB-1',
+          periods: [2, 3],
+          practicalSubjectId: 'PRAC-01',
+        },
+      ],
+    },
+    examConfig: {
+      enabled: true,
+      name: 'Final Module Exam',
+      targetSessions: 30,
+      period: 5,
+    },
+  });
+
+  // Verify Period 5 is Exam in all classrooms
+  const period5Slots = routine.slots.filter((s) => s.period === 5);
+  assert.equal(period5Slots.length, 15);
+  assert.ok(period5Slots.every((s) => s.isExam && s.paperId === 'P14'));
+
+  // Verify OB-1 practical is in periods 2 and 3
+  const ob1PracticalSlots = routine.slots.filter(
+    (s) => s.roomId === 'OB-1' && (s.paperId === 'P13' || Boolean(s.practicalName))
+  );
+  assert.equal(ob1PracticalSlots.length, 2);
+  assert.deepEqual(ob1PracticalSlots.map((s) => s.period).sort(), [2, 3]);
+
+  // Period 1 is purely theory
+  const period1Slots = routine.slots.filter((s) => s.period === 1);
+  assert.ok(
+    period1Slots.every((s) => s.paperId !== 'P13' && !s.practicalName && !s.isExam),
+    'Period 1 must be strictly theoretical'
+  );
+
+  // Verify validation passes
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    routine.practicalConfig,
+    routine.examConfig
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+  assert.equal(validation.tier1Passed, true);
+});
+
+test('Feature: Exam Session with Teacher-First Detailment Mode', () => {
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-10-24',
+    generationMode: 'TEACHER_FIRST',
+    examConfig: {
+      enabled: true,
+      name: 'Central Exam',
+      targetSessions: 30,
+      period: 5,
+    },
+  });
+
+  const period5Slots = routine.slots.filter((s) => s.period === 5);
+  assert.equal(period5Slots.length, 15);
+  assert.ok(period5Slots.every((s) => s.isExam && s.paperId === 'P14' && s.teacherId));
+
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    75,
+    undefined,
+    routine.examConfig
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+  assert.equal(validation.tier1Passed, true);
+});
+
+test('Feature: Teacher-First detailment assigns Option Subject when teacher main subject is completed in that classroom', () => {
+  // Paper P08 has target of 8 sessions
+  const p08 = INITIAL_PAPERS.find((p) => p.id === 'P08')!;
+  assert.equal(p08.totalTargetSessions, 8);
+
+  // Teacher T17 has primary: ['P08'], backup: ['P07', 'P09']
+  const t17 = INITIAL_TEACHERS.find((t) => t.id === 'T17')!;
+  assert.deepEqual(t17.primaryPaperIds, ['P08']);
+  assert.ok(t17.backupPaperIds?.includes('P07'));
+
+  // Build historical routines where OB-1 has already completed 8 sessions of P08 (100% quota)
+  const mockHistory: DailyRoutine[] = [];
+  for (let day = 1; day <= 8; day++) {
+    mockHistory.push({
+      id: `history-day-${day}`,
+      dayNumber: day,
+      date: `2026-10-${10 + day}`,
+      absentTeacherIds: [],
+      priorityPaperIds: [],
+      slots: [
+        {
+          id: `h-slot-${day}-OB-1-P1`,
+          roomId: 'OB-1',
+          period: 1,
+          paperId: 'P08',
+          teacherId: 'T17',
+          isSubstitute: false,
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isLocked: true,
+      status: 'published',
+    });
+  }
+
+  // Generate routine in Teacher-First Mode (Rule 8: Teacher Load Equalization Priority)
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: mockHistory,
+    targetDayNumber: 9,
+    targetDate: '2026-10-29',
+    generationMode: 'TEACHER_FIRST',
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableTeacherLoadEqualizationPriority: true,
+      enableRoomQuotaCompletionLock: true,
+    },
+  });
+
+  // Verify that OB-1 does NOT receive P08 because it has reached 100% quota
+  const ob1P08Slots = routine.slots.filter((s) => s.roomId === 'OB-1' && s.paperId === 'P08');
+  assert.equal(ob1P08Slots.length, 0, 'OB-1 must have 0 sessions of P08 because its main subject quota is completed');
+
+  // If T17 is assigned to OB-1, verify T17 teaches an option subject (e.g. P07 or P09) with isSubstitute: true
+  const t17SlotsInOB1 = routine.slots.filter((s) => s.roomId === 'OB-1' && s.teacherId === 'T17');
+  for (const s of t17SlotsInOB1) {
+    assert.notEqual(s.paperId, 'P08', 'T17 must not teach completed main subject P08 in OB-1');
+    assert.ok(
+      t17.backupPaperIds?.includes(s.paperId) || t17.secondaryPaperIds?.includes(s.paperId),
+      `T17 must teach an option subject from backup/secondary in OB-1, got ${s.paperId}`
+    );
+    assert.equal(s.isSubstitute, true, 'Slot must be flagged as isSubstitute when assigned an option subject');
+  }
+
+  // Verify Tier 1 validation passes
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+});
+
+test('Feature: Teacher-First detailment assigns another eligible teacher when teacher has no option subject for that classroom', () => {
+  // Create a custom teacher who ONLY has primary paper P08 and NO backup/secondary papers
+  const customTeacherNoBackup = {
+    id: 'T_NO_BACKUP',
+    code: 'T_NO_BACKUP',
+    name: 'Specialist Only P08',
+    designation: 'Single Subject Specialist',
+    assignedBuilding: 'OLD',
+    primaryPaperIds: ['P08'],
+    backupPaperIds: [],
+    secondaryPaperIds: [],
+    maxDailyPeriods: 4,
+  };
+
+  const modifiedTeachers = [...INITIAL_TEACHERS, customTeacherNoBackup];
+
+  // Build historical routines where OB-1 has already completed 8 sessions of P08
+  const mockHistory: DailyRoutine[] = [];
+  for (let day = 1; day <= 8; day++) {
+    mockHistory.push({
+      id: `history-single-${day}`,
+      dayNumber: day,
+      date: `2026-10-${10 + day}`,
+      absentTeacherIds: [],
+      priorityPaperIds: [],
+      slots: [
+        {
+          id: `h-slot-s-${day}-OB-1-P1`,
+          roomId: 'OB-1',
+          period: 1,
+          paperId: 'P08',
+          teacherId: 'T17',
+          isSubstitute: false,
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isLocked: true,
+      status: 'published',
+    });
+  }
+
+  // Generate routine in Teacher-First Mode
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: modifiedTeachers,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: mockHistory,
+    targetDayNumber: 9,
+    targetDate: '2026-10-29',
+    generationMode: 'TEACHER_FIRST',
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableTeacherLoadEqualizationPriority: true,
+      enableRoomQuotaCompletionLock: true,
+    },
+  });
+
+  // Verify OB-1 has NO slot with T_NO_BACKUP (because T_NO_BACKUP's main subject is complete in OB-1 and has no option subject)
+  const ob1CustomTeacherSlots = routine.slots.filter(
+    (s) => s.roomId === 'OB-1' && s.teacherId === 'T_NO_BACKUP'
+  );
+  assert.equal(
+    ob1CustomTeacherSlots.length,
+    0,
+    'T_NO_BACKUP must NOT be assigned to OB-1 since main subject is complete and has no option subject'
+  );
+
+  // Verify OB-1 slots are all filled by other eligible teachers with valid uncompleted subjects
+  const ob1Slots = routine.slots.filter((s) => s.roomId === 'OB-1');
+  assert.equal(ob1Slots.length, 5, 'OB-1 must have all 5 periods filled by eligible teachers');
+  for (const s of ob1Slots) {
+    assert.ok(s.teacherId, 'Slot must have a teacher assigned');
+    assert.notEqual(s.teacherId, 'T_NO_BACKUP');
+    assert.notEqual(s.paperId, 'P08', 'OB-1 must not have completed subject P08');
+  }
+
+  const validation = validateRoutine(
+    routine.slots,
+    modifiedTeachers,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+});
+
+test('Feature: Optional theory subject with ID P14 is properly scheduled and main teachers (e.g. Parimal Saha T18) receive fair detailment', () => {
+  // Define an optional theory paper with ID P14 (matching user setup)
+  const optionalPaperP14: Paper = {
+    id: 'P14',
+    code: 'Optional',
+    title: 'State Specific Inputs',
+    category: 'Police Administration',
+    totalTargetSessions: 40,
+    color: '#3B82F6',
+    description: 'Police Administration & State Inputs',
+    theoryOrPractical: 'THEORY',
+    maxDailyPerRoom: 1,
+    preferredBuilding: 'ALL',
+    primaryTeacherIds: ['T18', 'T19', 'T22'],
+    nearestPaperIds: [],
+  };
+
+  const papersWithOptional = [...INITIAL_PAPERS.filter((p) => p.id !== 'P14'), optionalPaperP14];
+
+  // Assign T18, T19, T22 primaryPaperIds to P14
+  const modifiedTeachers = INITIAL_TEACHERS.map((t) => {
+    if (t.id === 'T18' || t.id === 'T19' || t.id === 'T22') {
+      return {
+        ...t,
+        primaryPaperIds: ['P14'],
+        backupPaperIds: [],
+        secondaryPaperIds: [],
+      };
+    }
+    return t;
+  });
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: papersWithOptional,
+    teachers: modifiedTeachers,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 17,
+    targetDate: '2026-11-23',
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enableTeacherLoadEqualizationPriority: true,
+    },
+    excludedPaperIds: [],
+  });
+
+  // Verify P14 is NOT in excludedPaperIds
+  assert.ok(
+    !routine.excludedPaperIds?.includes('P14'),
+    'Optional paper P14 must NOT be excluded when exam is inactive'
+  );
+
+  // Verify T18 (Parimal Saha) is detailed and receives slots
+  const t18Slots = routine.slots.filter((s) => s.teacherId === 'T18');
+  assert.ok(t18Slots.length > 0, `T18 (Parimal Saha) must receive detailment slots, got ${t18Slots.length}`);
+  assert.ok(
+    t18Slots.every((s) => s.paperId === 'P14'),
+    'T18 slots must be for their main paper P14'
+  );
+
+  // Verify T19 and T22 also receive slots for P14
+  const t19Slots = routine.slots.filter((s) => s.teacherId === 'T19');
+  const t22Slots = routine.slots.filter((s) => s.teacherId === 'T22');
+  assert.ok(t19Slots.length > 0, `T19 must receive detailment slots, got ${t19Slots.length}`);
+  assert.ok(t22Slots.length > 0, `T22 must receive detailment slots, got ${t22Slots.length}`);
+
+  // Validate routine integrity
+  const validation = validateRoutine(
+    routine.slots,
+    modifiedTeachers,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    papersWithOptional
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+});
+
+test('Feature: Practical single-period (1 Period) and double-period (2 Periods) configuration and scheduling', () => {
+  // Test practical config with a 1-period practical and a 2-period practical
+  const practicalConfig: PracticalConfig = {
+    enabled: true,
+    items: [
+      {
+        id: 'prac-single-1',
+        name: 'Single Period Lab',
+        teacherId: 'T20',
+        roomId: 'OB-1',
+        duration: 1,
+        periods: [2],
+        practicalSubjectId: 'PRAC-01',
+      },
+      {
+        id: 'prac-double-2',
+        name: 'Double Period Lab',
+        teacherId: 'T21',
+        roomId: 'NB-1',
+        duration: 2,
+        periods: [4, 5],
+        practicalSubjectId: 'PRAC-02',
+      },
+    ],
+  };
+
+  const routine = generateDailyRoutine({
+    classrooms: INITIAL_CLASSROOMS,
+    papers: INITIAL_PAPERS,
+    teachers: INITIAL_TEACHERS,
+    absentTeacherIds: [],
+    priorityPaperIds: [],
+    historicalRoutines: [],
+    targetDayNumber: 1,
+    targetDate: '2026-11-01',
+    practicalConfig,
+    rules: {
+      ...DEFAULT_ROUTINE_RULES,
+      enablePracticalConsecutiveDoublePeriodLimit: true,
+      enableSinglePeriodPractical: true,
+    },
+  });
+
+  // Verify Single-Period Practical in OB-1: only Period 2
+  const ob1PracticalSlots = routine.slots.filter(
+    (s) => s.roomId === 'OB-1' && (s.paperId === 'P13' || s.practicalName === 'Single Period Lab')
+  );
+  assert.equal(ob1PracticalSlots.length, 1, `OB-1 must have exactly 1 practical slot, got ${ob1PracticalSlots.length}`);
+  assert.equal(ob1PracticalSlots[0].period, 2, 'OB-1 practical slot must be Period 2');
+  assert.equal(ob1PracticalSlots[0].teacherId, 'T20', 'OB-1 practical slot must have teacher T20');
+
+  // Verify Double-Period Practical in NB-1: Periods 4 and 5
+  const nb1PracticalSlots = routine.slots.filter(
+    (s) => s.roomId === 'NB-1' && (s.paperId === 'P13' || s.practicalName === 'Double Period Lab')
+  );
+  assert.equal(nb1PracticalSlots.length, 2, `NB-1 must have exactly 2 practical slots, got ${nb1PracticalSlots.length}`);
+  const nb1Periods = nb1PracticalSlots.map((s) => s.period).sort();
+  assert.deepEqual(nb1Periods, [4, 5], 'NB-1 practical slots must be Periods 4 and 5');
+  assert.ok(nb1PracticalSlots.every((s) => s.teacherId === 'T21'), 'NB-1 practical slots must have teacher T21');
+
+  // Validate routine with routineValidator
+  const validation = validateRoutine(
+    routine.slots,
+    INITIAL_TEACHERS,
+    INITIAL_CLASSROOMS,
+    [],
+    DEFAULT_ROUTINE_RULES,
+    INITIAL_PAPERS,
+    practicalConfig
+  );
+  assert.equal(validation.isValid, true, validation.errorMessages.join('; '));
+});
+
+
+
 
 
 

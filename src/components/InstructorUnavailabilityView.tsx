@@ -4,11 +4,13 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher, UnavailabilityType } from '../types';
+import { Classroom, compareTeacherCodes, DailyRoutine, Paper, Teacher, UnavailabilityType } from '../types';
 import {
   computeInstructorUnavailabilityStats,
-  exportToCsv,
   exportToExcel,
+  exportToPdf,
+  formatReportFileName,
+  formatRoutineDateDDMMYYYY,
   generateInstructorUnavailabilityData,
   generateUnavailabilityIncidentLogData,
   TeacherUnavailabilitySummary,
@@ -159,26 +161,27 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
           if (b.totalUnavailableDays !== a.totalUnavailableDays) {
             return b.totalUnavailableDays - a.totalUnavailableDays;
           }
-          return (a.teacher.code || '').localeCompare(b.teacher.code || '', undefined, { numeric: true });
+          return compareTeacherCodes(a.teacher, b.teacher);
         case 'unavail_asc':
           if (a.totalUnavailableDays !== b.totalUnavailableDays) {
             return a.totalUnavailableDays - b.totalUnavailableDays;
           }
-          return (a.teacher.code || '').localeCompare(b.teacher.code || '', undefined, { numeric: true });
+          return compareTeacherCodes(a.teacher, b.teacher);
         case 'code':
-          return (a.teacher.code || '').localeCompare(b.teacher.code || '', undefined, { numeric: true });
+          return compareTeacherCodes(a.teacher, b.teacher);
         case 'name':
           return (a.teacher.name || '').localeCompare(b.teacher.name || '');
         case 'leave':
           if (b.leaveCount !== a.leaveCount) return b.leaveCount - a.leaveCount;
-          return b.totalUnavailableDays - a.totalUnavailableDays;
+          return compareTeacherCodes(a.teacher, b.teacher);
         case 'duty':
           if (b.dutyCount !== a.dutyCount) return b.dutyCount - a.dutyCount;
-          return b.totalUnavailableDays - a.totalUnavailableDays;
+          return compareTeacherCodes(a.teacher, b.teacher);
         case 'rate':
-          return a.attendanceRate - b.attendanceRate;
+          if (a.attendanceRate !== b.attendanceRate) return a.attendanceRate - b.attendanceRate;
+          return compareTeacherCodes(a.teacher, b.teacher);
         default:
-          return 0;
+          return compareTeacherCodes(a.teacher, b.teacher);
       }
     });
 
@@ -226,20 +229,21 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
       'Date-wise Details & Remarks Log',
     ];
     const data = generateInstructorUnavailabilityData(teachers, allRoutines);
+    const fileName = formatReportFileName('instructor_unavailability', allRoutines.length, undefined);
     exportToExcel(
-      `STC_Instructor_Unavailability_Ledger`,
+      fileName,
       'Faculty Unavailability Ledger',
       headers,
       data,
       {
         institutionName: 'Specialised Training Centre (STC), SAP 4th Bn, Kasba',
         centreName: `Instructor Unavailability & Leave Roster (${allRoutines.length} Routines Tracked)`,
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        date: formatRoutineDateDDMMYYYY(),
       }
     );
   };
 
-  const handleExportCsv = () => {
+  const handleExportPdf = () => {
     const headers = [
       'Sl No',
       'Teacher Code',
@@ -256,7 +260,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
       'Date-wise Details & Remarks Log',
     ];
     const data = generateInstructorUnavailabilityData(teachers, allRoutines);
-    exportToCsv(`STC_Instructor_Unavailability_Ledger`, headers, data);
+    const fileName = formatReportFileName('instructor_unavailability', allRoutines.length, undefined);
+    exportToPdf(fileName, 'Faculty Unavailability Ledger', headers, data, {
+      institutionName: 'Specialised Training Centre (STC), SAP 4th Bn, Kasba',
+      centreName: `Instructor Unavailability & Leave Roster (${allRoutines.length} Routines Tracked)`,
+      date: formatRoutineDateDDMMYYYY(),
+    });
   };
 
   const handleExportIncidentLog = () => {
@@ -304,35 +313,35 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-800">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-slate-800">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+          <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase bg-rose-500 text-white tracking-wider flex items-center gap-1">
-                <UserX className="w-3.5 h-3.5" />
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500 text-white tracking-wider flex items-center gap-1">
+                <UserX className="w-3 h-3" />
                 Faculty Absence Register
               </span>
-              <span className="text-xs text-indigo-200">
+              <span className="text-[11px] text-indigo-200">
                 Official Leave, Duty & Absence Ledger · {teachers.length} Instructors Across {allRoutines.length} Routines
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
               Instructor Unavailability & Leave Ledger
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+            <p className="text-[11px] text-slate-300 max-w-3xl leading-snug">
               Consolidated faculty attendance tracking system. Aggregates total sanctioned leaves, special duty deployments,
               sick/medical absences, rest rosters, and uninformed absences with exact routine dates and administrative remarks.
             </p>
           </div>
 
           {/* Action Tools */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
             {isAdmin && onOpenLeaveManager && (
               <button
                 onClick={onOpenLeaveManager}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                 title="Mark unavailability for current routine"
               >
                 <UserMinus className="w-3.5 h-3.5" />
@@ -342,7 +351,7 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
 
             <button
               onClick={handleExportExcel}
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
               title="Download Excel Spreadsheet"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -350,35 +359,26 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
             </button>
 
             <button
-              onClick={handleExportCsv}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-              title="Download CSV file"
+              onClick={handleExportPdf}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+              title="Download PDF Document directly to exports folder"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>CSV</span>
-            </button>
-
-            <button
-              onClick={() => window.print()}
-              className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-              title="Print Ledger"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Print</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>PDF Export</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* 2. Key Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
         {/* Total Faculty */}
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
             <Users className="w-3.5 h-3.5 text-indigo-600" />
             Total Roster
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-1 font-mono">
+          <div className="text-lg font-bold text-slate-900 mt-0.5 font-mono">
             {teachers.length}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
@@ -387,12 +387,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
         </div>
 
         {/* Total Incidents */}
-        <div className="bg-white p-3.5 rounded-xl border border-rose-200 bg-rose-50/30 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-rose-200 bg-rose-50/30 shadow-2xs">
           <div className="text-[11px] font-semibold text-rose-800 flex items-center gap-1">
             <UserX className="w-3.5 h-3.5 text-rose-600" />
             Total Absences
           </div>
-          <div className="text-xl font-bold text-rose-950 mt-1 font-mono">
+          <div className="text-lg font-bold text-rose-950 mt-0.5 font-mono">
             {totalIncidents}
           </div>
           <div className="text-[10px] text-rose-600 font-medium mt-0.5">
@@ -401,12 +401,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
         </div>
 
         {/* Casual/Sanctioned Leaves */}
-        <div className="bg-white p-3.5 rounded-xl border border-amber-200 bg-amber-50/30 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-amber-200 bg-amber-50/30 shadow-2xs">
           <div className="text-[11px] font-semibold text-amber-800 flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-amber-600" />
             Casual Leaves
           </div>
-          <div className="text-xl font-bold text-amber-950 mt-1 font-mono">
+          <div className="text-lg font-bold text-amber-950 mt-0.5 font-mono">
             {totalLeave}
           </div>
           <div className="text-[10px] text-amber-700 mt-0.5">
@@ -415,12 +415,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
         </div>
 
         {/* Special Duty */}
-        <div className="bg-white p-3.5 rounded-xl border border-blue-200 bg-blue-50/30 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-blue-200 bg-blue-50/30 shadow-2xs">
           <div className="text-[11px] font-semibold text-blue-800 flex items-center gap-1">
             <Briefcase className="w-3.5 h-3.5 text-blue-600" />
             Special Duty
           </div>
-          <div className="text-xl font-bold text-blue-950 mt-1 font-mono">
+          <div className="text-lg font-bold text-blue-950 mt-0.5 font-mono">
             {totalDuty}
           </div>
           <div className="text-[10px] text-blue-700 mt-0.5">
@@ -429,12 +429,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
         </div>
 
         {/* Sick / Medical */}
-        <div className="bg-white p-3.5 rounded-xl border border-red-200 bg-red-50/30 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-red-200 bg-red-50/30 shadow-2xs">
           <div className="text-[11px] font-semibold text-red-800 flex items-center gap-1">
             <HeartPulse className="w-3.5 h-3.5 text-red-600" />
             Sick / Medical
           </div>
-          <div className="text-xl font-bold text-red-950 mt-1 font-mono">
+          <div className="text-lg font-bold text-red-950 mt-0.5 font-mono">
             {totalSick}
           </div>
           <div className="text-[10px] text-red-700 mt-0.5">
@@ -443,12 +443,12 @@ export const InstructorUnavailabilityView: React.FC<InstructorUnavailabilityView
         </div>
 
         {/* Rest Standby */}
-        <div className="bg-white p-3.5 rounded-xl border border-teal-200 bg-teal-50/30 shadow-2xs">
+        <div className="bg-white p-2.5 rounded-lg border border-teal-200 bg-teal-50/30 shadow-2xs">
           <div className="text-[11px] font-semibold text-teal-800 flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-teal-600" />
             Rest Standby
           </div>
-          <div className="text-xl font-bold text-teal-950 mt-1 font-mono">
+          <div className="text-lg font-bold text-teal-950 mt-0.5 font-mono">
             {totalRest}
           </div>
           <div className="text-[10px] text-teal-700 mt-0.5">

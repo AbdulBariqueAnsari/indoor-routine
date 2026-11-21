@@ -3,19 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { BuildingInfo, Classroom, Paper, Teacher } from '../types';
-import { INITIAL_BUILDINGS } from '../data/initialData';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BuildingInfo, Classroom, compareClassrooms, DailyRoutine, Paper, PracticalSubject, Teacher } from '../types';
+import { INITIAL_BUILDINGS, INITIAL_PRACTICAL_SUBJECTS } from '../data/initialData';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 import {
+  AlertCircle,
   BookOpen,
   Building,
+  Calculator,
   Check,
+  CheckCircle2,
   Edit2,
+  FlaskConical,
   GraduationCap,
   Layers,
   Plus,
   Shield,
+  Sparkles,
   Trash2,
+  TrendingUp,
   Users,
   X,
 } from 'lucide-react';
@@ -27,12 +34,17 @@ interface MasterDataModalProps {
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
+  practicalSubjects?: PracticalSubject[];
+  historicalRoutines?: DailyRoutine[];
+  currentRoutine?: DailyRoutine | null;
   isAdmin: boolean;
   onUpdateBuildings?: (buildings: BuildingInfo[]) => void;
   onUpdateClassrooms?: (classrooms: Classroom[]) => void;
   onUpdatePapers?: (papers: Paper[]) => void;
   onUpdateTeachers?: (teachers: Teacher[]) => void;
+  onUpdatePracticalSubjects?: (subjects: PracticalSubject[]) => void;
   onOpenTeacherMapping?: () => void;
+  onSyncFromJson?: () => Promise<boolean>;
 }
 
 export const MasterDataModal: React.FC<MasterDataModalProps> = ({
@@ -42,16 +54,180 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
   classrooms,
   papers,
   teachers,
+  practicalSubjects,
+  historicalRoutines,
+  currentRoutine,
   isAdmin,
   onUpdateBuildings,
   onUpdateClassrooms,
   onUpdatePapers,
   onUpdateTeachers,
+  onUpdatePracticalSubjects,
   onOpenTeacherMapping,
+  onSyncFromJson,
 }) => {
-  if (!isOpen) return null;
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
 
-  const [activeTab, setActiveTab] = useState<'rooms' | 'papers' | 'teachers'>('rooms');
+  const [activeTab, setActiveTab] = useState<'rooms' | 'papers' | 'teachers' | 'practical'>('rooms');
+
+  // Practical Subjects state
+  const [localPracticalSubjects, setLocalPracticalSubjects] = useState<PracticalSubject[]>(() => {
+    return practicalSubjects && practicalSubjects.length > 0 ? practicalSubjects : INITIAL_PRACTICAL_SUBJECTS;
+  });
+
+  useEffect(() => {
+    if (practicalSubjects && practicalSubjects.length > 0) {
+      setLocalPracticalSubjects(practicalSubjects);
+    }
+  }, [practicalSubjects]);
+
+  const [editingPractical, setEditingPractical] = useState<PracticalSubject | null>(null);
+  const [isAddingPractical, setIsAddingPractical] = useState(false);
+  const [newPracticalData, setNewPracticalData] = useState<Partial<PracticalSubject>>({
+    code: '',
+    name: '',
+    targetSessions: 46,
+    color: '#0284c7',
+    description: '',
+    defaultDuration: 2,
+  });
+
+  // Find Paper-13 (Practical paper)
+  const practicalPaper = papers.find(
+    (p) => p.id === 'P13' || p.code === 'Paper-13' || p.theoryOrPractical === 'PRACTICAL'
+  );
+  const paper13Target = practicalPaper?.totalTargetSessions || 188;
+
+  // Sum of practical subjects target sessions
+  const sumPracticalTargets = localPracticalSubjects.reduce((acc, curr) => acc + (curr.targetSessions || 0), 0);
+
+  // Practical Sessions Tallies from historical and current routines
+  const practicalStats = useMemo(() => {
+    const counts = new Map<string, number>();
+    let totalCompleted = 0;
+
+    const allRoutineList: DailyRoutine[] = [];
+    const seenRoutineIds = new Set<string>();
+    if (historicalRoutines) {
+      for (const r of historicalRoutines) {
+        if (!seenRoutineIds.has(r.id)) {
+          seenRoutineIds.add(r.id);
+          allRoutineList.push(r);
+        }
+      }
+    }
+    if (currentRoutine && !seenRoutineIds.has(currentRoutine.id)) {
+      allRoutineList.push(currentRoutine);
+    }
+
+    const pracPaperId = practicalPaper?.id || 'P13';
+
+    for (const r of allRoutineList) {
+      for (const slot of r.slots || []) {
+        if (slot.paperId === pracPaperId || slot.paperId === 'P13') {
+          totalCompleted++;
+          const pName = (slot.practicalName || '').trim().toLowerCase();
+          let matched = false;
+          for (const sub of localPracticalSubjects) {
+            const subCode = sub.code.trim().toLowerCase();
+            const subName = sub.name.trim().toLowerCase();
+            if (
+              (slot.practicalSubjectId && slot.practicalSubjectId === sub.id) ||
+              (pName && (pName.includes(subCode) || pName.includes(subName) || subName.includes(pName)))
+            ) {
+              counts.set(sub.id, (counts.get(sub.id) || 0) + 1);
+              matched = true;
+              break;
+            }
+          }
+          if (!matched && localPracticalSubjects.length > 0) {
+            const firstSub = localPracticalSubjects[0];
+            counts.set(firstSub.id, (counts.get(firstSub.id) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    return { counts, totalCompleted };
+  }, [historicalRoutines, currentRoutine, practicalPaper, localPracticalSubjects]);
+
+  const handleSavePractical = (updatedSub: PracticalSubject) => {
+    const updated = localPracticalSubjects.map((s) => (s.id === updatedSub.id ? updatedSub : s));
+    setLocalPracticalSubjects(updated);
+    if (onUpdatePracticalSubjects) {
+      onUpdatePracticalSubjects(updated);
+    }
+    const newSum = updated.reduce((acc, curr) => acc + (curr.targetSessions || 0), 0);
+    if (practicalPaper && onUpdatePapers && practicalPaper.totalTargetSessions !== newSum) {
+      const updatedPapers = papers.map((p) =>
+        p.id === practicalPaper.id ? { ...p, totalTargetSessions: newSum } : p
+      );
+      onUpdatePapers(updatedPapers);
+    }
+    setEditingPractical(null);
+  };
+
+  const handleAddPractical = () => {
+    if (!newPracticalData.name) return;
+    const nextIdx = localPracticalSubjects.length + 1;
+    const code = (newPracticalData.code || `PRAC-${nextIdx < 10 ? '0' : ''}${nextIdx}`).trim().toUpperCase();
+    const newSub: PracticalSubject = {
+      id: code,
+      code,
+      name: newPracticalData.name.trim(),
+      targetSessions: Number(newPracticalData.targetSessions) || 40,
+      color: newPracticalData.color || '#0284c7',
+      description: newPracticalData.description?.trim() || '',
+    };
+    const updated = [...localPracticalSubjects, newSub];
+    setLocalPracticalSubjects(updated);
+    if (onUpdatePracticalSubjects) {
+      onUpdatePracticalSubjects(updated);
+    }
+    const newSum = updated.reduce((acc, curr) => acc + (curr.targetSessions || 0), 0);
+    if (practicalPaper && onUpdatePapers && practicalPaper.totalTargetSessions !== newSum) {
+      const updatedPapers = papers.map((p) =>
+        p.id === practicalPaper.id ? { ...p, totalTargetSessions: newSum } : p
+      );
+      onUpdatePapers(updatedPapers);
+    }
+    setIsAddingPractical(false);
+    setNewPracticalData({
+      code: '',
+      name: '',
+      targetSessions: 46,
+      color: '#0284c7',
+      description: '',
+    });
+  };
+
+  const handleDeletePractical = (subId: string) => {
+    if (localPracticalSubjects.length <= 1) return;
+    const sub = localPracticalSubjects.find((s) => s.id === subId);
+    if (!window.confirm(`Are you sure you want to delete practical subject "${sub?.name || subId}" (${sub?.code})?`)) {
+      return;
+    }
+    const updated = localPracticalSubjects.filter((s) => s.id !== subId);
+    setLocalPracticalSubjects(updated);
+    if (onUpdatePracticalSubjects) {
+      onUpdatePracticalSubjects(updated);
+    }
+    const newSum = updated.reduce((acc, curr) => acc + (curr.targetSessions || 0), 0);
+    if (practicalPaper && onUpdatePapers && practicalPaper.totalTargetSessions !== newSum) {
+      const updatedPapers = papers.map((p) =>
+        p.id === practicalPaper.id ? { ...p, totalTargetSessions: newSum } : p
+      );
+      onUpdatePapers(updatedPapers);
+    }
+  };
+
+  const handleSyncPaper13WithPracticalSum = () => {
+    if (!practicalPaper || !onUpdatePapers) return;
+    const updatedPapers = papers.map((p) =>
+      p.id === practicalPaper.id ? { ...p, totalTargetSessions: sumPracticalTargets } : p
+    );
+    onUpdatePapers(updatedPapers);
+  };
 
   // Building adding state
   const [isAddingBuilding, setIsAddingBuilding] = useState(false);
@@ -279,9 +455,11 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
   const oldRooms = classrooms.filter((r) => r.building === 'OLD');
   const newRooms = classrooms.filter((r) => r.building === 'NEW');
 
+  if (!shouldRender) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -304,7 +482,7 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-500">
-                {classrooms.length} Classrooms · {papers.length} Papers & Quotas · {teachers.length} Instructors
+                {classrooms.length} Classrooms · {papers.length} Papers & Quotas · {teachers.length} Instructors · {localPracticalSubjects.length} Practical Modules
               </p>
             </div>
           </div>
@@ -317,10 +495,10 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="px-6 pt-2 border-b border-slate-200 bg-white flex items-center gap-2">
+        <div className="px-6 pt-2 border-b border-slate-200 bg-white flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('rooms')}
-            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'rooms'
                 ? 'border-indigo-600 text-indigo-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -332,7 +510,7 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
 
           <button
             onClick={() => setActiveTab('papers')}
-            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'papers'
                 ? 'border-indigo-600 text-indigo-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -344,7 +522,7 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
 
           <button
             onClick={() => setActiveTab('teachers')}
-            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'teachers'
                 ? 'border-indigo-600 text-indigo-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -352,6 +530,18 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
           >
             <Users className="w-4 h-4" />
             <span>Instructors ({teachers.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('practical')}
+            className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'practical'
+                ? 'border-indigo-600 text-indigo-700'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <FlaskConical className="w-4 h-4" />
+            <span>Practical Setup & Counters ({localPracticalSubjects.length})</span>
           </button>
         </div>
 
@@ -522,7 +712,7 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
 
               {/* Dynamic Buildings & Classrooms Sections */}
               {buildings.map((bldg) => {
-                const bRooms = classrooms.filter((r) => r.building === bldg.id);
+                const bRooms = classrooms.filter((r) => r.building === bldg.id).sort(compareClassrooms);
                 return (
                   <div key={bldg.id} className="space-y-2.5">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between pb-1.5 border-b border-slate-200">
@@ -1513,6 +1703,444 @@ export const MasterDataModal: React.FC<MasterDataModalProps> = ({
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: PRACTICAL SETUP & COUNTERS */}
+          {activeTab === 'practical' && (
+            <div className="space-y-6">
+              {/* KPI Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/80 rounded-xl p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Total Practical Target</span>
+                    <Calculator className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-indigo-950 font-mono">{sumPracticalTargets}</span>
+                    <span className="text-xs text-indigo-600 font-medium">sessions</span>
+                  </div>
+                  <div className="mt-1 text-[10.5px] text-indigo-700/80">
+                    Sum of all practical modules
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Completed Sessions</span>
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-emerald-950 font-mono">{practicalStats.totalCompleted}</span>
+                    <span className="text-xs text-emerald-600 font-medium">completed</span>
+                  </div>
+                  <div className="mt-1 text-[10.5px] text-emerald-700/80">
+                    Tallied across all routines
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 rounded-xl p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Remaining Sessions</span>
+                    <Layers className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-amber-950 font-mono">
+                      {Math.max(0, sumPracticalTargets - practicalStats.totalCompleted)}
+                    </span>
+                    <span className="text-xs text-amber-600 font-medium">remaining</span>
+                  </div>
+                  <div className="mt-1 text-[10.5px] text-amber-700/80">
+                    {sumPracticalTargets > 0
+                      ? `${Math.round((practicalStats.totalCompleted / sumPracticalTargets) * 100)}% total progress`
+                      : '0% completed'}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-slate-50 to-purple-50 border border-purple-200/80 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Paper-13 Quota Sync</span>
+                    <Sparkles className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <div className="mt-2">
+                    {sumPracticalTargets === paper13Target ? (
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>In Sync ({paper13Target} sessions)</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10.5px] font-bold border border-amber-200">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Differs ({sumPracticalTargets} vs {paper13Target})</span>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={handleSyncPaper13WithPracticalSum}
+                            className="block w-full text-center px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[10.5px] font-semibold transition shadow-2xs cursor-pointer"
+                          >
+                            Sync Paper-13 to {sumPracticalTargets}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-1 text-[10px] text-purple-700/70">
+                    Paper-13 Total Target: {paper13Target}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Practical Subjects & Hands-on Lab Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Subject-specific target quotas and real-time routine completion counters. Consecutive 2-period rule applies during scheduling.
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setIsAddingPractical(!isAddingPractical);
+                      setEditingPractical(null);
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-2xs transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isAddingPractical ? 'Cancel' : 'Add Practical Subject'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Add Practical Subject Form with Smooth Accordion */}
+              <div
+                className={`grid transition-all duration-300 ease-in-out ${
+                  isAddingPractical
+                    ? 'grid-rows-[1fr] opacity-100 mb-3'
+                    : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-3 text-xs">
+                    <div className="font-bold text-indigo-950 flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-indigo-600" />
+                      <span>Create New Practical Subject / Lab Module</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Subject Code:
+                        </label>
+                        <input
+                          type="text"
+                          value={newPracticalData.code || ''}
+                          onChange={(e) => setNewPracticalData({ ...newPracticalData, code: e.target.value })}
+                          placeholder={`PRAC-${(localPracticalSubjects.length + 1) < 10 ? '0' : ''}${localPracticalSubjects.length + 1}`}
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs uppercase bg-white font-mono"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Practical Subject Name / Title:
+                        </label>
+                        <input
+                          type="text"
+                          value={newPracticalData.name || ''}
+                          onChange={(e) => setNewPracticalData({ ...newPracticalData, name: e.target.value })}
+                          placeholder="e.g. Firing & Arms Training Lab"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Default Duration:
+                        </label>
+                        <select
+                          value={newPracticalData.defaultDuration || 2}
+                          onChange={(e) =>
+                            setNewPracticalData({
+                              ...newPracticalData,
+                              defaultDuration: Number(e.target.value) as 1 | 2,
+                            })
+                          }
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                        >
+                          <option value={2}>2 Periods (Double Period)</option>
+                          <option value={1}>1 Period (Single Period)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Target Sessions:
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={200}
+                          value={newPracticalData.targetSessions || 40}
+                          onChange={(e) =>
+                            setNewPracticalData({ ...newPracticalData, targetSessions: Number(e.target.value) || 0 })
+                          }
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Accent Color:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={newPracticalData.color || '#0284c7'}
+                            onChange={(e) => setNewPracticalData({ ...newPracticalData, color: e.target.value })}
+                            className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={newPracticalData.color || '#0284c7'}
+                            onChange={(e) => setNewPracticalData({ ...newPracticalData, color: e.target.value })}
+                            className="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-mono bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          Description / Syllabus:
+                        </label>
+                        <input
+                          type="text"
+                          value={newPracticalData.description || ''}
+                          onChange={(e) => setNewPracticalData({ ...newPracticalData, description: e.target.value })}
+                          placeholder="Topics covered, equipment, and lab procedures..."
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => setIsAddingPractical(false)}
+                        className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddPractical}
+                        disabled={!newPracticalData.name}
+                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 transition shadow-2xs cursor-pointer"
+                      >
+                        Add Subject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Practical Subjects List Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {localPracticalSubjects.map((sub) => {
+                  const completed = practicalStats.counts.get(sub.id) || 0;
+                  const remaining = Math.max(0, sub.targetSessions - completed);
+                  const pct = sub.targetSessions > 0 ? Math.min(100, Math.round((completed / sub.targetSessions) * 100)) : 0;
+                  const isEditing = editingPractical?.id === sub.id;
+
+                  if (isEditing) {
+                    return (
+                      <div
+                        key={sub.id}
+                        className="p-4 bg-indigo-50/50 border-2 border-indigo-400 rounded-xl space-y-3 text-xs shadow-md"
+                      >
+                        <div className="flex items-center justify-between pb-1 border-b border-indigo-200">
+                          <span className="font-bold text-indigo-950">Editing {sub.code}</span>
+                          <span className="text-[10px] font-mono text-indigo-600">ID: {sub.id}</span>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">Subject Name:</label>
+                          <input
+                            type="text"
+                            value={editingPractical.name}
+                            onChange={(e) => setEditingPractical({ ...editingPractical, name: e.target.value })}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">Duration:</label>
+                            <select
+                              value={editingPractical.defaultDuration || 2}
+                              onChange={(e) =>
+                                setEditingPractical({
+                                  ...editingPractical,
+                                  defaultDuration: Number(e.target.value) as 1 | 2,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                            >
+                              <option value={2}>2 Periods</option>
+                              <option value={1}>1 Period</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">Target Sessions:</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={200}
+                              value={editingPractical.targetSessions}
+                              onChange={(e) =>
+                                setEditingPractical({
+                                  ...editingPractical,
+                                  targetSessions: Number(e.target.value) || 0,
+                                })
+                              }
+                              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">Color:</label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={editingPractical.color || '#0284c7'}
+                                onChange={(e) => setEditingPractical({ ...editingPractical, color: e.target.value })}
+                                className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5"
+                              />
+                              <input
+                                type="text"
+                                value={editingPractical.color || '#0284c7'}
+                                onChange={(e) => setEditingPractical({ ...editingPractical, color: e.target.value })}
+                                className="flex-1 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">Description / Syllabus:</label>
+                          <textarea
+                            rows={2}
+                            value={editingPractical.description || ''}
+                            onChange={(e) => setEditingPractical({ ...editingPractical, description: e.target.value })}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            onClick={() => setEditingPractical(null)}
+                            className="px-3 py-1 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleSavePractical(editingPractical)}
+                            className="px-3 py-1 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition shadow-2xs cursor-pointer"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={sub.id}
+                      className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                      style={{ borderLeftColor: sub.color || '#0284c7', borderLeftWidth: '4px' }}
+                    >
+                      <div>
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="px-2 py-0.5 rounded text-[11px] font-bold font-mono text-white shadow-2xs"
+                              style={{ backgroundColor: sub.color || '#0284c7' }}
+                            >
+                              {sub.code}
+                            </span>
+                            <h4 className="font-bold text-slate-900 text-xs">{sub.name}</h4>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {sub.defaultDuration === 1 ? '1 Period' : '2 Periods'}
+                            </span>
+                          </div>
+                          {isAdmin && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setEditingPractical(sub)}
+                                className="p-1 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer"
+                                title="Edit Practical Subject"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              {localPracticalSubjects.length > 1 && (
+                                <button
+                                  onClick={() => handleDeletePractical(sub.id)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                                  title="Delete Practical Subject"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        {sub.description && (
+                          <p className="mt-2 text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                            {sub.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Metrics & Counter */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                            <div className="text-[10px] font-semibold text-slate-500 uppercase">Target</div>
+                            <div className="text-base font-black text-slate-800 font-mono mt-0.5">
+                              {sub.targetSessions}
+                            </div>
+                          </div>
+                          <div className="bg-emerald-50/70 rounded-lg p-2 border border-emerald-100">
+                            <div className="text-[10px] font-semibold text-emerald-700 uppercase">Completed</div>
+                            <div className="text-base font-black text-emerald-900 font-mono mt-0.5">
+                              {completed}
+                            </div>
+                          </div>
+                          <div className="bg-amber-50/70 rounded-lg p-2 border border-amber-100">
+                            <div className="text-[10px] font-semibold text-amber-700 uppercase">Remaining</div>
+                            <div className="text-base font-black text-amber-900 font-mono mt-0.5">
+                              {remaining}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[10px] font-medium text-slate-500">
+                            <span>Completion Progress</span>
+                            <span className="font-bold font-mono text-slate-700">{pct}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor: sub.color || '#0284c7',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

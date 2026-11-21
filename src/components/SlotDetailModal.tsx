@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Classroom, ClassSlot, Paper, Teacher } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import { BookOpen, Building, Clock, GraduationCap, Shield, User, UserCheck, X } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface SlotDetailModalProps {
   slot: ClassSlot | null;
   classroom?: Classroom;
   paper?: Paper;
   teacher?: Teacher;
+  sessionNumber?: number;
   onClose: () => void;
 }
 
@@ -21,15 +23,23 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
   classroom,
   paper,
   teacher,
+  sessionNumber,
   onClose,
 }) => {
-  if (!slot) return null;
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(Boolean(slot));
+  const lastSlotRef = useRef(slot);
+  if (slot) {
+    lastSlotRef.current = slot;
+  }
+  const currentSlot = slot || lastSlotRef.current;
 
-  const timing = PERIOD_TIMINGS.find((p) => p.period === slot.period);
+  if (!shouldRender || !currentSlot) return null;
+
+  const timing = PERIOD_TIMINGS.find((p) => p.period === currentSlot.period);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs no-print">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs no-print ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -39,7 +49,7 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
             <div>
               <h2 className="text-sm font-bold text-white">Class Period Details</h2>
               <p className="text-[11px] text-slate-300">
-                Period {slot.period} ({timing?.time || '40 min'}) · {classroom?.name || slot.roomId}
+                Period {currentSlot.period} ({timing?.time || '40 min'}) · {classroom?.name || currentSlot.roomId}
               </p>
             </div>
           </div>
@@ -61,7 +71,7 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                 className="font-mono font-bold text-xs px-2.5 py-1 rounded text-white shadow-2xs"
                 style={{ backgroundColor: paper?.color || '#4F46E5' }}
               >
-                {paper?.code || slot.paperId}
+                {paper?.code || currentSlot.paperId}
               </span>
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                 {paper?.category || 'Syllabus Module'}
@@ -74,12 +84,45 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
               </h3>
             </div>
 
+            {currentSlot.practicalName && (
+              <div className="pt-2 border-t border-slate-200 flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">
+                  Practical / Workshop Venue:
+                </span>
+                <span className="text-xs font-bold text-emerald-950">
+                  {currentSlot.practicalName}
+                </span>
+              </div>
+            )}
+
             {paper?.description && (
               <p className="text-xs text-slate-600 pt-2 border-t border-slate-200">
                 {paper.description}
               </p>
             )}
           </div>
+
+          {/* Session Number Banner */}
+          {sessionNumber !== undefined && sessionNumber > 0 && (
+            <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-mono font-black text-sm flex items-center justify-center shadow-2xs">
+                  {sessionNumber}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">
+                    Session ({sessionNumber}) of {paper?.code || currentSlot.paperId}
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    Conducted by {teacher?.name || currentSlot.teacherId} in {classroom?.name || currentSlot.roomId}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[11px] font-mono font-bold bg-white text-indigo-700 px-2 py-0.5 rounded-lg border border-indigo-200">
+                Session {sessionNumber}
+              </span>
+            </div>
+          )}
 
           {/* Details Grid */}
           <div className="grid grid-cols-2 gap-3.5">
@@ -91,7 +134,7 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-bold text-xs bg-indigo-50 border border-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded">
-                  {teacher?.code || slot.teacherId}
+                  {teacher?.code || currentSlot.teacherId}
                 </span>
                 <span className="font-bold text-slate-900 text-xs truncate">
                   {teacher?.name || 'Instructor'}
@@ -119,7 +162,7 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                 <span>Classroom Location</span>
               </div>
               <div className="font-bold text-slate-900 text-xs">
-                {classroom?.name || slot.roomId}
+                {classroom?.name || currentSlot.roomId}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {classroom?.building === 'OLD'
@@ -137,19 +180,19 @@ export const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
           </div>
 
           {/* Substitute or Priority Status */}
-          {slot.isSubstitute && (
+          {currentSlot.isSubstitute && (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
               <UserCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Substitute Instructor Engagement:</span>
                 <p className="text-[11px] text-amber-800 mt-0.5">
-                  {slot.substituteReason || 'Assigned as qualified replacement instructor.'}
+                  {currentSlot.substituteReason || 'Assigned as qualified replacement instructor.'}
                 </p>
               </div>
             </div>
           )}
 
-          {slot.isPriority && (
+          {currentSlot.isPriority && (
             <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2">
               <Shield className="w-4 h-4 text-indigo-600 shrink-0" />
               <span>

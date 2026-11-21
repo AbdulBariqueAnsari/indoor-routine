@@ -3,13 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { AppSettings, Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AppSettings, Classroom, ColumnConfig, compareClassrooms, DailyRoutine, Paper, ReportPageSetupConfig, Teacher } from '../types';
 import {
-  exportToCsv,
   exportToExcel,
+  exportToPdf,
+  formatReportFileName,
+  formatRoutineDateDDMMYYYY,
   generateDailyDutyData,
   generateDeploymentTrackerData,
+  generateIndoorRoutineData,
   generateInstructorLedgerData,
   generateInstructorPhoneDirectoryData,
   generateInstructorUnavailabilityData,
@@ -41,6 +45,7 @@ import {
   UserX,
   X,
 } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -58,6 +63,7 @@ interface ActivePrintPreview {
   subtitle: string;
   headers: string[];
   rows: (string | number)[][];
+  fileName: string;
 }
 
 export const DownloadsModal: React.FC<DownloadsModalProps> = ({
@@ -70,26 +76,60 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
   currentRoutine,
   settings,
 }) => {
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
   const [activeTab, setActiveTab] = useState<'all' | 'faculty' | 'curriculum'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadSuccessToast, setDownloadSuccessToast] = useState<string | null>(null);
   const [activePrintPreview, setActivePrintPreview] = useState<ActivePrintPreview | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (activePrintPreview) {
+      document.body.classList.add('printing-active-report');
+    } else {
+      document.body.classList.remove('printing-active-report');
+    }
+    return () => {
+      document.body.classList.remove('printing-active-report');
+    };
+  }, [activePrintPreview]);
+
+  if (!shouldRender) return null;
 
   const showToast = (msg: string) => {
     setDownloadSuccessToast(msg);
     setTimeout(() => {
       setDownloadSuccessToast(null);
-    }, 3000);
+    }, 3500);
   };
 
   const centreName = settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE';
   const institutionName = settings?.institutionName || 'STC, SAP 4TH BN';
   const address = settings?.address || 'Kasba, Raiganj, Uttar Dinajpur';
 
-  // 8 Official Reports Definitions
+  // Official Reports Definitions (With Dynamic Naming: <slug>_d<dayNumber>_(<DD.MM.YYYY>))
   const reports = [
+    {
+      id: 'indoor-routine',
+      title: `Daily Indoor Routine (Day ${currentRoutine?.dayNumber || 1})`,
+      subtitle: 'Official 15-classroom timetable matrix with period timings, subject allocations and substitutes',
+      category: 'curriculum',
+      icon: Clock,
+      color: 'text-blue-600 bg-blue-50 border-blue-200',
+      recordCount: '15 Classrooms × 5 Periods (75 Sessions)',
+      getFileName: () => formatReportFileName('indoor_routine', currentRoutine?.dayNumber || 1, currentRoutine?.date),
+      getHeaders: () => [
+        'Room Name',
+        'Room Code',
+        'Building',
+        'Capacity',
+        'Period 1 (09:40-10:20)',
+        'Period 2 (10:25-11:05)',
+        'Period 3 (11:10-11:50)',
+        'Period 4 (12:05-12:45)',
+        'Period 5 (12:50-13:30)',
+      ],
+      getData: () => generateIndoorRoutineData(currentRoutine, classrooms, papers, teachers, allRoutines),
+    },
     {
       id: 'session-counter',
       title: 'Session Counter (Room-wise Subject Progress)',
@@ -98,9 +138,8 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Calendar,
       color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
       recordCount: `${classrooms.length * papers.length} entries (15 Rooms × 13 Papers)`,
-      fileName: `STC_Session_Counter_Day_${currentRoutine?.dayNumber || 1}`,
+      getFileName: () => formatReportFileName('session_counter', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
-        'Room Code',
         'Room Name',
         'Building',
         'Paper Code',
@@ -122,16 +161,12 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Users,
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
       recordCount: `${teachers.length} Instructors across 15 Classrooms`,
-      fileName: `STC_Instructor_Deployment_Tracker_Day_${currentRoutine?.dayNumber || 1}`,
+      getFileName: () => formatReportFileName('deployment_tracker', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Teacher Code',
         'Instructor Name',
-        'Designation',
-        'Campus Base',
-        ...classrooms.map((c) => c.code),
+        ...[...classrooms].sort(compareClassrooms).map((c) => c.name || `Room ${c.roomNumber}`),
         'Total Sessions',
-        'Rooms Visited',
-        'Coverage %',
       ],
       getData: () => generateDeploymentTrackerData(teachers, classrooms, allRoutines, currentRoutine),
     },
@@ -143,14 +178,12 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Table,
       color: 'text-blue-600 bg-blue-50 border-blue-200',
       recordCount: `${teachers.length} Instructors Workload Records`,
-      fileName: `STC_Instructor_Ledger_Day_${currentRoutine?.dayNumber || 1}`,
+      getFileName: () => formatReportFileName('instructor_ledger', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Sl No',
         'Teacher Code',
         'Instructor Name',
-        'Designation',
         'Primary Subject(s)',
-        'Base Building',
         'Past Days Load',
         "Today's Load",
         'Cumulative Total',
@@ -167,13 +200,10 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: UserCheck,
       color: 'text-amber-600 bg-amber-50 border-amber-200',
       recordCount: `${teachers.length} Instructors (Day ${currentRoutine?.dayNumber || 1})`,
-      fileName: `STC_Instructor_Daily_Duty_Day_${currentRoutine?.dayNumber || 1}`,
+      getFileName: () => formatReportFileName('instructor_duty', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
-        'Sl No',
         'Teacher Code',
         'Instructor Name',
-        'Designation',
-        'Building Base',
         'Period 1 (09:40-10:20)',
         'Period 2 (10:25-11:05)',
         'Period 3 (11:10-11:50)',
@@ -192,7 +222,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Database,
       color: 'text-purple-600 bg-purple-50 border-purple-200',
       recordCount: `${teachers.length} Master Faculty Profiles`,
-      fileName: `STC_Instructor_Mapping_Matrix_T1_T${teachers.length}`,
+      getFileName: () => formatReportFileName('instructor_mapping', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Sl No',
         'Teacher Code',
@@ -216,7 +246,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: GraduationCap,
       color: 'text-teal-600 bg-teal-50 border-teal-200',
       recordCount: `${papers.length} Subject Papers (Paper-1 to Paper-13)`,
-      fileName: `STC_Subject_Wise_Main_Instructors_Directory`,
+      getFileName: () => formatReportFileName('subject_main_teachers', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Paper Code',
         'Subject Title',
@@ -237,7 +267,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Layers,
       color: 'text-rose-600 bg-rose-50 border-rose-200',
       recordCount: `${papers.length} Subject Papers with 3-tier Fallbacks`,
-      fileName: `STC_Subject_Faculty_Hierarchy_Main_Backup1_Backup2`,
+      getFileName: () => formatReportFileName('subject_hierarchy', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Paper Code',
         'Subject Title',
@@ -250,14 +280,14 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       getData: () => generateSubjectFullHierarchyData(papers, teachers),
     },
     {
-      id: 'phone-directory',
+      id: 'instructor-directory',
       title: 'Instructors Telephone & Contact Directory',
       subtitle: 'Official faculty calling directory with mobile numbers, ranks, and primary subjects',
       category: 'faculty',
       icon: Phone,
       color: 'text-sky-600 bg-sky-50 border-sky-200',
       recordCount: `${teachers.length} Instructors with Mobile Numbers`,
-      fileName: `STC_Instructors_Telephone_Mobile_Directory`,
+      getFileName: () => formatReportFileName('phone_directory', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Sl No',
         'Teacher Code',
@@ -280,7 +310,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: UserX,
       color: 'text-rose-600 bg-rose-50 border-rose-200',
       recordCount: `${teachers.length} Instructors Across ${allRoutines.length} Routines`,
-      fileName: `STC_Instructor_Unavailability_Ledger`,
+      getFileName: () => formatReportFileName('instructor_unavailability', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Sl No',
         'Teacher Code',
@@ -306,7 +336,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       icon: Clock,
       color: 'text-amber-600 bg-amber-50 border-amber-200',
       recordCount: `All Logged Incidents Across ${allRoutines.length} Routines`,
-      fileName: `STC_Unavailability_Incident_Log`,
+      getFileName: () => formatReportFileName('unavailability_incident_log', currentRoutine?.dayNumber || 1, currentRoutine?.date),
       getHeaders: () => [
         'Sl No',
         'Date',
@@ -322,7 +352,20 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
     },
   ];
 
+  const getReportConfig = (reportId: string): ReportPageSetupConfig | undefined => {
+    return (
+      settings?.downloadsConfig?.reports?.[reportId] ||
+      (reportId === 'instructor-directory' ? settings?.downloadsConfig?.reports?.['phone-directory'] : undefined) ||
+      (reportId === 'phone-directory' ? settings?.downloadsConfig?.reports?.['instructor-directory'] : undefined)
+    );
+  };
+
   const filteredReports = reports.filter((r) => {
+    // Check if report is excluded in Page Setup downloads configuration
+    const config = getReportConfig(r.id);
+    if (config && config.enabled === false) {
+      return false;
+    }
     const matchesTab = activeTab === 'all' || r.category === activeTab;
     const matchesQuery =
       searchQuery.trim() === '' ||
@@ -331,45 +374,119 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
     return matchesTab && matchesQuery;
   });
 
-  const handleDownloadExcel = (report: (typeof reports)[0]) => {
-    const headers = report.getHeaders();
-    const rows = report.getData();
-    exportToExcel(report.fileName, report.title, headers, rows, {
+  const getCustomizedReportData = (report: (typeof reports)[0]) => {
+    const rawHeaders = report.getHeaders();
+    const rawRows = report.getData();
+    const config = getReportConfig(report.id);
+    const reportTitle = config?.customTitle || report.title;
+    const reportSubtitle = config?.customSubtitle || report.subtitle;
+
+    if (!config || !config.columns || config.columns.length === 0) {
+      return {
+        title: reportTitle,
+        subtitle: reportSubtitle,
+        headers: rawHeaders,
+        rows: rawRows,
+        fileName: report.getFileName(),
+        config,
+      };
+    }
+
+    // Match enabled columns and customized labels
+    const columnIndicesToKeep: number[] = [];
+    const customizedHeaders: string[] = [];
+
+    config.columns.forEach((col: ColumnConfig, idx: number) => {
+      // Find matching raw header index by defaultLabel or by direct index
+      let targetIdx = idx;
+      if (targetIdx >= rawHeaders.length || rawHeaders[targetIdx] !== col.defaultLabel) {
+        const found = rawHeaders.findIndex(
+          (h) => h.trim().toLowerCase() === (col.defaultLabel || '').trim().toLowerCase()
+        );
+        if (found !== -1) {
+          targetIdx = found;
+        }
+      }
+
+      if (targetIdx >= 0 && targetIdx < rawHeaders.length) {
+        if (col.enabled !== false) {
+          columnIndicesToKeep.push(targetIdx);
+          customizedHeaders.push(col.customLabel || col.defaultLabel || rawHeaders[targetIdx]);
+        }
+      }
+    });
+
+    if (columnIndicesToKeep.length === 0) {
+      return {
+        title: reportTitle,
+        subtitle: reportSubtitle,
+        headers: rawHeaders,
+        rows: rawRows,
+        fileName: report.getFileName(),
+        config,
+      };
+    }
+
+    const customizedRows = rawRows.map((row) =>
+      columnIndicesToKeep.map((colIdx) => row[colIdx])
+    );
+
+    return {
+      title: reportTitle,
+      subtitle: reportSubtitle,
+      headers: customizedHeaders,
+      rows: customizedRows,
+      fileName: report.getFileName(),
+      config,
+    };
+  };
+
+  const handleDownloadExcel = async (report: (typeof reports)[0]) => {
+    const { title, headers, rows, fileName } = getCustomizedReportData(report);
+    await exportToExcel(fileName, title, headers, rows, {
       centreName,
       institutionName,
       address,
-      date: new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      }),
+      date: formatRoutineDateDDMMYYYY(currentRoutine?.date),
+      activeDayNumber: currentRoutine?.dayNumber,
+      activeDayDate: currentRoutine?.date,
     });
-    showToast(`Excel workbook "${report.fileName}.xls" downloaded successfully!`);
+    showToast(`Excel workbook "${fileName}.xls" exported to exports folder!`);
   };
 
-  const handleDownloadCsv = (report: (typeof reports)[0]) => {
-    const headers = report.getHeaders();
-    const rows = report.getData();
-    exportToCsv(report.fileName, headers, rows);
-    showToast(`CSV spreadsheet "${report.fileName}.csv" downloaded successfully!`);
+  const handleDownloadPdf = async (report: (typeof reports)[0]) => {
+    const { title, headers, rows, fileName, config } = getCustomizedReportData(report);
+    await exportToPdf(fileName, title, headers, rows, {
+      centreName,
+      institutionName,
+      address,
+      date: formatRoutineDateDDMMYYYY(currentRoutine?.date),
+      activeDayNumber: currentRoutine?.dayNumber,
+      activeDayDate: currentRoutine?.date,
+      orientation: config?.orientation,
+      paperSize: config?.paperSize,
+      includeHeader: config?.includeHeader,
+      includeSignatures: config?.includeSignatures,
+    });
+    showToast(`PDF document "${fileName}.pdf" exported to exports folder!`);
   };
 
   const handleOpenPrintPreview = (report: (typeof reports)[0]) => {
-    const headers = report.getHeaders();
-    const rows = report.getData();
+    const { title, subtitle, headers, rows, fileName } = getCustomizedReportData(report);
     setActivePrintPreview({
-      title: report.title,
-      subtitle: report.subtitle,
+      title,
+      subtitle,
       headers,
       rows,
+      fileName,
     });
   };
 
   return (
     <>
       {/* Downloads Hub Modal Window */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs no-print">
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs no-print ${backdropAnimationClass}`}>
+        <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden ${modalAnimationClass}`}>
           {/* Modal Header */}
           <div className="px-5 py-4 border-b border-slate-200 bg-linear-to-r from-slate-50 via-indigo-50/30 to-emerald-50/30 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
@@ -473,6 +590,12 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredReports.map((report, idx) => {
                 const IconComponent = report.icon;
+                const config = getReportConfig(report.id);
+                const displayTitle = config?.customTitle || report.title;
+                const displaySubtitle = config?.customSubtitle || report.subtitle;
+                const activeCols = config?.columns ? config.columns.filter((c: ColumnConfig) => c.enabled !== false).length : report.getHeaders().length;
+                const totalCols = config?.columns?.length || report.getHeaders().length;
+
                 return (
                   <div
                     key={report.id}
@@ -487,25 +610,32 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                           <IconComponent className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
                             <span className="text-[10px] font-bold text-slate-400 font-mono">
                               #{idx + 1}
                             </span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                              {report.recordCount}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {totalCols ? (
+                                <span className="text-[9.5px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-mono">
+                                  {activeCols}/{totalCols} Cols
+                                </span>
+                              ) : null}
+                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                {report.recordCount}
+                              </span>
+                            </div>
                           </div>
                           <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug mt-0.5">
-                            {report.title}
+                            {displayTitle}
                           </h3>
                           <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                            {report.subtitle}
+                            {displaySubtitle}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons: Excel (.xls), CSV, PDF / Print */}
+                    {/* Action Buttons: Excel (.xls), PDF (.pdf), Print Preview */}
                     <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
                         {/* Download Excel (.xls) */}
@@ -513,21 +643,21 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                           type="button"
                           onClick={() => handleDownloadExcel(report)}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 transition-colors shadow-2xs cursor-pointer"
-                          title="Download natively formatted Excel workbook (.xls)"
+                          title="Download Excel spreadsheet and save directly to exports folder"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Excel (.xls)</span>
                         </button>
 
-                        {/* Download CSV */}
+                        {/* Download PDF (.pdf) */}
                         <button
                           type="button"
-                          onClick={() => handleDownloadCsv(report)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg bg-slate-50 text-slate-700 border border-slate-300 hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer"
-                          title="Download plain comma-separated values (.csv) with UTF-8 BOM"
+                          onClick={() => handleDownloadPdf(report)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 hover:border-rose-400 transition-colors shadow-2xs cursor-pointer"
+                          title="Download official PDF and save directly to exports folder"
                         >
-                          <FileText className="w-3.5 h-3.5 text-slate-500" />
-                          <span>CSV</span>
+                          <FileText className="w-3.5 h-3.5 text-rose-600" />
+                          <span>PDF (.pdf)</span>
                         </button>
                       </div>
 
@@ -535,11 +665,11 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenPrintPreview(report)}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer ml-auto"
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors shadow-2xs cursor-pointer ml-auto"
                         title="Open Print-ready document formatted with academy header and signatures"
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        <span>Print / Save PDF</span>
+                        <span>Print Preview</span>
                       </button>
                     </div>
                   </div>
@@ -570,8 +700,8 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
       {/* PRINT PREVIEW MODAL FOR SELECTED REPORT */}
       {/* =================================================================== */}
       {activePrintPreview && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-xs no-print">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-xs no-print modal-backdrop-animate">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden modal-pop-in">
             {/* Modal Top Control Bar */}
             <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
@@ -589,12 +719,32 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={async () => {
+                    await exportToPdf(activePrintPreview.fileName, activePrintPreview.title, activePrintPreview.headers, activePrintPreview.rows, {
+                      centreName,
+                      institutionName,
+                      address,
+                      date: formatRoutineDateDDMMYYYY(currentRoutine?.date),
+                      activeDayNumber: currentRoutine?.dayNumber,
+                      activeDayDate: currentRoutine?.date,
+                    });
+                    showToast(`PDF document "${activePrintPreview.fileName}.pdf" exported to exports folder!`);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 shadow-xs cursor-pointer"
+                  title="Directly save PDF to exports folder"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Export PDF</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 shadow-2xs cursor-pointer"
                   title="Print this document or Save as PDF via browser print dialog"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Document / Save as PDF</span>
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Browser Print</span>
                 </button>
 
                 <button
@@ -611,7 +761,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
             <div className="overflow-y-auto p-4 sm:p-6 bg-slate-100 flex-1">
               <div className="bg-white shadow-md border border-slate-300 rounded p-4 sm:p-6 max-w-5xl mx-auto text-black font-sans">
                 {/* Official Police Academy Header (Exact User-Specified Sequence) */}
-                <div className="text-center border-b-2 border-black pb-2 mb-3">
+                <div className="text-center pb-2 mb-3">
                   {/* 1. Training Centre Name (Large & Bold) */}
                   <h1 className="text-lg sm:text-xl font-black uppercase tracking-wider text-black">
                     {centreName}
@@ -628,16 +778,15 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                   </div>
 
                   {/* 4. Report Title */}
-                  <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1 border-t border-black/40">
+                  <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1">
                     {activePrintPreview.title}
                   </h2>
 
                   {/* 5. Metadata Bar */}
-                  <div className="flex flex-wrap justify-between text-[10px] mt-1.5 font-mono border-t border-black pt-1">
+                  <div className="flex flex-wrap justify-between items-center text-[10px] mt-1.5 font-mono pt-1">
                     <span>DOCUMENT: <strong>OFFICIAL ACADEMIC RECORD</strong></span>
-                    <span>ACTIVE DAY: <strong>DAY {currentRoutine?.dayNumber || 1} ({currentRoutine?.date || 'N/A'})</strong></span>
+                    <span>ACTIVE DAY: <strong className="font-black text-black text-xs uppercase tracking-wider">DAY {currentRoutine?.dayNumber || 1} ({formatRoutineDateDDMMYYYY(currentRoutine?.date)})</strong></span>
                     <span>TOTAL ENTRIES: <strong>{activePrintPreview.rows.length} ROWS</strong></span>
-                    <span>DATE GENERATED: <strong>{new Date().toLocaleDateString('en-GB')}</strong></span>
                   </div>
                 </div>
 
@@ -673,7 +822,7 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                 </div>
 
                 {/* Official Signature Endorsement */}
-                <div className="mt-6 pt-3 border-t-2 border-black flex justify-end break-inside-avoid">
+                <div className="mt-6 pt-3 flex justify-end break-inside-avoid">
                   <div className="text-center font-bold text-xs text-black min-w-[200px]">
                     <div className="border-b border-black mb-1 pb-6">
                       {/* Space for physical signature / seal stamp */}
@@ -686,11 +835,107 @@ export const DownloadsModal: React.FC<DownloadsModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Bottom Footer: Date Generated on Bottom-Left */}
+                <div className="mt-3 pt-1 flex items-center justify-between text-[9px] font-mono text-slate-700 break-inside-avoid">
+                  <div>
+                    Date Generated: <strong className="text-black font-bold">{new Date().toLocaleDateString('en-GB')}</strong>
+                  </div>
+                  <div className="text-slate-500 font-sans">
+                    {institutionName} · Official Academic Record
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* =================================================================== */}
+      {/* STANDALONE BROWSER PRINT DOCUMENT FOR SELECTED REPORT (Active only in Print) */}
+      {/* =================================================================== */}
+      {activePrintPreview &&
+        createPortal(
+          <div id="printable-report-document" className="print-report-only">
+            <div className="p-4 sm:p-6 bg-white text-black font-sans max-w-7xl mx-auto">
+              {/* Official Police Academy Header */}
+              <div className="text-center pb-2 mb-3">
+                <h1 className="text-xl font-black uppercase tracking-wider text-black">
+                  {centreName}
+                </h1>
+                <div className="text-sm font-bold uppercase tracking-wide text-slate-900 mt-0.5">
+                  {institutionName}
+                </div>
+                <div className="text-xs font-medium text-slate-700 mt-0.5">
+                  {address}
+                </div>
+                <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1">
+                  {activePrintPreview.title}
+                </h2>
+                <div className="flex justify-between items-center text-[10px] mt-1.5 font-mono pt-1">
+                  <span>DOCUMENT: <strong>OFFICIAL ACADEMIC RECORD</strong></span>
+                  <span>ACTIVE DAY: <strong className="font-black text-black text-xs uppercase tracking-wider">DAY {currentRoutine?.dayNumber || 1} ({formatRoutineDateDDMMYYYY(currentRoutine?.date)})</strong></span>
+                  <span>TOTAL ENTRIES: <strong>{activePrintPreview.rows.length} ROWS</strong></span>
+                </div>
+              </div>
+
+              {/* Report Table */}
+              <div className="mb-4">
+                <table className="w-full border-collapse border border-black text-[9px]">
+                  <thead>
+                    <tr className="bg-slate-200 text-black">
+                      {activePrintPreview.headers.map((h, i) => (
+                        <th key={i} className="border border-black py-1 px-1.5 text-center font-bold">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activePrintPreview.rows.map((row, rIdx) => (
+                      <tr
+                        key={rIdx}
+                        className={`border-b border-black break-inside-avoid ${
+                          rIdx % 2 === 1 ? 'bg-slate-50' : 'bg-white'
+                        }`}
+                      >
+                        {row.map((cell, cIdx) => (
+                          <td key={cIdx} className="border border-black py-1 px-1.5 align-top">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Official Signature Endorsement */}
+              <div className="mt-6 pt-3 flex justify-end break-inside-avoid">
+                <div className="text-center font-bold text-xs text-black min-w-[200px]">
+                  <div className="border-b border-black mb-1 pb-6"></div>
+                  <div className="uppercase tracking-wider font-extrabold text-[11px]">
+                    {settings?.signatoryDesignation || 'O/C STC (Indoor)'}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-800">
+                    {institutionName}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Footer: Date Generated */}
+              <div className="mt-3 pt-1 flex items-center justify-between text-[9px] font-mono text-slate-700 break-inside-avoid">
+                <div>
+                  Date Generated: <strong className="text-black font-bold">{new Date().toLocaleDateString('en-GB')}</strong>
+                </div>
+                <div className="text-slate-500 font-sans">
+                  {institutionName} · Official Academic Record
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 };

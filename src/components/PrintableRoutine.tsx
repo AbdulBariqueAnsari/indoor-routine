@@ -3,16 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { AppSettings, Classroom, DailyRoutine, Paper, Teacher } from '../types';
-import { PERIOD_TIMINGS } from '../data/initialData';
-import { FileText, Files, Printer, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AppSettings, Classroom, compareClassrooms, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
+import { DEFAULT_BROWSER_PRINT_CONFIG, PERIOD_TIMINGS } from '../data/initialData';
+import { buildRoutineSessionNumbersMap } from '../utils/scheduler';
+import { FileSpreadsheet, FileText, Files, Printer, X } from 'lucide-react';
+import {
+  exportToExcel,
+  exportToPdf,
+  formatReportFileName,
+  formatRoutineDateDDMMYYYY,
+  generateIndoorRoutineData,
+} from '../utils/exportUtils';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface PrintableRoutineProps {
   routine: DailyRoutine;
   classrooms: Classroom[];
   papers: Paper[];
   teachers: Teacher[];
+  allRoutines?: DailyRoutine[];
   settings?: AppSettings;
   language?: 'hi' | 'en';
   isModalPreview?: boolean;
@@ -26,15 +37,74 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   classrooms,
   papers,
   teachers,
+  allRoutines = [],
   settings,
   isModalPreview = false,
   printLayoutMode: propLayoutMode,
   onChangePrintLayoutMode,
   onClosePreview,
 }) => {
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(Boolean(isModalPreview));
+
   // Local state for layout mode if not controlled externally
   const [localLayoutMode, setLocalLayoutMode] = useState<'1-page' | '2-page'>('1-page');
+  const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
   const layoutMode = propLayoutMode || localLayoutMode;
+
+  const showDownloadToast = (msg: string) => {
+    setDownloadMsg(msg);
+    setTimeout(() => setDownloadMsg(null), 3500);
+  };
+
+  const handleDownloadRoutinePdf = async () => {
+    const fileName = formatReportFileName('indoor_routine', routine.dayNumber, routine.date);
+    const headers = [
+      'Room Name',
+      'Room Code',
+      'Building',
+      'Capacity',
+      'Period 1 (09:40-10:20)',
+      'Period 2 (10:25-11:05)',
+      'Period 3 (11:10-11:50)',
+      'Period 4 (12:05-12:45)',
+      'Period 5 (12:50-13:30)',
+    ];
+    const rows = generateIndoorRoutineData(routine, classrooms, papers, teachers, allRoutines);
+    await exportToPdf(fileName, `Daily Indoor Class Routine - Day ${routine.dayNumber}`, headers, rows, {
+      centreName: settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE',
+      institutionName: settings?.institutionName || 'STC, SAP 4TH BN',
+      address: settings?.address || 'Kasba, Raiganj, Uttar Dinajpur',
+      date: formatRoutineDateDDMMYYYY(routine.date),
+      activeDayNumber: routine.dayNumber,
+      activeDayDate: routine.date,
+    });
+    showDownloadToast(`PDF "${fileName}.pdf" exported to exports folder!`);
+  };
+
+  const handleDownloadRoutineExcel = async () => {
+    const fileName = formatReportFileName('indoor_routine', routine.dayNumber, routine.date);
+    const headers = [
+      'Room Name',
+      'Room Code',
+      'Building',
+      'Capacity',
+      'Period 1 (09:40-10:20)',
+      'Period 2 (10:25-11:05)',
+      'Period 3 (11:10-11:50)',
+      'Period 4 (12:05-12:45)',
+      'Period 5 (12:50-13:30)',
+    ];
+    const rows = generateIndoorRoutineData(routine, classrooms, papers, teachers, allRoutines);
+    await exportToExcel(fileName, `Daily Indoor Class Routine - Day ${routine.dayNumber}`, headers, rows, {
+      centreName: settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE',
+      institutionName: settings?.institutionName || 'STC, SAP 4TH BN',
+      address: settings?.address || 'Kasba, Raiganj, Uttar Dinajpur',
+      date: formatRoutineDateDDMMYYYY(routine.date),
+      activeDayNumber: routine.dayNumber,
+      activeDayDate: routine.date,
+    });
+    showDownloadToast(`Excel "${fileName}.xls" exported to exports folder!`);
+  };
 
   const handleModeChange = (mode: '1-page' | '2-page') => {
     setLocalLayoutMode(mode);
@@ -46,8 +116,14 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   const paperMap = new Map(papers.map((p) => [p.id, p]));
   const teacherMap = new Map(teachers.map((t) => [t.id, t]));
 
-  const oldBuilding = classrooms.filter((c) => c.building === 'OLD');
-  const newBuilding = classrooms.filter((c) => c.building === 'NEW');
+  const sessionNumbersMap = useMemo(() => {
+    return buildRoutineSessionNumbersMap(routine, allRoutines);
+  }, [routine, allRoutines]);
+
+  const printConfig = settings?.downloadsConfig?.browserPrint || DEFAULT_BROWSER_PRINT_CONFIG;
+
+  const oldBuilding = classrooms.filter((c) => c.building === 'OLD').sort(compareClassrooms);
+  const newBuilding = classrooms.filter((c) => c.building === 'NEW').sort(compareClassrooms);
 
   // Resting instructors (Rest option: excluded from classes, but kept as normal available free/reserve in PDF)
   const restingTeacherIds = new Set(
@@ -95,7 +171,9 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   });
 
   // Instructors marked as REST are shown in normal reserve/available free roster above, and excluded from bottom Absent/Leave block
-  const displayedUnavailable = unavailableInstructors.filter((u) => u.type !== 'REST');
+  const displayedUnavailable = unavailableInstructors
+    .filter((u) => u.type !== 'REST')
+    .sort(compareTeacherCodes);
 
   const periodAvailability = PERIOD_TIMINGS.map((p) => {
     const busyTeacherIdsInPeriod = new Set(
@@ -104,11 +182,13 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
         .map((s) => s.teacherId.replace(/^T0*/, 'T'))
     );
 
-    const availableTeachers = teachers.filter(
-      (t) =>
-        !absentNormalizedSet.has(t.id.replace(/^T0*/, 'T')) &&
-        !busyTeacherIdsInPeriod.has(t.id.replace(/^T0*/, 'T'))
-    );
+    const availableTeachers = teachers
+      .filter(
+        (t) =>
+          !absentNormalizedSet.has(t.id.replace(/^T0*/, 'T')) &&
+          !busyTeacherIdsInPeriod.has(t.id.replace(/^T0*/, 'T'))
+      )
+      .sort(compareTeacherCodes);
 
     return {
       period: p.period,
@@ -122,9 +202,11 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
     <tr key={room.id} className="border-b border-black break-inside-avoid">
       <td className="border border-black py-1 px-1.5 font-bold bg-slate-50 align-top">
         <div className="text-slate-900 font-bold text-[10.5px] leading-tight">{room.name}</div>
-        <div className="text-[8px] font-normal font-mono text-slate-700">
-          Capacity: {room.capacity}
-        </div>
+        {printConfig.showCapacities !== false && (
+          <div className="text-[8px] font-normal font-mono text-slate-700">
+            Capacity: {room.capacity}
+          </div>
+        )}
       </td>
       {[1, 2, 3, 4, 5].map((period) => {
         const slot = routine.slots.find((s) => s.roomId === room.id && s.period === period);
@@ -138,23 +220,39 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
 
         const paper = paperMap.get(slot.paperId);
         const teacher = teacherMap.get(slot.teacherId);
+        const sessionNum = sessionNumbersMap.get(slot.id) || sessionNumbersMap.get(`${room.id}_${period}`) || 0;
 
         return (
           <td key={period} className="border border-black py-0.5 px-1 align-top leading-tight">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-black font-mono text-[9px]">{paper?.code}</span>
-              {slot.isSubstitute && (
+              {printConfig.showSubjectCodes !== false && (
+                <span className="font-bold text-black font-mono text-[9px]">
+                  {paper?.code}
+                  {slot.practicalName ? ` (${slot.practicalName})` : ''}
+                </span>
+              )}
+              {slot.isSubstitute && printConfig.showSubstituteBadge !== false && (
                 <span className="text-[7px] px-1 rounded bg-amber-100 text-amber-900 font-bold uppercase">
                   Sub
                 </span>
               )}
+              {slot.isPriority && printConfig.showPriorityBadge !== false && (
+                <span className="text-[7px] px-1 rounded bg-amber-100 text-amber-900 font-bold uppercase">
+                  ★ Pri
+                </span>
+              )}
             </div>
             <div className="text-[8px] text-slate-800 truncate line-clamp-1 font-medium">
-              {paper?.title}
+              {slot.practicalName ? `${paper?.title} [${slot.practicalName}]` : paper?.title}
             </div>
             <div className="font-semibold text-slate-900 mt-0.5 pt-0.5 border-t border-slate-200 flex items-center gap-1 text-[8.5px]">
-              <span className="font-mono font-bold text-black">[{teacher?.code || 'T?'}]</span>
+              {printConfig.showTeacherCodes !== false && (
+                <span className="font-mono font-bold text-black">[{teacher?.code || 'T?'}]</span>
+              )}
               <span className="truncate">{teacher?.name}</span>
+              {sessionNum > 0 && printConfig.showSessionCount !== false && (
+                <span className="font-mono font-bold text-black shrink-0">({sessionNum})</span>
+              )}
             </div>
           </td>
         );
@@ -163,39 +261,40 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
   );
 
   const content = (
-    <div className="p-4 sm:p-6 bg-white text-black font-sans w-full max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 bg-white text-black font-sans w-full max-w-7xl mx-auto">
       {/* Official Academy Header */}
-      <div className="text-center border-b-2 border-black pb-2 mb-3">
-        {/* 1. Training Centre Name (Bada karke / Large Heading) */}
-        <h1 className="text-lg sm:text-xl font-black uppercase tracking-wider text-black">
-          {settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE'}
-        </h1>
+      {printConfig.showHeader !== false && (
+        <div className="text-center pb-2 mb-3">
+          {/* 1. Training Centre Name (Bada karke / Large Heading) */}
+          <h1 className="text-lg sm:text-xl font-black uppercase tracking-wider text-black">
+            {printConfig.customTitle || settings?.trainingCenterName || 'SUBSIDIARY TRAINING CENTRE'}
+          </h1>
 
-        {/* 2. STC, SAP 4th Bn (Next Line) */}
-        <div className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-900 mt-0.5">
-          {settings?.institutionName || 'STC, SAP 4TH BN'}
+          {/* 2. STC, SAP 4th Bn (Next Line) */}
+          <div className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-900 mt-0.5">
+            {settings?.institutionName || 'STC, SAP 4TH BN'}
+          </div>
+
+          {/* 3. Address (Next Line) */}
+          <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 mt-0.5">
+            {settings?.address || 'Kasba, Raiganj, Uttar Dinajpur'}
+          </div>
+
+          {/* 4. Routine Document Subtitle */}
+          <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1">
+            {printConfig.customSubtitle || settings?.subTitle || 'DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET'}
+          </h2>
+
+          {/* 5. Metadata Bar */}
+          <div className="flex flex-wrap justify-between items-center text-[10px] mt-1.5 font-mono pt-1">
+            <span className="text-[11px]">TRAINING DAY: <strong className="text-black font-black text-xs sm:text-sm uppercase tracking-wider">DAY {routine.dayNumber} ({formatRoutineDateDDMMYYYY(routine.date)})</strong></span>
+            <span>LOCATION: <strong>{settings?.location || 'SAP 4TH BN CAMPUS'}</strong></span>
+            <span>ROOMS: <strong>15 CLASSROOMS (8 OLD + 7 NEW)</strong></span>
+            <span>PERIOD DURATION: <strong>40 MIN EACH (09:40 - 13:30)</strong></span>
+            <span>TOTAL SESSIONS: <strong>75 DAILY SLOTS</strong></span>
+          </div>
         </div>
-
-        {/* 3. Address (Next Line) */}
-        <div className="text-[10px] sm:text-[11px] font-medium text-slate-700 mt-0.5">
-          {settings?.address || 'Kasba, Raiganj, Uttar Dinajpur'}
-        </div>
-
-        {/* 4. Routine Document Subtitle */}
-        <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-wide mt-1.5 pt-1 border-t border-black/40">
-          {settings?.subTitle || 'DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET'}
-        </h2>
-
-        {/* 5. Metadata Bar */}
-        <div className="flex flex-wrap justify-between text-[10px] mt-1.5 font-mono border-t border-black pt-1">
-          <span>TRAINING DAY: <strong>DAY {routine.dayNumber}</strong></span>
-          <span>DATE: <strong>{routine.date}</strong></span>
-          <span>LOCATION: <strong>{settings?.location || 'SAP 4TH BN CAMPUS'}</strong></span>
-          <span>ROOMS: <strong>15 CLASSROOMS (8 OLD + 7 NEW)</strong></span>
-          <span>PERIOD DURATION: <strong>40 MIN EACH (09:40 - 13:30)</strong></span>
-          <span>TOTAL SESSIONS: <strong>75 DAILY SLOTS</strong></span>
-        </div>
-      </div>
+      )}
 
       {/* Unified Routine Master Table: All 15 Classrooms in continuous flow */}
       <div className="mb-3">
@@ -208,9 +307,11 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
               {PERIOD_TIMINGS.map((p) => (
                 <th key={p.period} className="border border-black py-1 px-1 text-center">
                   <div className="font-bold text-[9.5px]">{p.label}</div>
-                  <div className="text-[8px] font-normal font-mono text-slate-800">
-                    {p.time} (40 min)
-                  </div>
+                  {printConfig.showTimings !== false && (
+                    <div className="text-[8px] font-normal font-mono text-slate-800">
+                      {p.time} (40 min)
+                    </div>
+                  )}
                 </th>
               ))}
             </tr>
@@ -236,101 +337,104 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
       </div>
 
       {/* Period-Wise Available (Reserve / Free) Instructor Section */}
-      <div className={`mb-3 ${layoutMode === '2-page' ? 'print-page-break-before' : ''}`}>
-        <div className="flex items-center justify-between border-b-2 border-black pb-0.5 mb-1.5">
-          <h3 className="text-[11px] sm:text-xs font-bold text-black uppercase tracking-wider">
-            Period-Wise Available (Free / Reserve) Instructor Roster
-          </h3>
-          <span className="text-[9.5px] font-mono text-slate-700">
-            Instructors with no active class scheduled in that period (Standby Reserve)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-5 border border-black text-[8px]">
-          {periodAvailability.map((pa) => (
-            <div key={pa.period} className="border-r border-black last:border-r-0 flex flex-col">
-              <div className="bg-slate-200 border-b border-black py-0.5 px-1 text-center">
-                <div className="font-bold text-black text-[9px]">{pa.label} ({pa.time})</div>
-                <div className="mt-0.5 inline-block px-1.5 py-0.2 rounded bg-black text-white font-bold text-[7.5px]">
-                  {pa.availableTeachers.length} Available Free
-                </div>
-              </div>
-
-              <div className="p-1 space-y-0.5 flex-1 bg-white">
-                {pa.availableTeachers.length > 0 ? (
-                  pa.availableTeachers.map((t) => (
-                    <div key={t.id} className="truncate border-b border-slate-100 last:border-b-0 pb-0.5">
-                      <span className="font-mono font-bold mr-1 text-black">[{t.code}]</span>
-                      <span className="text-slate-800">{t.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-slate-400 italic text-center py-1">None free</div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-      </div>
-
-      {/* Instructors on Leave / Duty / Sick / Absent Section */}
-      <div className="mt-2 p-1.5 border border-black bg-slate-50 text-[8px] break-inside-avoid">
-        <div className="flex items-center justify-between border-b border-black pb-0.5 mb-1 font-bold uppercase tracking-wider text-black">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9.5px]">Instructors on Leave / Duty / Sick / Absent</span>
-            {displayedUnavailable.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded bg-black text-white text-[7.5px] font-bold font-mono">
-                Total: {displayedUnavailable.length}
-              </span>
-            )}
+      {printConfig.showReserveTable !== false && (
+        <div className={`mb-3 ${layoutMode === '2-page' ? 'print-page-break-before' : ''}`}>
+          <div className="flex items-center justify-between border-b-2 border-black pb-0.5 mb-1.5">
+            <h3 className="text-[11px] sm:text-xs font-bold text-black uppercase tracking-wider">
+              Period-Wise Available (Free / Reserve) Instructor Roster
+            </h3>
+            <span className="text-[9.5px] font-mono text-slate-700">
+              Instructors with no active class scheduled in that period (Standby Reserve)
+            </span>
           </div>
-          <span className="text-[7.5px] font-mono text-slate-700">Daily Faculty Status</span>
-        </div>
 
-        {displayedUnavailable.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
-            {displayedUnavailable.map((item) => {
-              const label =
-                item.type === 'LEAVE'
-                  ? 'ON LEAVE'
-                  : item.type === 'DUTY'
-                  ? 'ON DUTY'
-                  : item.type === 'SICK'
-                  ? 'SICK / MEDICAL'
-                  : 'ABSENT';
+          <div className="grid grid-cols-5 border border-black text-[8px]">
+            {periodAvailability.map((pa) => (
+              <div key={pa.period} className="border-r border-black last:border-r-0 flex flex-col">
+                <div className="bg-slate-200 border-b border-black py-0.5 px-1 text-center">
+                  <div className="font-bold text-black text-[9px]">{pa.label} ({pa.time})</div>
+                  <div className="mt-0.5 inline-block px-1.5 py-0.2 rounded bg-black text-white font-bold text-[7.5px]">
+                    {pa.availableTeachers.length} Available Free
+                  </div>
+                </div>
 
-              return (
-                <div
-                  key={item.teacherId}
-                  className="border border-black/40 bg-white p-1 rounded-xs"
-                >
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="font-mono font-bold text-black text-[8.5px]">
-                      [{item.code}]
-                    </span>
-                    <span className="text-[7px] font-bold px-1 py-0.2 rounded border border-black uppercase bg-slate-100 text-black">
-                      {label}
-                    </span>
-                  </div>
-                  <div className="font-semibold text-slate-900 text-[8.5px] truncate">
-                    {item.name}
-                  </div>
-                  {item.remark && (
-                    <div className="text-[7.5px] text-slate-600 truncate mt-0.5 italic">
-                      Remark: {item.remark}
-                    </div>
+                <div className="p-1 space-y-0.5 flex-1 bg-white">
+                  {pa.availableTeachers.length > 0 ? (
+                    pa.availableTeachers.map((t) => (
+                      <div key={t.id} className="truncate border-b border-slate-100 last:border-b-0 pb-0.5">
+                        <span className="font-mono font-bold mr-1 text-black">[{t.code}]</span>
+                        <span className="text-slate-800">{t.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-slate-400 italic text-center py-1">None free</div>
                   )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="text-slate-700 font-medium italic py-0.5 text-[8px]">
-            Nil — All instructors available and on active duty today.
+        </div>
+      )}
+
+      {/* Instructors on Leave / Duty / Sick / Absent Section */}
+      {printConfig.showLeaveTable !== false && (
+        <div className="mt-2 p-1.5 border border-black bg-slate-50 text-[8px] break-inside-avoid">
+          <div className="flex items-center justify-between border-b border-black pb-0.5 mb-1 font-bold uppercase tracking-wider text-black">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9.5px]">Instructors on Leave / Duty / Sick / Absent</span>
+              {displayedUnavailable.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-black text-white text-[7.5px] font-bold font-mono">
+                  Total: {displayedUnavailable.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[7.5px] font-mono text-slate-700">Daily Faculty Status</span>
           </div>
-        )}
-      </div>
+
+          {displayedUnavailable.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+              {displayedUnavailable.map((item) => {
+                const label =
+                  item.type === 'LEAVE'
+                    ? 'ON LEAVE'
+                    : item.type === 'DUTY'
+                    ? 'ON DUTY'
+                    : item.type === 'SICK'
+                    ? 'SICK / MEDICAL'
+                    : 'ABSENT';
+
+                return (
+                  <div
+                    key={item.teacherId}
+                    className="border border-black/40 bg-white p-1 rounded-xs"
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <span className="font-mono font-bold text-black text-[8.5px]">
+                        [{item.code}]
+                      </span>
+                      <span className="text-[7px] font-bold px-1 py-0.2 rounded border border-black uppercase bg-slate-100 text-black">
+                        {label}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-slate-900 text-[8.5px] truncate">
+                      {item.name}
+                    </div>
+                    {item.remark && (
+                      <div className="text-[7.5px] text-slate-600 truncate mt-0.5 italic">
+                        Remark: {item.remark}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-slate-700 font-medium italic py-0.5 text-[8px]">
+              Nil — All instructors available and on active duty today.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Paper-Wise Syllabus Content & Directives Note Section */}
       {routine.notes && (
@@ -346,27 +450,40 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
       )}
 
       {/* Official Signature: Authority & Institution only */}
-      <div className="mt-4 pt-2 border-t-2 border-black flex justify-end break-inside-avoid">
-        <div className="text-center font-bold text-xs text-black min-w-[200px]">
-          <div className="border-b border-black mb-1 pb-6">
-            {/* Space for physical signature / seal */}
+      {printConfig.showSignatures !== false && (
+        <div className="mt-4 pt-2 flex justify-end break-inside-avoid">
+          <div className="text-center font-bold text-xs text-black min-w-[200px]">
+            <div className="border-b border-black mb-1 pb-6">
+              {/* Space for physical signature / seal */}
+            </div>
+            <div className="uppercase tracking-wider font-extrabold text-[11px]">
+              {settings?.signatoryDesignation || 'O/C STC (Indoor)'}
+            </div>
+            <div className="text-[10px] font-semibold text-slate-800">
+              {settings?.institutionName || 'STC, SAP 4th Bn'}
+            </div>
           </div>
-          <div className="uppercase tracking-wider font-extrabold text-[11px]">
-            {settings?.signatoryDesignation || 'O/C STC (Indoor)'}
-          </div>
-          <div className="text-[10px] font-semibold text-slate-800">
-            {settings?.institutionName || 'STC, SAP 4th Bn'}
-          </div>
+        </div>
+      )}
+
+      {/* Official Bottom Footer: Date Generated on Bottom-Left */}
+      <div className="mt-3 pt-1 flex items-center justify-between text-[9px] font-mono text-slate-700 break-inside-avoid">
+        <div>
+          Date Generated: <strong className="text-black font-bold">{routine.date}</strong>
+        </div>
+        <div className="text-slate-500 font-sans">
+          STC, SAP 4th Bn · Official Academic Record
         </div>
       </div>
     </div>
   );
 
   // If used as modal preview on screen
-  if (isModalPreview) {
+  if (onClosePreview) {
+    if (!shouldRender) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs no-print">
-        <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs no-print ${backdropAnimationClass}`}>
+        <div className={`bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden ${modalAnimationClass}`}>
           {/* Modal Header with Layout Mode Controls */}
           <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 no-print">
             <div className="flex items-center gap-2">
@@ -412,13 +529,37 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
                 </button>
               </div>
 
+              {/* Download Excel (.xls) */}
+              <button
+                type="button"
+                onClick={handleDownloadRoutineExcel}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs cursor-pointer"
+                title="Save routine directly to exports folder as Excel spreadsheet"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Download Excel</span>
+              </button>
+
+              {/* Download PDF (.pdf) */}
+              <button
+                type="button"
+                onClick={handleDownloadRoutinePdf}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-rose-600 text-white hover:bg-rose-700 shadow-xs cursor-pointer"
+                title="Save routine directly to exports folder as official PDF"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Download PDF</span>
+              </button>
+
               {/* Print Button */}
               <button
+                type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 shadow-2xs cursor-pointer"
+                title="Print this document or Save as PDF via browser print dialog"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Print Document / Save PDF</span>
+                <span>Browser Print</span>
               </button>
 
               {onClosePreview && (
@@ -432,6 +573,14 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
             </div>
           </div>
 
+          {/* Toast Notification */}
+          {downloadMsg && (
+            <div className="bg-emerald-50 text-emerald-800 px-4 py-2 text-xs font-semibold border-b border-emerald-200 flex items-center justify-between animate-in fade-in">
+              <span>{downloadMsg}</span>
+              <button type="button" onClick={() => setDownloadMsg(null)} className="text-emerald-600 hover:text-emerald-900 font-bold ml-2">✕</button>
+            </div>
+          )}
+
           {/* Sheet Preview Body */}
           <div className="overflow-y-auto p-4 bg-slate-100 flex-1">
             <div className="bg-white shadow-md border border-slate-300 rounded p-4">
@@ -443,10 +592,11 @@ export const PrintableRoutine: React.FC<PrintableRoutineProps> = ({
     );
   }
 
-  // Standalone print sheet for browser's native window.print()
-  return (
+  // Standalone print sheet for browser's native window.print() (Portaled directly to body)
+  return createPortal(
     <div id="printable-routine-document" className="print-only">
       {content}
-    </div>
+    </div>,
+    document.body
   );
 };

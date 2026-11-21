@@ -2,6 +2,9 @@
   "id": "routine-day-1",
   "dayNumber": 1,
   "date": "2026-10-27",
+  "status": "published",
+  "isLocked": true,
+  "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
   "absentTeacherIds": [
     "T19"
   ],
@@ -40,59 +43,66 @@
   },
   "prioritySubjectMinPeriods": {},
   "excludedPaperIds": [],
+  "teacherOffPeriods": {},
+  "practicalConfig": {},
   "slots": [
     {
       "id": "slot-1-OB-1-P1",
       "roomId": "OB-1",
       "period": 1,
-      "paperId": "P03",
-      "teacherId": "T10",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-2-P1",
       "roomId": "OB-2",
       "period": 1,
-      "paperId": "P03",
-      "teacherId": "T9",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-3-P1",
       "roomId": "OB-3",
       "period": 1,
-      "paperId": "P09",
-      "teacherId": "T18",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-4-P1",
       "roomId": "OB-4",
       "period": 1,
-      "paperId": "P12",
-      "teacherId": "T26",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-5-P1",
       "roomId": "OB-5",
       "period": 1,
-      "paperId": "P06",
-      "teacherId": "T15",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-6-P1",
       "roomId": "OB-6",
       "period": 1,
-      "paperId": "P02",
-      "teacherId": "T6",
-      "isSubstitute": false,
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
       "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-1 was unavailable",
       "isPriority": false
     },
@@ -100,227 +110,241 @@
       "id": "slot-1-OB-7-P1",
       "roomId": "OB-7",
       "period": 1,
-      "paperId": "P03",
-      "teacherId": "T8",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-8-P1",
       "roomId": "OB-8",
       "period": 1,
-      "paperId": "P05",
-      "teacherId": "T13",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-1-P1",
       "roomId": "NB-1",
       "period": 1,
-      "paperId": "P12",
-      "teacherId": "T24",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-2-P1",
       "roomId": "NB-2",
       "period": 1,
-      "paperId": "P12",
-      "teacherId": "T25",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-3-P1",
       "roomId": "NB-3",
       "period": 1,
-      "paperId": "P04",
-      "teacherId": "T11",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-CR-NB-12-1793034850769-P1",
       "roomId": "CR-NB-12-1793034850769",
       "period": 1,
-      "paperId": "P12",
-      "teacherId": "T21",
+      "paperId": "",
+      "teacherId": "",
       "isSubstitute": true,
       "substituteReason": "Substituted with alternate available subject [Paper-1] Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS) because primary instructor of Paper-2 was unavailable",
-      "isPriority": false,
-      "originalTeacherId": "T24"
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-13-1793034866049-P1",
       "roomId": "CR-NB-13-1793034866049",
       "period": 1,
-      "paperId": "P12",
-      "teacherId": "T23",
+      "paperId": "",
+      "teacherId": "",
       "isSubstitute": true,
       "substituteReason": "Substituted with alternate available subject [Paper-3] Central Minor Acts and Special Laws because primary instructor of Paper-5 was unavailable",
-      "isPriority": false,
-      "originalTeacherId": "T24"
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-14-1793034895859-P1",
       "roomId": "CR-NB-14-1793034895859",
       "period": 1,
-      "paperId": "P05",
-      "teacherId": "T12",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-CR-NB-15-1793034922650-P1",
       "roomId": "CR-NB-15-1793034922650",
       "period": 1,
-      "paperId": "P07",
-      "teacherId": "T16",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-1-P2",
       "roomId": "OB-1",
       "period": 2,
-      "paperId": "P08",
-      "teacherId": "T17",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-2-P2",
       "roomId": "OB-2",
       "period": 2,
-      "paperId": "P12",
-      "teacherId": "T26",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-3-P2",
       "roomId": "OB-3",
       "period": 2,
-      "paperId": "P01",
-      "teacherId": "T1",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-4-P2",
       "roomId": "OB-4",
       "period": 2,
-      "paperId": "P05",
-      "teacherId": "T13",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-5-P2",
       "roomId": "OB-5",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T9",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-6-P2",
       "roomId": "OB-6",
       "period": 2,
-      "paperId": "P01",
-      "teacherId": "T2",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-7-P2",
       "roomId": "OB-7",
       "period": 2,
-      "paperId": "P06",
-      "teacherId": "T14",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-8-P2",
       "roomId": "OB-8",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T8",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-1-P2",
       "roomId": "NB-1",
       "period": 2,
-      "paperId": "P11",
-      "teacherId": "T23",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-2-P2",
       "roomId": "NB-2",
       "period": 2,
-      "paperId": "P05",
-      "teacherId": "T12",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-NB-3-P2",
       "roomId": "NB-3",
       "period": 2,
-      "paperId": "P10",
-      "teacherId": "T20",
+      "paperId": "",
+      "teacherId": "",
       "isSubstitute": true,
       "isPriority": false,
-      "originalTeacherId": "T19",
       "substituteReason": "Reassigned from T19 (DUTY): Co-primary instructor [T20] SI(UB) Sankar Bhowmick"
     },
     {
       "id": "slot-1-CR-NB-12-1793034850769-P2",
       "roomId": "CR-NB-12-1793034850769",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T11",
+      "paperId": "",
+      "teacherId": "",
       "isSubstitute": true,
       "isPriority": false,
-      "originalTeacherId": "T8",
       "substituteReason": "Nearest Related Subject Substitute Instructor"
     },
     {
       "id": "slot-1-CR-NB-13-1793034866049-P2",
       "roomId": "CR-NB-13-1793034866049",
       "period": 2,
-      "paperId": "P03",
-      "teacherId": "T16",
+      "paperId": "",
+      "teacherId": "",
       "isSubstitute": true,
       "substituteReason": "Substituted with alternate available subject [Paper-2] Bharatiya Nyaya Sanhita 2023 (BNS) because primary instructor of Paper-1 was unavailable",
-      "isPriority": false,
-      "originalTeacherId": "T8"
+      "isPriority": false
     },
     {
       "id": "slot-1-CR-NB-14-1793034895859-P2",
       "roomId": "CR-NB-14-1793034895859",
       "period": 2,
-      "paperId": "P02",
-      "teacherId": "T4",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-CR-NB-15-1793034922650-P2",
       "roomId": "CR-NB-15-1793034922650",
       "period": 2,
-      "paperId": "P02",
-      "teacherId": "T7",
-      "isSubstitute": false,
-      "isPriority": false
+      "paperId": "",
+      "teacherId": "",
+      "isSubstitute": true,
+      "isPriority": false,
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
     },
     {
       "id": "slot-1-OB-1-P3",
@@ -761,16 +785,5 @@
     }
   ],
   "createdAt": "2026-10-28T17:33:51.558Z",
-  "updatedAt": "2026-11-01T13:11:23.236Z",
-  "isLocked": true,
-  "status": "published",
-  "notes": "Training Day 1: Foundational BNSS & BNS Criminal Law Modules",
-  "unavailableTeachers": [
-    {
-      "teacherId": "T19",
-      "type": "DUTY",
-      "remark": "Special / Law & Order / Campus Duty",
-      "date": "2026-10-27"
-    }
-  ]
+  "updatedAt": "2026-11-07T11:15:24.458Z"
 }

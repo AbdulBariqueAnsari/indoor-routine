@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { Classroom, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
 import {
   Award,
   BarChart2,
@@ -192,14 +192,15 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
         let diff = 0;
         if (sortBy === 'total') {
           diff = b.totalSessions - a.totalSessions;
+          if (diff === 0) return compareTeacherCodes(a.teacher, b.teacher);
         } else if (sortBy === 'today') {
           diff = b.todaySessions - a.todaySessions;
+          if (diff === 0) return compareTeacherCodes(a.teacher, b.teacher);
         } else if (sortBy === 'code') {
-          const numA = parseInt(a.teacher.code.replace(/\D/g, '') || '0', 10);
-          const numB = parseInt(b.teacher.code.replace(/\D/g, '') || '0', 10);
-          diff = numA - numB;
+          diff = compareTeacherCodes(b.teacher, a.teacher);
         } else if (sortBy === 'name') {
-          diff = a.teacher.name.localeCompare(b.teacher.name);
+          diff = b.teacher.name.localeCompare(a.teacher.name);
+          if (diff === 0) return compareTeacherCodes(a.teacher, b.teacher);
         }
 
         return sortDirection === 'asc' ? -diff : diff;
@@ -207,77 +208,77 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
   }, [ledgerStats, searchTerm, buildingFilter, sortBy, sortDirection]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-5 shadow-sm border border-slate-800">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-3.5 sm:p-4 shadow-2xs border border-slate-800">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-white/10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-amber-400 text-slate-950 tracking-wider">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-400 text-slate-950 tracking-wider">
                 Instructor Workload Ledger
               </span>
-              <span className="text-xs text-indigo-200">
+              <span className="text-[11px] text-indigo-200">
                 Official Session Tracker · T1 through T{teachers.length}
               </span>
             </div>
-            <h2 className="text-lg font-bold text-white mt-1">
+            <h2 className="text-base sm:text-lg font-bold text-white mt-0.5">
               Instructor Session Ledger & Duty Tracker
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
+            <p className="text-[11px] text-slate-300 mt-0.5 max-w-2xl">
               Real-time calculation of total sessions conducted by each instructor (T1–T{teachers.length}) across generated daily routines. Tracks past completed sessions, today's schedule, substitute duties, and per-subject breakdown.
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-mono bg-white/10 px-3 py-1.5 rounded-lg border border-white/20">
+            <span className="text-xs font-mono bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
               Total Academy Routines: <strong>{allRoutines.length}</strong>
             </span>
           </div>
         </div>
 
         {/* 4 Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 text-xs">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
               <Layers className="w-3.5 h-3.5 text-indigo-400" />
               <span>Total Sessions Conducted</span>
             </div>
-            <div className="text-xl font-bold font-mono text-white mt-1">
+            <div className="text-lg font-bold font-mono text-white mt-0.5">
               {totalAcademySessions}{' '}
-              <span className="text-xs font-normal text-slate-400">sessions</span>
+              <span className="text-[10px] font-normal text-slate-400">sessions</span>
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
               <span>Average Workload</span>
             </div>
-            <div className="text-xl font-bold font-mono text-amber-300 mt-1">
+            <div className="text-lg font-bold font-mono text-amber-300 mt-0.5">
               {avgSessionsPerInstructor}{' '}
-              <span className="text-xs font-normal text-slate-400">per instructor</span>
+              <span className="text-[10px] font-normal text-slate-400">per instructor</span>
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
               <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Active Today</span>
             </div>
-            <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
+            <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">
               {activeInstructorsToday} / {teachers.length}{' '}
-              <span className="text-xs font-normal text-slate-400">instructors</span>
+              <span className="text-[10px] font-normal text-slate-400">instructors</span>
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+          <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px]">
               <Sparkles className="w-3.5 h-3.5 text-rose-400" />
               <span>Substitutions Handled</span>
             </div>
-            <div className="text-xl font-bold font-mono text-rose-300 mt-1">
+            <div className="text-lg font-bold font-mono text-rose-300 mt-0.5">
               {totalSubstituteSessions}{' '}
-              <span className="text-xs font-normal text-slate-400">sessions</span>
+              <span className="text-[10px] font-normal text-slate-400">sessions</span>
             </div>
           </div>
         </div>
@@ -534,17 +535,17 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
             <table className="w-full text-left border-collapse text-xs min-w-[700px] sm:min-w-full">
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="p-3 w-16 text-center border-r border-slate-200 sticky left-0 z-20 bg-slate-100">Code</th>
-                  <th className="p-3 border-r border-slate-200 min-w-44 sticky left-16 z-20 bg-slate-100 shadow-xs">Instructor Name & Role</th>
-                  <th className="p-3 border-r border-slate-200 w-32">Campus Role</th>
-                  <th className="p-3 text-right border-r border-slate-200 w-24 sm:w-28">Past</th>
-                  <th className="p-3 text-right border-r border-slate-200 w-24 sm:w-28">Today</th>
-                  <th className="p-3 text-right border-r border-slate-200 w-28 sm:w-32 bg-indigo-50/50 font-extrabold text-indigo-900">
+                  <th className="p-2 sm:p-2.5 w-14 text-center border-r border-slate-200 sticky left-0 z-20 bg-slate-100">Code</th>
+                  <th className="p-2 sm:p-2.5 border-r border-slate-200 min-w-40 sticky left-14 z-20 bg-slate-100 shadow-xs">Instructor Name & Role</th>
+                  <th className="p-2 sm:p-2.5 border-r border-slate-200 w-28">Campus Role</th>
+                  <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 w-20 sm:w-24">Past</th>
+                  <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 w-20 sm:w-24">Today</th>
+                  <th className="p-2 sm:p-2.5 text-right border-r border-slate-200 w-24 sm:w-28 bg-indigo-50/50 font-extrabold text-indigo-900">
                     Total
                   </th>
-                  <th className="p-3 text-center border-r border-slate-200 w-24 sm:w-28">Subs</th>
-                  <th className="p-3 min-w-56 sm:min-w-72">Subject-Wise Breakdown</th>
-                  <th className="p-3 w-28 text-center">Today's Status</th>
+                  <th className="p-2 sm:p-2.5 text-center border-r border-slate-200 w-20 sm:w-24">Subs</th>
+                  <th className="p-2 sm:p-2.5 min-w-52 sm:min-w-64">Subject-Wise Breakdown</th>
+                  <th className="p-2 sm:p-2.5 w-24 text-center">Today's Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -558,18 +559,18 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                       }`}
                     >
                       {/* Instructor Code (Sticky) */}
-                      <td className="p-3 text-center border-r border-slate-200 align-top sticky left-0 z-10 bg-white">
-                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200 font-mono font-bold text-indigo-700 text-xs">
+                      <td className="p-2 sm:p-2.5 text-center border-r border-slate-200 align-top sticky left-0 z-10 bg-white">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 font-mono font-bold text-indigo-700 text-xs">
                           {t.code}
                         </span>
                       </td>
 
                       {/* Instructor Name & Designation (Sticky) */}
-                      <td className="p-3 border-r border-slate-200 align-top sticky left-16 z-10 bg-white shadow-xs">
-                        <div className="font-bold text-slate-900 text-sm">{t.name}</div>
-                        <div className="text-[11px] text-slate-500">{t.designation}</div>
+                      <td className="p-2 sm:p-2.5 border-r border-slate-200 align-top sticky left-14 z-10 bg-white shadow-xs">
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm">{t.name}</div>
+                        <div className="text-[10px] text-slate-500">{t.designation}</div>
                         {/* Primary Subject Badges */}
-                        <div className="flex flex-wrap gap-1 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-1">
                           {t.primaryPaperIds.map((pid) => {
                             const p = paperMap.get(pid);
                             return (
@@ -587,9 +588,9 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                       </td>
 
                     {/* Assigned Campus Building */}
-                    <td className="p-3 border-r border-slate-200 align-top">
+                    <td className="p-2 sm:p-2.5 border-r border-slate-200 align-top">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
                           t.assignedBuilding === 'OLD'
                             ? 'bg-amber-100 text-amber-900 border border-amber-300'
                             : t.assignedBuilding === 'NEW'
@@ -606,24 +607,24 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                     </td>
 
                     {/* Past Sessions */}
-                    <td className="p-3 text-right font-mono font-semibold text-slate-700 border-r border-slate-200 align-top">
+                    <td className="p-2 sm:p-2.5 text-right font-mono font-semibold text-slate-700 border-r border-slate-200 align-top">
                       {item.pastSessions}
                     </td>
 
                     {/* Conducted Today */}
-                    <td className="p-3 text-right font-mono font-bold text-indigo-700 border-r border-slate-200 align-top">
+                    <td className="p-2 sm:p-2.5 text-right font-mono font-bold text-indigo-700 border-r border-slate-200 align-top">
                       {item.todaySessions > 0 ? `+${item.todaySessions}` : '0'}
                     </td>
 
                     {/* Total Sessions Conducted */}
-                    <td className="p-3 text-right font-mono font-extrabold text-indigo-950 bg-indigo-50/40 border-r border-slate-200 align-top text-sm">
+                    <td className="p-2 sm:p-2.5 text-right font-mono font-extrabold text-indigo-950 bg-indigo-50/40 border-r border-slate-200 align-top text-xs sm:text-sm">
                       {item.totalSessions}
                     </td>
 
                     {/* Substitutions */}
-                    <td className="p-3 text-center border-r border-slate-200 align-top">
+                    <td className="p-2 sm:p-2.5 text-center border-r border-slate-200 align-top">
                       {item.substituteSessions > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 font-mono">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 font-mono">
                           {item.substituteSessions} duties
                         </span>
                       ) : (
@@ -632,16 +633,16 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                     </td>
 
                     {/* Subject-Wise Breakdown */}
-                    <td className="p-3 align-top">
+                    <td className="p-2 sm:p-2.5 align-top">
                       {item.paperBreakdown.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1">
                           {item.paperBreakdown.map((pb) => (
                             <div
                               key={pb.paperId}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px]"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px]"
                             >
                               <span
-                                className="w-2 h-2 rounded-full shrink-0"
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
                                 style={{ backgroundColor: pb.paperColor }}
                               ></span>
                               <span className="font-mono font-bold text-slate-800">
@@ -654,17 +655,17 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400 italic">No sessions yet</span>
+                        <span className="text-[10px] text-slate-400 italic">No sessions yet</span>
                       )}
 
                       {/* Today's Period Slots if scheduled today */}
                       {item.todayPeriods.length > 0 && (
-                        <div className="mt-1.5 text-[10px] text-slate-500 flex flex-wrap items-center gap-1">
+                        <div className="mt-1 text-[10px] text-slate-500 flex flex-wrap items-center gap-1">
                           <span className="font-semibold text-slate-700">Today:</span>
                           {item.todayPeriods.map((tp, idx) => (
                             <span
                               key={idx}
-                              className={`px-1.5 py-0.2 rounded font-mono ${
+                              className={`px-1 py-0.2 rounded font-mono ${
                                 tp.isSubstitute
                                   ? 'bg-amber-100 text-amber-900 border border-amber-200 font-bold'
                                   : 'bg-slate-100 text-slate-700'
@@ -679,7 +680,7 @@ export const InstructorLedgerView: React.FC<InstructorLedgerViewProps> = ({
                     </td>
 
                     {/* Today's Status */}
-                    <td className="p-3 text-center align-top">
+                    <td className="p-2 sm:p-2.5 text-center align-top">
                       {item.isOnLeaveToday ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
                           <UserX className="w-3 h-3 text-rose-600" />

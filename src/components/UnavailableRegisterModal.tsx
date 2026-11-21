@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Classroom, ClassSlot, DailyRoutine, Paper, Teacher, UnavailableInstructor, UnavailabilityType } from '../types';
+import { Classroom, ClassSlot, compareTeacherCodes, DailyRoutine, Paper, Teacher, UnavailableInstructor, UnavailabilityType } from '../types';
 import { PERIOD_TIMINGS } from '../data/initialData';
 import {
   AlertCircle,
@@ -24,6 +24,7 @@ import {
   UserX,
   X,
 } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface UnavailableRegisterModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
   papers,
   onUpdateRoutine,
 }) => {
-  if (!isOpen) return null;
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
 
   const [activeTab, setActiveTab] = useState<'register' | 'period_matrix'>('register');
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,7 +170,8 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
             const primarySubs = (paper?.primaryTeacherIds || [])
               .filter((id) => id !== teacher.id && !newAbsentTeacherIds.includes(id) && !busyInPeriod.has(id))
               .map((id) => teacherMap.get(id)!)
-              .filter(Boolean);
+              .filter(Boolean)
+              .sort(compareTeacherCodes);
 
             if (primarySubs.length > 0) {
               bestSub = primarySubs[0];
@@ -178,14 +180,16 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
 
             // 2. Backup instructors
             if (!bestSub) {
-              const backupSubs = teachers.filter(
-                (t) =>
-                  t.id !== teacher.id &&
-                  !newAbsentTeacherIds.includes(t.id) &&
-                  !busyInPeriod.has(t.id) &&
-                  ((t.backupPaperIds && t.backupPaperIds.includes(slot.paperId)) ||
-                    (t.secondaryPaperIds && t.secondaryPaperIds.includes(slot.paperId)))
-              );
+              const backupSubs = teachers
+                .filter(
+                  (t) =>
+                    t.id !== teacher.id &&
+                    !newAbsentTeacherIds.includes(t.id) &&
+                    !busyInPeriod.has(t.id) &&
+                    ((t.backupPaperIds && t.backupPaperIds.includes(slot.paperId)) ||
+                      (t.secondaryPaperIds && t.secondaryPaperIds.includes(slot.paperId)))
+                )
+                .sort(compareTeacherCodes);
               if (backupSubs.length > 0) {
                 bestSub = backupSubs[0];
                 subReason = `Reassigned from ${teacher.code} (${newStatus}): Designated Backup instructor [${bestSub.code}] ${bestSub.name}`;
@@ -194,9 +198,11 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
 
             // 3. Any free instructor
             if (!bestSub) {
-              const anyFree = teachers.filter(
-                (t) => t.id !== teacher.id && !newAbsentTeacherIds.includes(t.id) && !busyInPeriod.has(t.id)
-              );
+              const anyFree = teachers
+                .filter(
+                  (t) => t.id !== teacher.id && !newAbsentTeacherIds.includes(t.id) && !busyInPeriod.has(t.id)
+                )
+                .sort(compareTeacherCodes);
               if (anyFree.length > 0) {
                 bestSub = anyFree[0];
                 subReason = `Reassigned from ${teacher.code} (${newStatus}): Available faculty [${bestSub.code}] ${bestSub.name}`;
@@ -240,7 +246,9 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
     }
   };
 
-  const filteredTeachers = teachers.filter((t) => {
+  const filteredTeachers = [...teachers]
+    .sort(compareTeacherCodes)
+    .filter((t) => {
     const q = searchTerm.toLowerCase();
     const matchSearch =
       t.name.toLowerCase().includes(q) ||
@@ -255,9 +263,11 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
     return item?.type === statusFilter;
   });
 
+  if (!shouldRender) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -657,7 +667,7 @@ export const UnavailableRegisterModal: React.FC<UnavailableRegisterModalProps> =
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {teachers.map((teacher) => {
+                    {[...teachers].sort(compareTeacherCodes).map((teacher) => {
                       const unavail = unavailableMap.get(teacher.id);
 
                       return (

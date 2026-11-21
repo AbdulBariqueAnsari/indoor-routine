@@ -1,0 +1,1325 @@
+{
+  "id": "routine-day-18",
+  "dayNumber": 18,
+  "date": "2026-11-25",
+  "absentTeacherIds": [
+    "T23",
+    "T6",
+    "T15"
+  ],
+  "priorityPaperIds": [],
+  "roomPriorityPaperIds": {},
+  "subjectPriorityTiers": {
+    "P01": "NORMAL",
+    "P02": "NORMAL",
+    "P03": "NORMAL",
+    "P04": "NORMAL",
+    "P05": "NORMAL",
+    "P06": "NORMAL",
+    "P07": "NORMAL",
+    "P08": "NORMAL",
+    "P09": "NORMAL",
+    "P10": "NORMAL",
+    "P11": "NORMAL",
+    "P12": "NORMAL",
+    "P13": "NORMAL",
+    "P14": "NORMAL"
+  },
+  "prioritySubjectMinPeriods": {},
+  "excludedPaperIds": [],
+  "practicalConfig": {
+    "enabled": true,
+    "items": [
+      {
+        "id": "prac-1",
+        "name": "Module - A01",
+        "teacherId": "T21",
+        "duration": 1,
+        "periods": [
+          5
+        ],
+        "practicalSubjectId": "PRAC-05"
+      },
+      {
+        "id": "prac-1795249863248-10",
+        "name": "Module - A01",
+        "teacherId": "T20",
+        "duration": 1,
+        "periods": [
+          1
+        ],
+        "practicalSubjectId": "PRAC-05"
+      }
+    ]
+  },
+  "examConfig": {
+    "enabled": false,
+    "name": "Examination / Assessment",
+    "targetSessions": 30,
+    "period": 5
+  },
+  "slots": [
+    {
+      "id": "slot-18-OB-1-P1",
+      "roomId": "OB-1",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-2-P1",
+      "roomId": "OB-2",
+      "period": 1,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-3-P1",
+      "roomId": "OB-3",
+      "period": 1,
+      "paperId": "P13",
+      "teacherId": "T21",
+      "isSubstitute": true,
+      "substituteReason": "Emergency / Qualified Substitute Instructor",
+      "isPriority": false,
+      "practicalName": "Module - A01",
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-4-P1",
+      "roomId": "OB-4",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-5-P1",
+      "roomId": "OB-5",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-6-P1",
+      "roomId": "OB-6",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-7-P1",
+      "roomId": "OB-7",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-8-P1",
+      "roomId": "OB-8",
+      "period": 1,
+      "paperId": "P13",
+      "teacherId": "T20",
+      "isSubstitute": true,
+      "isPriority": false,
+      "practicalName": "Module - A01",
+      "practicalSubjectId": "PRAC-05",
+      "isExam": false,
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
+    },
+    {
+      "id": "slot-18-NB-1-P1",
+      "roomId": "NB-1",
+      "period": 1,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-2-P1",
+      "roomId": "NB-2",
+      "period": 1,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-3-P1",
+      "roomId": "NB-3",
+      "period": 1,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-12-1793034850769-P1",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 1,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-13-1793034866049-P1",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 1,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-14-1793034895859-P1",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 1,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-15-1793034922650-P1",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 1,
+      "paperId": "P14",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-1-P2",
+      "roomId": "OB-1",
+      "period": 2,
+      "paperId": "P14",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-2-P2",
+      "roomId": "OB-2",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-3-P2",
+      "roomId": "OB-3",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-4-P2",
+      "roomId": "OB-4",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-5-P2",
+      "roomId": "OB-5",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-6-P2",
+      "roomId": "OB-6",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-7-P2",
+      "roomId": "OB-7",
+      "period": 2,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-8-P2",
+      "roomId": "OB-8",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-1-P2",
+      "roomId": "NB-1",
+      "period": 2,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-2-P2",
+      "roomId": "NB-2",
+      "period": 2,
+      "paperId": "P14",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-3-P2",
+      "roomId": "NB-3",
+      "period": 2,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-12-1793034850769-P2",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 2,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-13-1793034866049-P2",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 2,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-14-1793034895859-P2",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 2,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-15-1793034922650-P2",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 2,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-1-P3",
+      "roomId": "OB-1",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-2-P3",
+      "roomId": "OB-2",
+      "period": 3,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-3-P3",
+      "roomId": "OB-3",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-4-P3",
+      "roomId": "OB-4",
+      "period": 3,
+      "paperId": "P14",
+      "teacherId": "T18",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-5-P3",
+      "roomId": "OB-5",
+      "period": 3,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-6-P3",
+      "roomId": "OB-6",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-7-P3",
+      "roomId": "OB-7",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-8-P3",
+      "roomId": "OB-8",
+      "period": 3,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-1-P3",
+      "roomId": "NB-1",
+      "period": 3,
+      "paperId": "P14",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-2-P3",
+      "roomId": "NB-2",
+      "period": 3,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-3-P3",
+      "roomId": "NB-3",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-12-1793034850769-P3",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 3,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-13-1793034866049-P3",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 3,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-14-1793034895859-P3",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 3,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-15-1793034922650-P3",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 3,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-1-P4",
+      "roomId": "OB-1",
+      "period": 4,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-2-P4",
+      "roomId": "OB-2",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T3",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-3-P4",
+      "roomId": "OB-3",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T5",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-4-P4",
+      "roomId": "OB-4",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T24",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-5-P4",
+      "roomId": "OB-5",
+      "period": 4,
+      "paperId": "P14",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-6-P4",
+      "roomId": "OB-6",
+      "period": 4,
+      "paperId": "P14",
+      "teacherId": "T22",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-7-P4",
+      "roomId": "OB-7",
+      "period": 4,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-8-P4",
+      "roomId": "OB-8",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T2",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-1-P4",
+      "roomId": "NB-1",
+      "period": 4,
+      "paperId": "P04",
+      "teacherId": "T11",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-2-P4",
+      "roomId": "NB-2",
+      "period": 4,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-3-P4",
+      "roomId": "NB-3",
+      "period": 4,
+      "paperId": "P13",
+      "teacherId": "T20",
+      "isSubstitute": true,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY",
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
+    },
+    {
+      "id": "slot-18-CR-NB-12-1793034850769-P4",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false,
+      "practicalName": "Module - A01",
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-13-1793034866049-P4",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 4,
+      "paperId": "P12",
+      "teacherId": "T27",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-14-1793034895859-P4",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 4,
+      "paperId": "P01",
+      "teacherId": "T1",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-15-1793034922650-P4",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 4,
+      "paperId": "P05",
+      "teacherId": "T13",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-1-P5",
+      "roomId": "OB-1",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T9",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-2-P5",
+      "roomId": "OB-2",
+      "period": 5,
+      "paperId": "P05",
+      "teacherId": "T12",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-3-P5",
+      "roomId": "OB-3",
+      "period": 5,
+      "paperId": "P08",
+      "teacherId": "T17",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-4-P5",
+      "roomId": "OB-4",
+      "period": 5,
+      "paperId": "P13",
+      "teacherId": "T21",
+      "isSubstitute": true,
+      "isPriority": false,
+      "practicalName": "Module - A01",
+      "practicalSubjectId": "PRAC-05",
+      "isExam": false,
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Emergency / Qualified Substitute Instructor"
+    },
+    {
+      "id": "slot-18-OB-5-P5",
+      "roomId": "OB-5",
+      "period": 5,
+      "paperId": "P06",
+      "teacherId": "T14",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-6-P5",
+      "roomId": "OB-6",
+      "period": 5,
+      "paperId": "P09",
+      "teacherId": "T18",
+      "isSubstitute": true,
+      "substituteReason": "Main subject completed in classroom - assigned option subject",
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-7-P5",
+      "roomId": "OB-7",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T26",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-OB-8-P5",
+      "roomId": "OB-8",
+      "period": 5,
+      "paperId": "P14",
+      "teacherId": "T19",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-1-P5",
+      "roomId": "NB-1",
+      "period": 5,
+      "paperId": "P12",
+      "teacherId": "T25",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-2-P5",
+      "roomId": "NB-2",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T8",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-NB-3-P5",
+      "roomId": "NB-3",
+      "period": 5,
+      "paperId": "P03",
+      "teacherId": "T10",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-12-1793034850769-P5",
+      "roomId": "CR-NB-12-1793034850769",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T4",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-13-1793034866049-P5",
+      "roomId": "CR-NB-13-1793034866049",
+      "period": 5,
+      "paperId": "P07",
+      "teacherId": "T16",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-14-1793034895859-P5",
+      "roomId": "CR-NB-14-1793034895859",
+      "period": 5,
+      "paperId": "P13",
+      "teacherId": "T20",
+      "isSubstitute": true,
+      "substituteReason": "Emergency / Qualified Substitute Instructor",
+      "isPriority": false,
+      "practicalName": "Module - A01",
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    },
+    {
+      "id": "slot-18-CR-NB-15-1793034922650-P5",
+      "roomId": "CR-NB-15-1793034922650",
+      "period": 5,
+      "paperId": "P02",
+      "teacherId": "T7",
+      "isSubstitute": false,
+      "isPriority": false,
+      "isExam": false,
+      "theoryOrPractical": "THEORY"
+    }
+  ],
+  "createdAt": "2026-11-21T08:44:53.076Z",
+  "updatedAt": "2026-11-21T08:58:08.353Z",
+  "isLocked": true,
+  "status": "published",
+  "notes": "STC, SAP 4th Bn Day 18 Routine (2026-11-25) - 3 instructors unavailable, 0 subjects excluded",
+  "generationAudit": {
+    "totalCapacity": 75,
+    "totalRemainingDemand": 8940,
+    "totalAdjustedDemand": 8940,
+    "allocations": [
+      {
+        "paperId": "P01",
+        "paperCode": "Paper-1",
+        "title": "Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS)",
+        "remainingSessions": 550,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 550,
+        "allocationPercentage": 6.152125279642058,
+        "idealSessions": 4.614093959731544,
+        "integerTarget": 6,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P02",
+        "paperCode": "Paper-2",
+        "title": "Bharatiya Nyaya Sanhita 2023 (BNS)",
+        "remainingSessions": 657,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 657,
+        "allocationPercentage": 7.348993288590604,
+        "idealSessions": 5.511744966442953,
+        "integerTarget": 7,
+        "assignedCount": 8
+      },
+      {
+        "paperId": "P03",
+        "paperCode": "Paper-3",
+        "title": "Central Minor Acts and Special Laws",
+        "remainingSessions": 609,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 609,
+        "allocationPercentage": 6.8120805369127515,
+        "idealSessions": 5.109060402684563,
+        "integerTarget": 6,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P04",
+        "paperCode": "Paper-4",
+        "title": "Bharatiya Sakshya Adhiniyam 2023 (BSA)",
+        "remainingSessions": 295,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 295,
+        "allocationPercentage": 3.2997762863534676,
+        "idealSessions": 2.4748322147651005,
+        "integerTarget": 3,
+        "assignedCount": 4
+      },
+      {
+        "paperId": "P05",
+        "paperCode": "Paper-5",
+        "title": "Forensics",
+        "remainingSessions": 422,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 422,
+        "allocationPercentage": 4.720357941834452,
+        "idealSessions": 3.540268456375839,
+        "integerTarget": 5,
+        "assignedCount": 6
+      },
+      {
+        "paperId": "P06",
+        "paperCode": "Paper-6",
+        "title": "ICT and Cyber Investigation",
+        "remainingSessions": 494,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 494,
+        "allocationPercentage": 5.52572706935123,
+        "idealSessions": 4.144295302013423,
+        "integerTarget": 5,
+        "assignedCount": 6
+      },
+      {
+        "paperId": "P07",
+        "paperCode": "Paper-7",
+        "title": "Criminology and Crime Prevention",
+        "remainingSessions": 207,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 207,
+        "allocationPercentage": 2.315436241610738,
+        "idealSessions": 1.7365771812080535,
+        "integerTarget": 3,
+        "assignedCount": 4
+      },
+      {
+        "paperId": "P08",
+        "paperCode": "Paper-8",
+        "title": "Police Organization and Administration",
+        "remainingSessions": 73,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 73,
+        "allocationPercentage": 0.8165548098434003,
+        "idealSessions": 0.6124161073825503,
+        "integerTarget": 2,
+        "assignedCount": 3
+      },
+      {
+        "paperId": "P09",
+        "paperCode": "Paper-9",
+        "title": "Police Station Management",
+        "remainingSessions": 361,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 361,
+        "allocationPercentage": 4.038031319910514,
+        "idealSessions": 3.0285234899328857,
+        "integerTarget": 4,
+        "assignedCount": 5
+      },
+      {
+        "paperId": "P10",
+        "paperCode": "Paper-10",
+        "title": "Personal Development",
+        "remainingSessions": 511,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 511,
+        "allocationPercentage": 5.715883668903803,
+        "idealSessions": 4.2869127516778525,
+        "integerTarget": 5,
+        "assignedCount": 7
+      },
+      {
+        "paperId": "P11",
+        "paperCode": "Paper-11",
+        "title": "Internal Security and Public Order",
+        "remainingSessions": 487,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 487,
+        "allocationPercentage": 5.447427293064877,
+        "idealSessions": 4.0855704697986575,
+        "integerTarget": 4,
+        "assignedCount": 5
+      },
+      {
+        "paperId": "P12",
+        "paperCode": "Paper-12",
+        "title": "Ethics and Accountability",
+        "remainingSessions": 648,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 648,
+        "allocationPercentage": 7.248322147651007,
+        "idealSessions": 5.4362416107382545,
+        "integerTarget": 5,
+        "assignedCount": 5
+      },
+      {
+        "paperId": "P13",
+        "paperCode": "Paper-13",
+        "title": "Practical (Hands on)",
+        "remainingSessions": 3034,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 3034,
+        "allocationPercentage": 33.93736017897091,
+        "idealSessions": 25.453020134228186,
+        "integerTarget": 15,
+        "assignedCount": 2
+      },
+      {
+        "paperId": "P14",
+        "paperCode": "Optional",
+        "title": "State Specific Inputs",
+        "remainingSessions": 592,
+        "priorityTier": "NORMAL",
+        "priorityMultiplier": 1,
+        "adjustedDemand": 592,
+        "allocationPercentage": 6.621923937360179,
+        "idealSessions": 4.966442953020134,
+        "integerTarget": 5,
+        "assignedCount": 6
+      }
+    ],
+    "teacherWorkloads": [
+      {
+        "teacherId": "T1",
+        "teacherName": "SI(UB) Md Jalaluddin",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T2",
+        "teacherName": "SI(AB) Hazrat Belal",
+        "initialLoad": 48,
+        "todayLoad": 2,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T3",
+        "teacherName": "ASI(UB) Surojit Kr. Das",
+        "initialLoad": 44,
+        "todayLoad": 4,
+        "totalLoad": 48
+      },
+      {
+        "teacherId": "T4",
+        "teacherName": "ASI(AB) Prabir Sarkar",
+        "initialLoad": 48,
+        "todayLoad": 4,
+        "totalLoad": 52
+      },
+      {
+        "teacherId": "T5",
+        "teacherName": "SI(UB) Kaushik Sarkar",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T6",
+        "teacherName": "SI(UB) Biswajit Saha",
+        "initialLoad": 44,
+        "todayLoad": 0,
+        "totalLoad": 44
+      },
+      {
+        "teacherId": "T7",
+        "teacherName": "SI(UB) Sadhan Kr Roy",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T8",
+        "teacherName": "SI(UB) Ebadul Ali Mondal",
+        "initialLoad": 46,
+        "todayLoad": 4,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T9",
+        "teacherName": "SI(UB) Tika Kr. Damai",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T10",
+        "teacherName": "SI(UB) Bhudeb Ch. Ghosh",
+        "initialLoad": 48,
+        "todayLoad": 2,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T11",
+        "teacherName": "SI(UB) Ratan Sarkar",
+        "initialLoad": 48,
+        "todayLoad": 3,
+        "totalLoad": 51
+      },
+      {
+        "teacherId": "T12",
+        "teacherName": "SI(UB) Abdul Samad",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T13",
+        "teacherName": "SI(UB) Rassel Hossain",
+        "initialLoad": 41,
+        "todayLoad": 4,
+        "totalLoad": 45
+      },
+      {
+        "teacherId": "T14",
+        "teacherName": "ASI(W) Noor Alam",
+        "initialLoad": 47,
+        "todayLoad": 4,
+        "totalLoad": 51
+      },
+      {
+        "teacherId": "T15",
+        "teacherName": "ASI(UB) Nripen Ch Roy",
+        "initialLoad": 48,
+        "todayLoad": 0,
+        "totalLoad": 48
+      },
+      {
+        "teacherId": "T16",
+        "teacherName": "SI(UB) Ghanashyam Mahato",
+        "initialLoad": 48,
+        "todayLoad": 2,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T17",
+        "teacherName": "SI(AB) Avijit Bala",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T18",
+        "teacherName": "SI(UB) Parimal Saha",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T19",
+        "teacherName": "ASI(UB) Bisu Benjamin Mardi",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T20",
+        "teacherName": "SI(UB) Sankar Bhowmick",
+        "initialLoad": 48,
+        "todayLoad": 3,
+        "totalLoad": 51
+      },
+      {
+        "teacherId": "T21",
+        "teacherName": "SI(UB) Sanjay Majumdar",
+        "initialLoad": 48,
+        "todayLoad": 2,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T22",
+        "teacherName": "SI(UB) Biman Ghosh",
+        "initialLoad": 47,
+        "todayLoad": 3,
+        "totalLoad": 50
+      },
+      {
+        "teacherId": "T23",
+        "teacherName": "SI(AB) Debashis Ray",
+        "initialLoad": 38,
+        "todayLoad": 0,
+        "totalLoad": 38
+      },
+      {
+        "teacherId": "T24",
+        "teacherName": "SI(UB) Krishnapada Barman",
+        "initialLoad": 34,
+        "todayLoad": 4,
+        "totalLoad": 38
+      },
+      {
+        "teacherId": "T25",
+        "teacherName": "SI(UB) Chandan Kr. Siddhanta",
+        "initialLoad": 44,
+        "todayLoad": 4,
+        "totalLoad": 48
+      },
+      {
+        "teacherId": "T26",
+        "teacherName": "ASI(UB) Shiben Hansda",
+        "initialLoad": 47,
+        "todayLoad": 2,
+        "totalLoad": 49
+      },
+      {
+        "teacherId": "T27",
+        "teacherName": "SI(AB) Biswajit Deb",
+        "initialLoad": 38,
+        "todayLoad": 4,
+        "totalLoad": 42
+      }
+    ],
+    "maxTeacherLoad": 52,
+    "minTeacherLoad": 38,
+    "workloadDifference": 14,
+    "vacanciesFilledCount": 13,
+    "replacementsCount": 0,
+    "noInstructorCount": 0,
+    "tier1Validation": {
+      "isValid": true,
+      "tier1Passed": true,
+      "conflicts": [],
+      "buildingConflicts": [],
+      "absentViolations": [],
+      "buildingBindingViolations": [],
+      "roomSubjectViolations": [],
+      "teacherMaxLoadViolations": [],
+      "missingSlotsCount": 0,
+      "totalSlots": 75,
+      "errorMessages": []
+    }
+  },
+  "unavailableTeachers": [
+    {
+      "teacherId": "T23",
+      "type": "REST",
+      "remark": "Rest Standby",
+      "date": "2026-11-25"
+    },
+    {
+      "teacherId": "T6",
+      "type": "REST",
+      "remark": "Rest Standby",
+      "date": "2026-11-25"
+    },
+    {
+      "teacherId": "T15",
+      "type": "REST",
+      "remark": "Rest Standby",
+      "date": "2026-11-25"
+    }
+  ]
+}

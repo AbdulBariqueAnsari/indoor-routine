@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AppSettings, BuildingInfo, Classroom, Paper, RoutineRuleConfig, Teacher } from '../types/index.ts';
+import { AppSettings, BrowserPrintConfig, BuildingInfo, Classroom, ColumnConfig, Paper, PracticalSubject, ReportPageSetupConfig, RoutineRuleConfig, Teacher } from '../types/index.ts';
 
 export const INITIAL_BUILDINGS: BuildingInfo[] = [
   {
@@ -18,7 +18,7 @@ export const INITIAL_BUILDINGS: BuildingInfo[] = [
     name: 'New School Building',
     code: 'NB',
     floors: 3,
-    description: '7 Classrooms (Room No. 1 to Room No. 7), Capacity 52 candidates each'
+    description: '7 Classrooms (Room No. 9 to Room No. 15), Capacity 52 candidates each'
   }
 ];
 
@@ -37,28 +37,10 @@ export interface MasterRuleDefinition {
 export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
   // ==========================================
   // TIER 1: INVIOLABLE CONSTRAINTS (HARD RULES)
-  // Active Rules: 1, 2, 3, 4, 5, 6, 6A, 6B, 7
+  // Note: Rule 1 (Zero Double-Booking) and Rule 2 (Absentee Exclusion)
+  // are inviolable core constraints and are always active (never toggleable).
+  // Teacher daily max periods are enforced directly from Instructor Mapping.
   // ==========================================
-  {
-    key: 'enableZeroDoubleBooking',
-    ruleNumber: 1,
-    title: '1. Strict Zero Double-Booking Guarantee',
-    category: 'Tier 1: Inviolable Constraints',
-    badge: 'Hard Rule 1',
-    tierNumber: 1,
-    description:
-      'Strictly prohibits any instructor from being scheduled in multiple classrooms simultaneously during the exact same period.',
-  },
-  {
-    key: 'enableStrictAbsenteeExclusion',
-    ruleNumber: 2,
-    title: '2. Faculty Unavailability & Leave Exclusion',
-    category: 'Tier 1: Inviolable Constraints',
-    badge: 'Hard Rule 2',
-    tierNumber: 1,
-    description:
-      'Instructors marked Absent, On Leave, Duty, or Sick in the Unavailability Register are strictly excluded from routine creation.',
-  },
   {
     key: 'enableStrictBuildingBinding',
     ruleNumber: 3,
@@ -136,14 +118,14 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
       'Available only when Rule 6A is ON. When enabled, the same subject must not be assigned in consecutive periods within the same room/class on the same day (e.g. Periods 1 and 3 allowed, Periods 1 and 2 prohibited).',
   },
   {
-    key: 'enableDailyWorkloadMaxCap',
-    ruleNumber: 7,
-    title: '7. Strict Hard-Cap: Max 4 Periods/Day per Instructor',
+    key: 'enableInstructorDesignatedOffPeriods',
+    ruleNumber: '7',
+    title: '7. Strict Instructor Designated Off-Period Protection (Excuse Rule)',
     category: 'Tier 1: Inviolable Constraints',
-    badge: 'Hard Cap <= 4',
+    badge: 'Excuse Protection',
     tierNumber: 1,
     description:
-      'Kisi bhi instructor ko ek din me 4 se jyada period allot nahi hoga (Strict hard-cap of max 4 periods per day). No instructor will ever receive a 5th period.',
+      'Strictly protects designated off/excused periods (Period 1 to 5) configured for instructors in Master Setup or Teacher Mapping. Excused instructors are never scheduled during their designated off periods.',
   },
   {
     key: 'enableTeacherLoadEqualizationPriority',
@@ -154,6 +136,26 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
     tierNumber: 1,
     description:
       'Forces equal sessions across all instructors regardless of classroom/paper quotas. Detailment prioritizes instructors with fewer cumulative sessions. In any classroom, instructors of the same paper category will not repeat. Curriculum targets are bypassed, subject is filled by teacher primary paper, and teachers are placed in classrooms with lowest prior deployments.',
+  },
+  {
+    key: 'enablePracticalConsecutiveDoublePeriodLimit',
+    ruleNumber: 9,
+    title: '9. Practical Consecutive Double-Period & Daily Quota Rule',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Practical Block 2x2=4',
+    tierNumber: 1,
+    description:
+      'Jab practical sessions active hon: (1) Practical aamtaur par 2 consecutive periods (Period 2 & 3 ya Period 4 & 5) me detail hota hai, aur single-period option se 1 period ka practical bhi configure ho sakta hai. (2) Ek classroom ek din me max 4 practical periods le sakti hai (alag-alag practical subjects ke sath). (3) Single-period practical 1 period count karta hai aur double-period practical 2 periods count karta hai teacher workload equalization me.',
+  },
+  {
+    key: 'enableSinglePeriodPractical',
+    ruleNumber: '9A',
+    title: '9A. Single-Period (1-Period) Practical Option & Flexibility',
+    category: 'Tier 1: Inviolable Constraints',
+    badge: 'Practical 1P / 2P Option',
+    tierNumber: 1,
+    description:
+      'Practical classes aamtaur par 2 consecutive periods (P2-P3 ya P4-P5) ki hoti hain, par kuch practical sessions 1-period (single period) ke bhi ho sakte hain. Is option/rule ke enable hone par practical ko 1 period ya 2 period ke roop me configure kiya ja sakta hai, jisse room schedule aur faculty deployment workload accurately 1 ya 2 periods ke hisab se distribute hota hai.',
   },
 
   // ==========================================
@@ -286,12 +288,12 @@ export const MASTER_ROUTINE_RULES: MasterRuleDefinition[] = [
   {
     key: 'enableUnvisitedRoomTeacherPrioritization',
     ruleNumber: 22,
-    title: '22. Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)',
+    title: '22. Unvisited Classroom Instructor Prioritization & Exposure Balance',
     category: 'Tier 3: Staffing & Substitution (Moto III)',
-    badge: 'Room Coverage',
+    badge: 'Room Exposure & Balance',
     tierNumber: 3,
     description:
-      'Teacher ko subject par assign karne se pehle check karein ki kya unhone us room me pehle class li hai. Building-specific instructors ke liye, unke building ke jin rooms me unhone kabhi class nahi li (0 visits), unhe highest priority par fillup kiya jaye taaki har classroom ko sabhi teachers ki classes mil sakein.',
+      'Prioritizes assigning instructors to classrooms they have never visited (0 visits), and strictly enforces the classroom exposure balance cap so that the difference between the most-visited and least-visited classroom for any instructor never exceeds 2.',
   },
   {
     key: 'enablePracticalFlexible',
@@ -321,13 +323,16 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
   enableStrictAbsenteeExclusion: true,
   enableStrictBuildingBinding: true,
   enableBuildingChangeGap: true,
-  enableBuildingChangeGapPeriod3To4Exemption: false,
+  enableBuildingChangeGapPeriod3To4Exemption: true,
   enableRoomQuotaCompletionLock: true,
   enableMaxOnePeriodPerSubjectPerRoomDaily: true,
   enableMaxRoomDailyLimit: false,
   enableNonConsecutiveGapForSameSubject: false,
   enableDailyWorkloadMaxCap: true,
+  enableInstructorDesignatedOffPeriods: true,
   enableTeacherLoadEqualizationPriority: false,
+  enablePracticalConsecutiveDoublePeriodLimit: true,
+  enableSinglePeriodPractical: true,
 
   // Tier 2: Curriculum Progression (Moto I & IV)
   enableClassroomSubjectEqualization: true,
@@ -350,9 +355,44 @@ export const DEFAULT_ROUTINE_RULES: RoutineRuleConfig = {
 };
 
 /**
- * Returns whether a given rule is currently disabled/locked based on its dependencies.
+ * Subject detailment rules (Tier 2: Curriculum Progression).
+ * When Rule 8 (Teacher Load Equalization) is ON, these rules are unavailable.
+ */
+export const SUBJECT_DETAILMENT_RULES: (keyof RoutineRuleConfig)[] = [
+  'enableClassroomSubjectEqualization',
+  'enableSubjectFacultyLoadBalancing',
+  'enablePaperRotationalFlow',
+  'enableProportionalRemainingRatio',
+  'enableSubjectPriorityTiers',
+  'enableGuaranteedPriorityPeriods',
+  'enableDayToDayProgression',
+];
+
+/**
+ * Teacher-specific detailment rules (Tier 3: Teacher Workload & Placement).
+ * When Rule 8 (Teacher Load Equalization) is OFF, these rules are unavailable.
+ */
+export const TEACHER_DETAILMENT_RULES: (keyof RoutineRuleConfig)[] = [
+  'enableWorkloadEqualization',
+  'enableDailyWorkloadSoftCap',
+  'enableUnvisitedRoomTeacherPrioritization',
+  'enableCaravanFlow',
+];
+
+/**
+ * Returns whether a given rule is currently disabled/locked based on its dependencies
+ * and Rule 8 mutual exclusivity.
  */
 export function isRuleDisabled(key: keyof RoutineRuleConfig, rules: RoutineRuleConfig): boolean {
+  // Mutual exclusivity between Teacher-First (Rule 8) and Curriculum-First detailment:
+  if (rules.enableTeacherLoadEqualizationPriority) {
+    // When Rule 8 is ON: Subject detailment rules (Rules 10-16) are unavailable
+    if (SUBJECT_DETAILMENT_RULES.includes(key)) return true;
+  } else {
+    // When Rule 8 is OFF: Teacher-specific detailment rules (Rules 17, 18, 22, 24) are unavailable
+    if (TEACHER_DETAILMENT_RULES.includes(key)) return true;
+  }
+
   if (key === 'enableBuildingChangeGapPeriod3To4Exemption') {
     // Rule 4A is disabled when Rule 4 is OFF
     return !rules.enableBuildingChangeGap;
@@ -373,8 +413,34 @@ export function isRuleDisabled(key: keyof RoutineRuleConfig, rules: RoutineRuleC
 }
 
 /**
- * Normalizes rule configuration to guarantee that dependent rules are kept inactive
- * whenever their prerequisites are not met.
+ * Returns a human-friendly explanation of why a rule is locked/unavailable.
+ */
+export function getRuleDisabledHint(key: keyof RoutineRuleConfig, rules: RoutineRuleConfig): string | undefined {
+  if (rules.enableTeacherLoadEqualizationPriority && SUBJECT_DETAILMENT_RULES.includes(key)) {
+    return 'Unavailable: Teacher-First Equalization (Rule 8) is ON';
+  }
+  if (!rules.enableTeacherLoadEqualizationPriority && TEACHER_DETAILMENT_RULES.includes(key)) {
+    return 'Unavailable: Rule 8 (Teacher-First Equalization) is OFF (Curriculum-First Mode)';
+  }
+  if (key === 'enableBuildingChangeGapPeriod3To4Exemption') {
+    return 'Available only when Rule 4 is ON';
+  }
+  if (key === 'enableMaxRoomDailyLimit') {
+    return 'Available only when Rule 6 is OFF';
+  }
+  if (key === 'enableNonConsecutiveGapForSameSubject') {
+    return 'Available only when Rule 6 is OFF and Rule 6A is ON';
+  }
+  if (key === 'replaceWithAvailableSubjectIfNoPrimary') {
+    return 'Available only when Rule 19 (No Substitute) is ON';
+  }
+  return undefined;
+}
+
+/**
+ * Normalizes rule configuration to guarantee that dependent and mutually exclusive rules
+ * are kept inactive whenever their prerequisites are not met.
+ * Also permanently enforces inviolable core rules (Rule 1 & Rule 2).
  */
 export function normalizeRuleConfig(rules: Partial<RoutineRuleConfig> = {}): RoutineRuleConfig {
   const merged: RoutineRuleConfig = {
@@ -382,9 +448,29 @@ export function normalizeRuleConfig(rules: Partial<RoutineRuleConfig> = {}): Rou
     ...rules,
   };
 
+  // Rule 1 & Rule 2 are inviolable core constraints (always enforced)
+  merged.enableZeroDoubleBooking = true;
+  merged.enableStrictAbsenteeExclusion = true;
+  merged.enableDailyWorkloadMaxCap = true;
+
+  // Mutual exclusivity between Rule 8 (Teacher-First) and Curriculum-First rules:
+  if (merged.enableTeacherLoadEqualizationPriority) {
+    // Rule 8 is ON: deactivate subject detailment rules
+    for (const k of SUBJECT_DETAILMENT_RULES) {
+      (merged as any)[k] = false;
+    }
+  } else {
+    // Rule 8 is OFF: deactivate teacher-specific detailment rules
+    for (const k of TEACHER_DETAILMENT_RULES) {
+      (merged as any)[k] = false;
+    }
+  }
+
   // Rule 4 -> Rule 4A dependency
   if (!merged.enableBuildingChangeGap) {
     merged.enableBuildingChangeGapPeriod3To4Exemption = false;
+  } else if (merged.enableBuildingChangeGapPeriod3To4Exemption === undefined) {
+    merged.enableBuildingChangeGapPeriod3To4Exemption = true;
   }
 
   // Rule 6 -> Rule 6A -> Rule 6B dependency matrix
@@ -433,14 +519,14 @@ export const INITIAL_CLASSROOMS: Classroom[] = [
   { id: 'OB-7', code: 'OB-07', name: 'Room No. 7', building: 'OLD', roomNumber: 7, floor: 2, capacity: 70 },
   { id: 'OB-8', code: 'OB-08', name: 'Room No. 8', building: 'OLD', roomNumber: 8, floor: 2, capacity: 70 },
 
-  // New School Building (7 Classrooms, Capacity: 52)
-  { id: 'NB-1', code: 'NB-01', name: 'Room No. 1', building: 'NEW', roomNumber: 1, floor: 1, capacity: 52 },
-  { id: 'NB-2', code: 'NB-02', name: 'Room No. 2', building: 'NEW', roomNumber: 2, floor: 1, capacity: 52 },
-  { id: 'NB-3', code: 'NB-03', name: 'Room No. 3', building: 'NEW', roomNumber: 3, floor: 1, capacity: 52 },
-  { id: 'NB-4', code: 'NB-04', name: 'Room No. 4', building: 'NEW', roomNumber: 4, floor: 2, capacity: 52 },
-  { id: 'NB-5', code: 'NB-05', name: 'Room No. 5', building: 'NEW', roomNumber: 5, floor: 2, capacity: 52 },
-  { id: 'NB-6', code: 'NB-06', name: 'Room No. 6', building: 'NEW', roomNumber: 6, floor: 2, capacity: 52 },
-  { id: 'NB-7', code: 'NB-07', name: 'Room No. 7', building: 'NEW', roomNumber: 7, floor: 3, capacity: 52 },
+  // New School Building (7 Classrooms, Capacity: 52, Room No. 9 to Room No. 15)
+  { id: 'NB-1', code: 'NB-01', name: 'Room No. 9', building: 'NEW', roomNumber: 9, floor: 1, capacity: 52 },
+  { id: 'NB-2', code: 'NB-02', name: 'Room No. 10', building: 'NEW', roomNumber: 10, floor: 1, capacity: 52 },
+  { id: 'NB-3', code: 'NB-03', name: 'Room No. 11', building: 'NEW', roomNumber: 11, floor: 1, capacity: 52 },
+  { id: 'NB-4', code: 'NB-04', name: 'Room No. 12', building: 'NEW', roomNumber: 12, floor: 2, capacity: 52 },
+  { id: 'NB-5', code: 'NB-05', name: 'Room No. 13', building: 'NEW', roomNumber: 13, floor: 2, capacity: 52 },
+  { id: 'NB-6', code: 'NB-06', name: 'Room No. 14', building: 'NEW', roomNumber: 14, floor: 2, capacity: 52 },
+  { id: 'NB-7', code: 'NB-07', name: 'Room No. 15', building: 'NEW', roomNumber: 15, floor: 3, capacity: 52 },
 ];
 
 export const INITIAL_PAPERS: Paper[] = [
@@ -600,6 +686,22 @@ export const INITIAL_PAPERS: Paper[] = [
     nearestPaperIds: ['P05', 'P06', 'P11'],
     color: '#84CC16', // Lime green
     description: 'Moot courts, crime scene simulations, CCTNS live entry, mob control drills, case diary drafting'
+  },
+  {
+    id: 'P14',
+    code: 'Paper-14',
+    title: 'Examination / Assessment',
+    titleHi: 'परीक्षा / मूल्यांकन',
+    category: 'Examination & Assessment',
+    categoryHi: 'परीक्षा एवं मूल्यांकन',
+    totalTargetSessions: 30, // 30 Exam sessions as specified
+    originalTargetSessions: 30,
+    // Flexible: Any available instructor can be detailed for exam supervision
+    primaryTeacherIds: [],
+    nearestPaperIds: [],
+    color: '#DC2626', // Crimson / Red
+    description: 'Weekly / Module End Examination, Test and Assessment Session',
+    theoryOrPractical: 'EXAM',
   },
 ];
 
@@ -964,6 +1066,286 @@ export const PERIOD_TIMINGS = [
 
 export const APP_DEVELOPER_MAINTAINER = 'Abdul Barique Ansari';
 
+export const DEFAULT_BROWSER_PRINT_CONFIG: BrowserPrintConfig = {
+  orientation: 'landscape',
+  paperSize: 'a4',
+  showTimings: true,
+  showCapacities: true,
+  showTeacherCodes: true,
+  showSubjectCodes: true,
+  showPriorityBadge: true,
+  showSubstituteBadge: true,
+  showSessionCount: true,
+  showHeader: true,
+  showSignatures: true,
+  showReserveTable: true,
+  showLeaveTable: true,
+  customTitle: 'DAILY INDOOR CLASS ROUTINE & INSTRUCTOR ASSIGNMENT MASTER SHEET',
+  customSubtitle: '15 Classrooms (8 Old Building + 7 New Building) · 75 Daily Slots',
+};
+
+export const DEFAULT_REPORT_PAGE_CONFIGS: Record<string, ReportPageSetupConfig> = {
+  'indoor-routine': {
+    id: 'indoor-routine',
+    name: 'Daily Indoor Class Routine Master Sheet',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'roomName', defaultLabel: 'Room Name', customLabel: 'Room Name', enabled: true },
+      { key: 'roomCode', defaultLabel: 'Room Code', customLabel: 'Room Code', enabled: true },
+      { key: 'building', defaultLabel: 'Building', customLabel: 'Building', enabled: true },
+      { key: 'capacity', defaultLabel: 'Capacity', customLabel: 'Capacity', enabled: true },
+      { key: 'p1', defaultLabel: 'Period 1 (09:40-10:20)', customLabel: 'Period 1 (09:40-10:20)', enabled: true },
+      { key: 'p2', defaultLabel: 'Period 2 (10:25-11:05)', customLabel: 'Period 2 (10:25-11:05)', enabled: true },
+      { key: 'p3', defaultLabel: 'Period 3 (11:10-11:50)', customLabel: 'Period 3 (11:10-11:50)', enabled: true },
+      { key: 'p4', defaultLabel: 'Period 4 (12:05-12:45)', customLabel: 'Period 4 (12:05-12:45)', enabled: true },
+      { key: 'p5', defaultLabel: 'Period 5 (12:50-13:30)', customLabel: 'Period 5 (12:50-13:30)', enabled: true },
+    ],
+  },
+  'session-counter': {
+    id: 'session-counter',
+    name: 'Session Counter (Room-wise Subject Progress)',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'roomName', defaultLabel: 'Room Name', customLabel: 'Room Name', enabled: true },
+      { key: 'building', defaultLabel: 'Building', customLabel: 'Building', enabled: true },
+      { key: 'paperCode', defaultLabel: 'Paper Code', customLabel: 'Paper Code', enabled: true },
+      { key: 'paperTitle', defaultLabel: 'Paper Title', customLabel: 'Paper Title', enabled: true },
+      { key: 'targetSessions', defaultLabel: 'Target Sessions', customLabel: 'Target Sessions', enabled: true },
+      { key: 'pastCompleted', defaultLabel: 'Past Completed', customLabel: 'Past Completed', enabled: true },
+      { key: 'todayScheduled', defaultLabel: 'Today Scheduled', customLabel: 'Today Scheduled', enabled: true },
+      { key: 'totalCompleted', defaultLabel: 'Total Completed', customLabel: 'Total Completed', enabled: true },
+      { key: 'remainingQuota', defaultLabel: 'Remaining Quota', customLabel: 'Remaining Quota', enabled: true },
+      { key: 'progressPercent', defaultLabel: 'Progress %', customLabel: 'Progress %', enabled: true },
+    ],
+  },
+  'deployment-tracker': {
+    id: 'deployment-tracker',
+    name: 'Instructor Deployment Tracker (Classroom Visits)',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'roomVisits', defaultLabel: 'Classroom Visit Columns', customLabel: 'Classrooms Visited', enabled: true },
+      { key: 'totalSessions', defaultLabel: 'Total Sessions', customLabel: 'Total Sessions', enabled: true },
+    ],
+  },
+  'instructor-ledger': {
+    id: 'instructor-ledger',
+    name: 'Instructor Academic Workload Ledger',
+    enabled: true,
+    orientation: 'portrait',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'slNo', defaultLabel: 'Sl No', customLabel: 'Sl No', enabled: true },
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'primarySubject', defaultLabel: 'Primary Subject(s)', customLabel: 'Primary Subject(s)', enabled: true },
+      { key: 'pastLoad', defaultLabel: 'Past Days Load', customLabel: 'Past Days Load', enabled: true },
+      { key: 'todayLoad', defaultLabel: "Today's Load", customLabel: "Today's Load", enabled: true },
+      { key: 'cumulativeTotal', defaultLabel: 'Cumulative Total', customLabel: 'Cumulative Total', enabled: true },
+      { key: 'dailyAverage', defaultLabel: 'Daily Average', customLabel: 'Daily Average', enabled: true },
+      { key: 'equalizationStatus', defaultLabel: 'Equalization Status', customLabel: 'Equalization Status', enabled: true },
+    ],
+  },
+  'instructor-duty': {
+    id: 'instructor-duty',
+    name: 'Instructor Daily Duty Roster',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'p1', defaultLabel: 'Period 1 (09:40-10:20)', customLabel: 'Period 1 (09:40-10:20)', enabled: true },
+      { key: 'p2', defaultLabel: 'Period 2 (10:25-11:05)', customLabel: 'Period 2 (10:25-11:05)', enabled: true },
+      { key: 'p3', defaultLabel: 'Period 3 (11:10-11:50)', customLabel: 'Period 3 (11:10-11:50)', enabled: true },
+      { key: 'p4', defaultLabel: 'Period 4 (12:05-12:45)', customLabel: 'Period 4 (12:05-12:45)', enabled: true },
+      { key: 'p5', defaultLabel: 'Period 5 (12:50-13:30)', customLabel: 'Period 5 (12:50-13:30)', enabled: true },
+      { key: 'totalPeriods', defaultLabel: 'Total Periods Today', customLabel: 'Total Periods Today', enabled: true },
+      { key: 'facultyStatus', defaultLabel: 'Faculty Status', customLabel: 'Faculty Status', enabled: true },
+    ],
+  },
+  'instructor-mapping': {
+    id: 'instructor-mapping',
+    name: 'Instructor Mapping Matrix (Faculty Profiles)',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'slNo', defaultLabel: 'Sl No', customLabel: 'Sl No', enabled: true },
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'designation', defaultLabel: 'Designation', customLabel: 'Designation', enabled: true },
+      { key: 'campusBase', defaultLabel: 'Campus Base', customLabel: 'Campus Base', enabled: true },
+      { key: 'primaryPapers', defaultLabel: 'Primary Paper Assignments', customLabel: 'Primary Paper Assignments', enabled: true },
+      { key: 'backupPapers', defaultLabel: 'Backup Papers', customLabel: 'Backup Papers', enabled: true },
+      { key: 'secondaryPapers', defaultLabel: 'Secondary Papers', customLabel: 'Secondary Papers', enabled: true },
+      { key: 'maxDailyLimit', defaultLabel: 'Max Daily Limit', customLabel: 'Max Daily Limit', enabled: true },
+      { key: 'contactNumber', defaultLabel: 'Contact Number', customLabel: 'Contact Number', enabled: true },
+      { key: 'facultyStatus', defaultLabel: 'Faculty Status', customLabel: 'Faculty Status', enabled: true },
+    ],
+  },
+  'subject-main-teachers': {
+    id: 'subject-main-teachers',
+    name: 'Subject-wise Primary Instructors Directory',
+    enabled: true,
+    orientation: 'portrait',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'paperCode', defaultLabel: 'Paper Code', customLabel: 'Paper Code', enabled: true },
+      { key: 'subjectTitle', defaultLabel: 'Subject Title', customLabel: 'Subject Title', enabled: true },
+      { key: 'category', defaultLabel: 'Category', customLabel: 'Category', enabled: true },
+      { key: 'quotaSessions', defaultLabel: 'Quota Sessions', customLabel: 'Quota Sessions', enabled: true },
+      { key: 'primaryInstructors', defaultLabel: 'Main / Primary Instructors', customLabel: 'Main / Primary Instructors', enabled: true },
+      { key: 'mainCount', defaultLabel: 'Main Faculty Count', customLabel: 'Main Faculty Count', enabled: true },
+      { key: 'teacherCodes', defaultLabel: 'Teacher Codes', customLabel: 'Teacher Codes', enabled: true },
+      { key: 'contacts', defaultLabel: 'Instructor Contact Numbers', customLabel: 'Instructor Contact Numbers', enabled: true },
+    ],
+  },
+  'subject-hierarchy': {
+    id: 'subject-hierarchy',
+    name: 'Subject-wise Staffing Hierarchy (Main + Backups)',
+    enabled: true,
+    orientation: 'portrait',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'paperCode', defaultLabel: 'Paper Code', customLabel: 'Paper Code', enabled: true },
+      { key: 'subjectTitle', defaultLabel: 'Subject Title', customLabel: 'Subject Title', enabled: true },
+      { key: 'primaryFaculty', defaultLabel: 'Main Primary Teacher(s)', customLabel: 'Main Primary Teacher(s)', enabled: true },
+      { key: 'backup1', defaultLabel: 'Backup Slot 1', customLabel: 'Backup Slot 1', enabled: true },
+      { key: 'backup2', defaultLabel: 'Backup Slot 2', customLabel: 'Backup Slot 2', enabled: true },
+      { key: 'secondaryFaculty', defaultLabel: 'Secondary Eligible Pool', customLabel: 'Secondary Eligible Pool', enabled: true },
+      { key: 'totalFacultyCount', defaultLabel: 'Total Faculty Strength', customLabel: 'Total Faculty Strength', enabled: true },
+    ],
+  },
+  'instructor-directory': {
+    id: 'instructor-directory',
+    name: 'Faculty Contact & Telephone Directory',
+    enabled: true,
+    orientation: 'portrait',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'slNo', defaultLabel: 'Sl No', customLabel: 'Sl No', enabled: true },
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'rank', defaultLabel: 'Rank / Designation', customLabel: 'Rank / Designation', enabled: true },
+      { key: 'phone', defaultLabel: 'Mobile / Telephone Number', customLabel: 'Mobile / Telephone Number', enabled: true },
+      { key: 'campusBase', defaultLabel: 'Campus Base', customLabel: 'Campus Base', enabled: true },
+      { key: 'primaryCode', defaultLabel: 'Primary Subject Code', customLabel: 'Primary Subject Code', enabled: true },
+      { key: 'primaryTitle', defaultLabel: 'Subject Title', customLabel: 'Subject Title', enabled: true },
+      { key: 'dutyStatus', defaultLabel: 'Duty Status', customLabel: 'Duty Status', enabled: true },
+      { key: 'email', defaultLabel: 'Official Email', customLabel: 'Official Email', enabled: true },
+    ],
+  },
+  'instructor-unavailability': {
+    id: 'instructor-unavailability',
+    name: 'Faculty Unavailability Incident Log',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'slNo', defaultLabel: 'Sl No', customLabel: 'Sl No', enabled: true },
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'designation', defaultLabel: 'Designation', customLabel: 'Designation', enabled: true },
+      { key: 'campusBase', defaultLabel: 'Campus Base', customLabel: 'Campus Base', enabled: true },
+      { key: 'totalDays', defaultLabel: 'Total Unavailable Days', customLabel: 'Total Unavailable Days', enabled: true },
+      { key: 'leave', defaultLabel: 'Leave (Casual/Earned)', customLabel: 'Leave (Casual/Earned)', enabled: true },
+      { key: 'duty', defaultLabel: 'Special Duty', customLabel: 'Special Duty', enabled: true },
+      { key: 'sick', defaultLabel: 'Sick / Medical', customLabel: 'Sick / Medical', enabled: true },
+      { key: 'rest', defaultLabel: 'Rest (Standby Reserve)', customLabel: 'Rest (Standby Reserve)', enabled: true },
+      { key: 'absent', defaultLabel: 'Absent (Uninformed)', customLabel: 'Absent (Uninformed)', enabled: true },
+      { key: 'attendanceRate', defaultLabel: 'Attendance Rate (%)', customLabel: 'Attendance Rate (%)', enabled: true },
+      { key: 'remarksLog', defaultLabel: 'Date-wise Details & Remarks Log', customLabel: 'Date-wise Details & Remarks Log', enabled: true },
+    ],
+  },
+  'unavailability-incident-log': {
+    id: 'unavailability-incident-log',
+    name: 'Unavailability Incident Log (Chronological)',
+    enabled: true,
+    orientation: 'landscape',
+    paperSize: 'a4',
+    includeHeader: true,
+    includeSignatures: true,
+    columns: [
+      { key: 'slNo', defaultLabel: 'Sl No', customLabel: 'Sl No', enabled: true },
+      { key: 'routineDay', defaultLabel: 'Routine Day', customLabel: 'Routine Day', enabled: true },
+      { key: 'routineDate', defaultLabel: 'Routine Date', customLabel: 'Routine Date', enabled: true },
+      { key: 'teacherCode', defaultLabel: 'Teacher Code', customLabel: 'Teacher Code', enabled: true },
+      { key: 'teacherName', defaultLabel: 'Instructor Name', customLabel: 'Instructor Name', enabled: true },
+      { key: 'designation', defaultLabel: 'Designation', customLabel: 'Designation', enabled: true },
+      { key: 'type', defaultLabel: 'Unavailability Type', customLabel: 'Unavailability Type', enabled: true },
+      { key: 'periods', defaultLabel: 'Period(s) Affected', customLabel: 'Period(s) Affected', enabled: true },
+      { key: 'remark', defaultLabel: 'Official Remark / Reason', customLabel: 'Official Remark / Reason', enabled: true },
+    ],
+  },
+};
+
+/**
+ * Initial practical subject modules (Paper-13 breakdown).
+ * The sum of target sessions equals Paper-13's total target quota of 188 sessions.
+ */
+export const INITIAL_PRACTICAL_SUBJECTS: PracticalSubject[] = [
+  {
+    id: 'PRAC-01',
+    code: 'PRAC-01',
+    name: 'Computer Lab & CCTNS Live Data Entry',
+    targetSessions: 48,
+    color: '#0284c7', // Sky
+    description: 'CCTNS portal training, online FIR registration, digital GD entry, ICJS integration & case tracking',
+  },
+  {
+    id: 'PRAC-02',
+    code: 'PRAC-02',
+    name: 'Crime Scene Management & Forensics Lab',
+    targetSessions: 46,
+    color: '#16a34a', // Green
+    description: 'Crime scene cordon, physical evidence collection, fingerprint lifting, ballistics & forensic kit handling',
+  },
+  {
+    id: 'PRAC-03',
+    code: 'PRAC-03',
+    name: 'Moot Court, Legal Procedures & Case Diary Drafting',
+    targetSessions: 46,
+    color: '#d97706', // Amber
+    description: 'Mock court examination, cross-examination, case diary (CD) drafting, seizure list & inquest preparation',
+  },
+  {
+    id: 'PRAC-04',
+    code: 'PRAC-04',
+    name: 'Cyber Crime, Digital Evidence & IT',
+    targetSessions: 48,
+    color: '#7c3aed', // Purple
+    description: 'Digital evidence seizure (65B certification), mobile extraction, CDR/IPDR analysis & cyber fraud investigation',
+  },
+];
+
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   institutionName: 'STC, SAP 4th Bn',
   battalionUnit: 'Special Armed Police 4th Battalion',
@@ -976,4 +1358,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   activeRoutineId: '',
   language: 'en',
   adminPassword: 'admin123',
+  downloadsConfig: {
+    reports: { ...DEFAULT_REPORT_PAGE_CONFIGS },
+    browserPrint: { ...DEFAULT_BROWSER_PRINT_CONFIG },
+  },
+  practicalSubjects: [...INITIAL_PRACTICAL_SUBJECTS],
 };

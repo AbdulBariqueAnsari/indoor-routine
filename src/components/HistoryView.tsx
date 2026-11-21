@@ -3,14 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { DailyRoutine, Paper, Teacher } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 import {
   Calendar,
-  CheckCircle2,
-  Download,
   Eye,
-  FileText,
   Lock,
   RotateCcw,
   ShieldCheck,
@@ -41,43 +39,24 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   onDeleteRoutine,
   isAdmin,
 }) => {
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
+
   const teacherMap = new Map(teachers.map((t) => [t.id, t]));
   const paperMap = new Map(papers.map((p) => [p.id, p]));
 
   const sorted = [...allRoutines].sort((a, b) => b.dayNumber - a.dayNumber);
 
-  const handleExportCSV = (routine: DailyRoutine) => {
-    const headers = ['RoomID', 'RoomName', 'Period', 'PaperCode', 'PaperTitle', 'TeacherID', 'TeacherName', 'IsSubstitute', 'Reason'];
-    const rows = routine.slots.map((s) => {
-      const p = paperMap.get(s.paperId);
-      const t = teacherMap.get(s.teacherId);
-      return [
-        s.roomId,
-        `"${s.roomId}"`,
-        s.period,
-        p?.code || s.paperId,
-        `"${p?.title || ''}"`,
-        s.teacherId,
-        `"${t?.name || ''}"`,
-        s.isSubstitute ? 'YES' : 'NO',
-        `"${s.substituteReason || ''}"`,
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Routine_Day_${routine.dayNumber}_${routine.date}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Policy Explanation Banner */}
-      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs space-y-1.5 text-slate-700">
+      <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs space-y-1 text-slate-700">
         <div className="font-bold text-slate-900 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-indigo-600" />
           <span>Audit Trail & Routine Locking:</span>
@@ -89,7 +68,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
       {/* Routine Log Cards */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900">
               Daily Routine Historical Logs
@@ -102,9 +81,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           {isAdmin && (
             <button
               onClick={() => {
-                if (window.confirm('Reset all routine data to default demo state?')) {
-                  onResetData();
-                }
+                setConfirmModal({
+                  isOpen: true,
+                  title: 'Reset Demo Data Confirmation',
+                  message: 'Are you sure you want to reset all routine data back to default demo state? Any unsaved changes in current routines will be restored.',
+                  confirmText: 'Reset Demo Data',
+                  variant: 'warning',
+                  onConfirm: () => {
+                    onResetData();
+                    setConfirmModal(null);
+                  },
+                });
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
             >
@@ -192,12 +179,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       <span className="font-mono font-semibold text-slate-800">{priorityTitles}</span>
                     </div>
                   )}
-
-                  {r.notes && (
-                    <p className="text-xs text-slate-500 italic">
-                      "{r.notes}"
-                    </p>
-                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -229,9 +210,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   {isAdmin && onDeleteRoutine && allRoutines.length > 1 && (
                     <button
                       onClick={() => {
-                        if (window.confirm(`Delete Day ${r.dayNumber} routine permanently?`)) {
-                          onDeleteRoutine(r.id);
-                        }
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Delete Routine Confirmation',
+                          message: `Are you sure you want to permanently delete Day ${r.dayNumber} routine (${r.date})? This action cannot be undone.`,
+                          confirmText: 'Delete Routine',
+                          variant: 'danger',
+                          onConfirm: () => {
+                            onDeleteRoutine(r.id);
+                            setConfirmModal(null);
+                          },
+                        });
                       }}
                       className="p-1.5 text-xs font-medium rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
                       title="Delete routine"
@@ -239,15 +228,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-
-                  <button
-                    onClick={() => handleExportCSV(r)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
-                    title="Export CSV"
-                  >
-                    <Download className="w-3.5 h-3.5 text-slate-500" />
-                    <span>CSV</span>
-                  </button>
 
                   <button
                     onClick={() => onSelectRoutine(r.id)}
@@ -266,6 +246,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           })}
         </div>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          variant={confirmModal.variant}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 };

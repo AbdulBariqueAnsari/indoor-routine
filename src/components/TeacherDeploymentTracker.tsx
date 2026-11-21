@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Classroom, DailyRoutine, Paper, Teacher } from '../types';
+import { Classroom, compareClassrooms, compareTeacherCodes, DailyRoutine, Paper, Teacher } from '../types';
 import {
   BookOpen,
   Building,
@@ -89,6 +89,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
 
   const paperMap = useMemo(() => new Map(papers.map((p) => [p.id, p])), [papers]);
   const classroomMap = useMemo(() => new Map(classrooms.map((c) => [c.id, c])), [classrooms]);
+  const sortedClassrooms = useMemo(() => [...classrooms].sort(compareClassrooms), [classrooms]);
 
   // Exclude currentRoutine from past routines to prevent double-counting
   const pastRoutines = useMemo(() => {
@@ -105,9 +106,10 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
   // Normalization helper (e.g. 'T01' -> 'T1')
   const norm = (id: string) => (id ? id.replace(/^T0*/, 'T') : '');
 
-  // Compute full deployment stats for each instructor
+  // Compute full deployment stats for each instructor in natural T1..Tn sequence
   const trackingData: TeacherTrackingStats[] = useMemo(() => {
-    return teachers.map((teacher) => {
+    const sortedTeachers = [...teachers].sort(compareTeacherCodes);
+    return sortedTeachers.map((teacher) => {
       const tNormId = norm(teacher.id);
       const isOnLeaveToday = absentSet.has(tNormId);
       const unavail = currentRoutine?.unavailableTeachers?.find(
@@ -284,10 +286,12 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
 
   // Instructors filtered by main subject reference for the personal selector
   const instructorsForSubjectRef = useMemo(() => {
-    if (selectedSubjectRef === 'ALL') return teachers;
-    return teachers.filter(
-      (t) => t.primaryPaperIds.includes(selectedSubjectRef) || (t.backupPaperIds || []).includes(selectedSubjectRef)
-    );
+    const list = selectedSubjectRef === 'ALL'
+      ? [...teachers]
+      : teachers.filter(
+          (t) => t.primaryPaperIds.includes(selectedSubjectRef) || (t.backupPaperIds || []).includes(selectedSubjectRef)
+        );
+    return list.sort(compareTeacherCodes);
   }, [teachers, selectedSubjectRef]);
 
   // Focused instructor details when an instructor selects their name
@@ -297,20 +301,20 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
   }, [focusedTeacherId, trackingData]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Top Header Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
-                <Users className="w-5 h-5" />
+              <span className="p-1 rounded-lg bg-indigo-50 text-indigo-700">
+                <Users className="w-4 h-4" />
               </span>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 Instructor Class & Paper Deployment Tracker
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Public & Administrative transparency ledger: Track exactly which instructor has taught which paper in which classroom, up to each period today.
             </p>
           </div>
@@ -319,7 +323,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 text-xs font-semibold">
             <button
               onClick={() => setViewMode('cards')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
                 viewMode === 'cards'
                   ? 'bg-white text-indigo-700 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -330,7 +334,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
             </button>
             <button
               onClick={() => setViewMode('matrix')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
                 viewMode === 'matrix'
                   ? 'bg-white text-indigo-700 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -343,48 +347,48 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
         </div>
 
         {/* 4 Summary Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-lg">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg">
             <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
               <Users className="w-3.5 h-3.5 text-indigo-600" />
               Total Faculty
             </div>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">{teachers.length} Instructors</div>
+            <div className="text-lg font-bold text-slate-900 mt-0.5">{teachers.length} Instructors</div>
             <div className="text-[10px] text-slate-500 mt-0.5">T1 to T{teachers.length} (Active Roster)</div>
           </div>
 
-          <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-lg">
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-lg">
             <div className="text-[11px] font-medium text-emerald-800 flex items-center gap-1">
               <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
               Active on Duty Today
             </div>
-            <div className="text-xl font-bold text-emerald-950 mt-0.5">{activeTodayCount} Instructors</div>
+            <div className="text-lg font-bold text-emerald-950 mt-0.5">{activeTodayCount} Instructors</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
               {Math.max(0, teachers.length - activeTodayCount)} on leave today
             </div>
           </div>
 
-          <div className="p-3 bg-indigo-50 border border-indigo-200/80 rounded-lg">
+          <div className="p-2.5 bg-indigo-50 border border-indigo-200/80 rounded-lg">
             <div className="text-[11px] font-medium text-indigo-800 flex items-center gap-1">
               <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
               Total Sessions Delivered
             </div>
-            <div className="text-xl font-bold text-indigo-950 mt-0.5">{totalClassesConducted} Sessions</div>
+            <div className="text-lg font-bold text-indigo-950 mt-0.5">{totalClassesConducted} Sessions</div>
             <div className="text-[10px] text-indigo-700 mt-0.5">Campus Cumulative across all classrooms</div>
           </div>
 
-          <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-lg">
+          <div className="p-2.5 bg-amber-50 border border-amber-200/80 rounded-lg">
             <div className="text-[11px] font-medium text-amber-800 flex items-center gap-1">
               <Building className="w-3.5 h-3.5 text-amber-600" />
               Coverage Classrooms
             </div>
-            <div className="text-xl font-bold text-amber-950 mt-0.5">15 Classrooms</div>
+            <div className="text-lg font-bold text-amber-950 mt-0.5">15 Classrooms</div>
             <div className="text-[10px] text-amber-700 mt-0.5">OB-1 to OB-8 & NB-1 to NB-7</div>
           </div>
         </div>
 
         {/* INSTRUCTOR SELF-LOOKUP BY MAIN SUBJECT REFERENCE */}
-        <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-teal-50 border border-indigo-200/80 rounded-xl p-3.5 mt-4 space-y-2.5">
+        <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-teal-50 border border-indigo-200/80 rounded-xl p-3 mt-3 space-y-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="p-1 rounded bg-indigo-600 text-white shadow-2xs">
@@ -459,7 +463,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4 pt-4 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100">
           {/* Search Input */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -1242,7 +1246,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                     Instructor (Code)
                   </th>
                   <th className="py-2.5 px-2 min-w-[130px] border-r border-slate-200">Main Subject</th>
-                  {classrooms.map((c) => (
+                  {sortedClassrooms.map((c) => (
                     <th key={c.id} className="py-2.5 px-2 text-center min-w-[65px] border-r border-slate-200">
                       <div>{c.code}</div>
                       <div className="text-[9px] font-normal text-slate-500">
@@ -1268,7 +1272,7 @@ export const TeacherDeploymentTracker: React.FC<TeacherDeploymentTrackerProps> =
                     <td className="py-2 px-2 border-r border-slate-200 text-slate-600 truncate max-w-[140px]" title={item.primaryPaperNames}>
                       {item.primaryPaperNames}
                     </td>
-                    {classrooms.map((c) => {
+                    {sortedClassrooms.map((c) => {
                       const details = item.classDeployments.filter((d) => d.roomId === c.id);
                       const totalInRoom = details.reduce((acc, d) => acc + d.totalSessions, 0);
                       const activeToday = details.some((d) => d.todaySessions > 0);

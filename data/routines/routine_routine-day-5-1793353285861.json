@@ -2,9 +2,17 @@
   "id": "routine-day-5-1793353285861",
   "dayNumber": 5,
   "date": "2026-10-31",
+  "status": "draft",
+  "isLocked": true,
+  "notes": "Manual Blank Routine for Day 5 (2026-10-31) - ready for slot assignment",
   "absentTeacherIds": [],
-  "unavailableTeachers": [],
   "priorityPaperIds": [],
+  "roomPriorityPaperIds": {},
+  "subjectPriorityTiers": {},
+  "prioritySubjectMinPeriods": {},
+  "excludedPaperIds": [],
+  "teacherOffPeriods": {},
+  "practicalConfig": {},
   "slots": [
     {
       "id": "slot-5-OB-1-P1",
@@ -683,8 +691,5 @@
     }
   ],
   "createdAt": "2026-10-30T09:41:25.861Z",
-  "updatedAt": "2026-10-30T10:55:32.043Z",
-  "isLocked": true,
-  "status": "draft",
-  "notes": "Manual Blank Routine for Day 5 (2026-10-31) - ready for slot assignment"
+  "updatedAt": "2026-10-30T10:55:32.043Z"
 }

@@ -8,9 +8,14 @@ import {
   ClassroomPaperProgress,
   ClassroomTotalProgress,
   ClassSlot,
+  compareClassrooms,
+  compareTeacherCodes,
   DailyRoutine,
+  ExamConfig,
   Paper,
   PaperProgress,
+  PracticalClassConfig,
+  PracticalConfig,
   RoutineRuleConfig,
   SubjectPriorityTier,
   Teacher,
@@ -28,6 +33,11 @@ export interface SchedulerOptions {
   subjectPriorityTiers?: Record<string, SubjectPriorityTier>; // paperId -> HIGH | MEDIUM | LOW | NORMAL | EXCLUDE
   prioritySubjectMinPeriods?: Record<string, number>; // paperId -> guaranteed minimum periods
   excludedPaperIds?: string[]; // subjects explicitly omitted/removed from this routine
+  teacherOffPeriods?: Record<string, number[]>; // teacherId -> off periods designated for this routine
+  excusedInstructors?: any; // alias / excused instructors config
+  generationMode?: string;
+  practicalConfig?: PracticalConfig;
+  examConfig?: ExamConfig;
   rules?: Partial<RoutineRuleConfig>; // Toggleable routine preparation constraints
   historicalRoutines?: DailyRoutine[];
   targetDayNumber: number;
@@ -532,7 +542,7 @@ export function getPaperPrimaryTeachers(paper: Paper, teachers: Teacher[]): Teac
  */
 export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   const {
-    classrooms,
+    classrooms: rawClassrooms,
     papers: rawPapers,
     teachers,
     absentTeacherIds = [],
@@ -547,6 +557,9 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     targetDate,
     notes,
   } = options;
+
+  // Strict serial numeric ordering of classrooms (Room No. 1 to Room No. 15)
+  const classrooms = [...rawClassrooms].sort(compareClassrooms);
 
   // Synchronize primary teacher assignments from instructor mapping (teacher.primaryPaperIds)
   // Rule: Any subject's teacher will be whichever teacher has that subject as their main subject in instructor mapping
@@ -566,10 +579,55 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   classrooms.forEach((c, idx) => classroomIndexMap.set(c.id, idx + 1));
   const teacherMap = new Map(teachers.map((t) => [t.id, t]));
 
+  const getTeacherOffPeriods = (tid: string): number[] => {
+    const fromOpts = options.teacherOffPeriods?.[tid];
+    if (fromOpts && fromOpts.length > 0) return fromOpts;
+    const t = teacherMap.get(tid);
+    const dayKey = String(targetDayNumber);
+    if (t?.dayOffPeriods && (t.dayOffPeriods[dayKey] || t.dayOffPeriods[targetDayNumber])) {
+      return t.dayOffPeriods[dayKey] || t.dayOffPeriods[targetDayNumber];
+    }
+    return t?.offPeriods || [];
+  };
+
   const combinedExcludedSet = new Set(excludedPaperIds.map((id) => id.trim()));
   for (const [pid, tier] of Object.entries(subjectPriorityTiers)) {
     if (tier === 'EXCLUDE') {
       combinedExcludedSet.add(pid);
+    }
+  }
+
+  // If practical is explicitly disabled via practicalConfig
+  if (options.practicalConfig && options.practicalConfig.enabled === false) {
+    combinedExcludedSet.add('P13');
+  }
+
+  // Examination Session setup (When Exam is active, Period 5 across all classrooms is an Exam Session)
+  const isExamActive = Boolean(options.examConfig?.enabled);
+  const examPaper: Paper = papers.find(
+    (p) => p.theoryOrPractical === 'EXAM' || p.category.toLowerCase().includes('exam')
+  ) || {
+    id: 'P_EXAM',
+    code: 'Paper-EXAM',
+    title: options.examConfig?.name || 'Examination / Assessment',
+    titleHi: 'परीक्षा / मूल्यांकन',
+    category: 'Examination & Assessment',
+    categoryHi: 'परीक्षा एवं मूल्यांकन',
+    totalTargetSessions: 30,
+    originalTargetSessions: 30,
+    color: '#DC2626',
+    description: 'Weekly / Module End Examination, Test and Assessment Session',
+    theoryOrPractical: 'EXAM',
+    maxDailyPerRoom: 1,
+    preferredBuilding: 'ALL',
+    primaryTeacherIds: [],
+    nearestPaperIds: [],
+  };
+
+  // If exam is NOT explicitly enabled for this routine, exclude it from general period 1-4 rotation
+  if (!isExamActive) {
+    if (examPaper && papers.some((p) => p.id === examPaper.id) && (examPaper.theoryOrPractical === 'EXAM' || examPaper.category.toLowerCase().includes('exam'))) {
+      combinedExcludedSet.add(examPaper.id);
     }
   }
 
@@ -617,6 +675,495 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     prioritySubjectMinPeriods
   );
 
+  // Teacher availability and historical load setup
+  const normalizedAbsentSet = activeRules.enableStrictAbsenteeExclusion
+    ? new Set(absentTeacherIds.map(normalizeTeacherId))
+    : new Set<string>();
+
+  const availableTeachers = teachers.filter((t) => !normalizedAbsentSet.has(normalizeTeacherId(t.id)));
+  const availableTeacherIds = new Set(availableTeachers.map((t) => t.id));
+
+  // Teacher historical sessions across past routines (accounting scope)
+  const teacherHistoricalSessions = new Map<string, number>();
+  teachers.forEach((t) => teacherHistoricalSessions.set(t.id, 0));
+
+  // Teacher Classroom Deployment Tracker: teacherId -> roomId -> visits count
+  const teacherRoomDeploymentCount = new Map<string, Map<string, number>>();
+  teachers.forEach((t) => {
+    const rMap = new Map<string, number>();
+    classrooms.forEach((r) => rMap.set(r.id, 0));
+    teacherRoomDeploymentCount.set(t.id, rMap);
+  });
+
+  // Teacher Building Deployment Tracker: teacherId -> building ('OLD' | 'NEW') -> visits count
+  const teacherBuildingDeploymentCount = new Map<string, Map<string, number>>();
+  teachers.forEach((t) => {
+    const bMap = new Map<string, number>();
+    bMap.set('OLD', 0);
+    bMap.set('NEW', 0);
+    teacherBuildingDeploymentCount.set(t.id, bMap);
+  });
+
+  pastHistoricalRoutines.forEach((r) => {
+    r.slots.forEach((s) => {
+      if (s.teacherId) {
+        teacherHistoricalSessions.set(s.teacherId, (teacherHistoricalSessions.get(s.teacherId) || 0) + 1);
+        if (teacherRoomDeploymentCount.has(s.teacherId)) {
+          const rMap = teacherRoomDeploymentCount.get(s.teacherId)!;
+          if (rMap.has(s.roomId)) {
+            rMap.set(s.roomId, (rMap.get(s.roomId) || 0) + 1);
+          }
+        }
+        const roomObj = classroomMap.get(s.roomId);
+        if (roomObj && teacherBuildingDeploymentCount.has(s.teacherId)) {
+          const bMap = teacherBuildingDeploymentCount.get(s.teacherId)!;
+          bMap.set(roomObj.building, (bMap.get(roomObj.building) || 0) + 1);
+        }
+      }
+    });
+  });
+
+  const teacherDailyLoad = new Map<string, number>();
+  teachers.forEach((t) => teacherDailyLoad.set(t.id, 0));
+
+  // Yesterday's room visits per teacher (Day N-1) for consecutive-day anti-clustering
+  const teacherYesterdayRooms = new Map<string, Set<string>>();
+  teachers.forEach((t) => teacherYesterdayRooms.set(t.id, new Set()));
+
+  const previousRoutines = historicalRoutines
+    .filter((r) => r.dayNumber < targetDayNumber)
+    .sort((a, b) => b.dayNumber - a.dayNumber);
+  const previousDayRoutine = previousRoutines[0];
+
+  if (previousDayRoutine && previousDayRoutine.slots) {
+    for (const s of previousDayRoutine.slots) {
+      if (s.teacherId && s.roomId) {
+        teacherYesterdayRooms.get(s.teacherId)?.add(s.roomId);
+      }
+    }
+  }
+
+  // Helper to check strict building binding (Rule 3)
+  const isTeacherAllowedInRoomBuilding = (t: Teacher, rBuilding: string): boolean => {
+    if (!activeRules.enableStrictBuildingBinding) return true;
+    if (t.assignedBuilding === 'FLOATING') return true;
+    return t.assignedBuilding === rBuilding;
+  };
+
+  // Helper to get total room visits for a teacher
+  const getTeacherRoomVisits = (teacherId: string, roomId: string): number => {
+    return teacherRoomDeploymentCount.get(teacherId)?.get(roomId) || 0;
+  };
+
+  // Helper to get minimum visits across all eligible rooms for a teacher
+  const getTeacherMinEligibleRoomVisits = (t: Teacher): number => {
+    const eligible = classrooms.filter((r) => isTeacherAllowedInRoomBuilding(t, r.building));
+    if (eligible.length === 0) return 0;
+    let minV = Infinity;
+    for (const r of eligible) {
+      const v = teacherRoomDeploymentCount.get(t.id)?.get(r.id) || 0;
+      if (v < minV) minV = v;
+    }
+    return minV === Infinity ? 0 : minV;
+  };
+
+  // Classroom Exposure Balance Cap: Difference between max and min room visits <= 2
+  // If visits in roomId is already >= minEligible + 2, adding another visit makes it minEligible + 3,
+  // causing max - min to be at least 3, which violates maxDiff <= 2.
+  const isTeacherRoomVisitBalanced = (t: Teacher, roomId: string): boolean => {
+    const v = getTeacherRoomVisits(t.id, roomId);
+    const minV = getTeacherMinEligibleRoomVisits(t);
+    return v < minV + 2;
+  };
+
+  // Rule 9 (Tier 1 Constraint): Practical Consecutive Double-Period & Daily Quota Rule setup
+  const isPracticalActive =
+    options.practicalConfig?.enabled === true &&
+    !combinedExcludedSet.has('P13') &&
+    papers.some((p) => p.id === 'P13' || p.theoryOrPractical === 'PRACTICAL');
+
+  const practicalPaper: Paper = papers.find((p) => p.id === 'P13' || p.theoryOrPractical === 'PRACTICAL') || {
+    id: 'P13',
+    code: 'P13',
+    title: options.practicalConfig?.name || 'Practical',
+    category: 'Practical',
+    totalTargetSessions: 40,
+    color: '#10B981',
+    description: 'Practical / Applied Training',
+    theoryOrPractical: 'PRACTICAL',
+    maxDailyPerRoom: 2,
+    preferredBuilding: 'ALL',
+    primaryTeacherIds: [],
+    nearestPaperIds: [],
+  };
+
+  // Teacher Equalization Check:
+  // "aur.. techer equalisation rule me.. teacher. ko. ko jyda deplyoment hone se.. practical ka kewal do period hi ho.. taki techer ka deplyment v equialisation ho sake"
+  const activeTeacherLoads = availableTeachers.map((t) => teacherHistoricalSessions.get(t.id) || 0);
+  const avgTeacherLoad =
+    activeTeacherLoads.length > 0
+      ? activeTeacherLoads.reduce((a, b) => a + b, 0) / activeTeacherLoads.length
+      : 0;
+  const minTeacherHistLoad = activeTeacherLoads.length > 0 ? Math.min(...activeTeacherLoads) : 0;
+  const maxTeacherHistLoad = activeTeacherLoads.length > 0 ? Math.max(...activeTeacherLoads) : 0;
+
+  const isTeacherEqualizationActive =
+    Boolean(activeRules.enableTeacherLoadEqualizationPriority) ||
+    Boolean(activeRules.enableWorkloadEqualization);
+
+  const highDeploymentPracticalTeacherIds = new Set<string>();
+
+  interface ScheduledPractical {
+    id: string;
+    name: string;
+    practicalSubjectId?: string;
+    teacher: Teacher;
+    room: Classroom;
+    periods: number[];
+  }
+  const scheduledPracticals: ScheduledPractical[] = [];
+
+  if (isPracticalActive && availableTeachers.length > 0 && classrooms.length > 0) {
+    const hasConfigItems = Boolean(options.practicalConfig?.items && options.practicalConfig.items.length > 0);
+    const configItems = hasConfigItems ? options.practicalConfig!.items! : [];
+
+    if (hasConfigItems) {
+      // MULTI-PRACTICAL / CONFIGURED ITEMS MODE
+      const usedTeacherIds = new Set<string>();
+      const roomPracticalSessionsCount = new Map<string, number>();
+      const roomPracticalSubjects = new Map<string, Set<string>>();
+      const usedRoomPeriodKeys = new Set<string>();
+
+      for (let i = 0; i < configItems.length; i++) {
+        const item = configItems[i];
+        const itemPracticalKey = item.practicalSubjectId || item.name || `prac-${i + 1}`;
+
+        // 1. Pick Teacher
+        let itemTeacher: Teacher | undefined;
+        if (item.teacherId) {
+          itemTeacher = availableTeachers.find((t) => t.id === item.teacherId);
+        }
+        if (!itemTeacher) {
+          // Auto-assign: available lagging teacher not yet used in another practical
+          const candidateTeachers = availableTeachers.filter((t) => !usedTeacherIds.has(t.id));
+          const sortedCandidates = [...(candidateTeachers.length > 0 ? candidateTeachers : availableTeachers)].sort(
+            (a, b) => (teacherHistoricalSessions.get(a.id) || 0) - (teacherHistoricalSessions.get(b.id) || 0)
+          );
+          itemTeacher = sortedCandidates[0];
+        }
+        if (!itemTeacher) continue;
+        usedTeacherIds.add(itemTeacher.id);
+
+        // Check equalization high deployment for this teacher
+        const tHistLoad = teacherHistoricalSessions.get(itemTeacher.id) || 0;
+        if (isTeacherEqualizationActive && maxTeacherHistLoad > minTeacherHistLoad && tHistLoad > avgTeacherLoad) {
+          highDeploymentPracticalTeacherIds.add(itemTeacher.id);
+        }
+
+        // 2. Pick Periods (pair of consecutive periods: [2, 3] or [4, 5]; or single period [p])
+        const tOff = getTeacherOffPeriods(itemTeacher.id);
+        const itemDuration = item.duration || (item.periods && item.periods.length === 1 ? 1 : 2);
+        let chosenPeriods: number[] = item.periods && item.periods.length > 0 ? [...item.periods] : [];
+
+        if (chosenPeriods.length === 0) {
+          if (itemDuration === 1) {
+            // Single-period practical: pick open period (P2, P3, P4, P5, or P1)
+            const candidatePeriods = isExamActive ? [2, 3, 4] : [2, 3, 4, 5, 1];
+            for (const p of candidatePeriods) {
+              if (!tOff.includes(p)) {
+                chosenPeriods = [p];
+                break;
+              }
+            }
+            if (chosenPeriods.length === 0) chosenPeriods = [2];
+          } else {
+            // Double-period practical (consecutive 2 periods)
+            const candidatePairs: [number, number][] = isExamActive
+              ? [[2, 3]]
+              : [
+                  i % 2 === 0 ? [2, 3] : [4, 5],
+                  i % 2 === 0 ? [4, 5] : [2, 3],
+                ];
+            for (const pair of candidatePairs) {
+              if (!pair.some((p) => tOff.includes(p))) {
+                chosenPeriods = pair;
+                break;
+              }
+            }
+            if (chosenPeriods.length === 0) chosenPeriods = [2, 3];
+          }
+        } else {
+          // If periods were provided, adjust if exam is active and period 5 is included
+          if (isExamActive && chosenPeriods.includes(5)) {
+            if (chosenPeriods.length === 2) {
+              chosenPeriods = [2, 3];
+            } else {
+              chosenPeriods = [4];
+            }
+          }
+        }
+
+        // 3. Pick Room:
+        // A single classroom can take up to 2 practical sessions (4 periods) in one day,
+        // BUT they must be DIFFERENT practical subjects (variety rule: no repeating the same practical subject in same room).
+        let itemRoom: Classroom | undefined;
+        if (item.roomId) {
+          const roomSessCount = roomPracticalSessionsCount.get(item.roomId) || 0;
+          const roomSubs = roomPracticalSubjects.get(item.roomId);
+          const hasPeriodConflict = chosenPeriods.some((p) => usedRoomPeriodKeys.has(`${item.roomId}-P${p}`));
+          const hasSameSubject = roomSubs?.has(itemPracticalKey);
+          if (roomSessCount < 2 && !hasSameSubject && !hasPeriodConflict) {
+            itemRoom = classrooms.find((c) => c.id === item.roomId);
+          }
+        }
+        if (!itemRoom) {
+          const eligibleRooms = classrooms.filter((r) => {
+            const roomSessCount = roomPracticalSessionsCount.get(r.id) || 0;
+            // Max 2 practical sessions (4 periods) per room per day
+            if (roomSessCount >= 2) return false;
+            // Variety check: A classroom cannot have the same practical subject twice on the same day
+            const roomSubs = roomPracticalSubjects.get(r.id);
+            if (roomSubs?.has(itemPracticalKey)) return false;
+
+            if (itemTeacher && activeRules.enableStrictBuildingBinding) {
+              if (itemTeacher.assignedBuilding !== 'FLOATING' && itemTeacher.assignedBuilding !== r.building) {
+                return false;
+              }
+            }
+            if (chosenPeriods.some((p) => usedRoomPeriodKeys.has(`${r.id}-P${p}`))) {
+              return false;
+            }
+            if (activeRules.enableRoomQuotaCompletionLock && isPaperRoomQuotaCompleted(r.id, practicalPaper.id)) {
+              return false;
+            }
+            return true;
+          });
+          const pool = eligibleRooms.length > 0 ? eligibleRooms : classrooms.filter((r) => (roomPracticalSessionsCount.get(r.id) || 0) < 2);
+          const effectivePool = pool.length > 0 ? pool : classrooms;
+          const sortedRooms = [...effectivePool].sort((a, b) => {
+            // Prefer rooms that haven't received any practical yet today
+            const countPracA = roomPracticalSessionsCount.get(a.id) || 0;
+            const countPracB = roomPracticalSessionsCount.get(b.id) || 0;
+            if (countPracA !== countPracB) return countPracA - countPracB;
+
+            if (itemTeacher) {
+              const yestA = teacherYesterdayRooms.get(itemTeacher.id)?.has(a.id) ? 1 : 0;
+              const yestB = teacherYesterdayRooms.get(itemTeacher.id)?.has(b.id) ? 1 : 0;
+              if (yestA !== yestB) return yestA - yestB;
+
+              const tVisitsA = teacherRoomDeploymentCount.get(itemTeacher.id)?.get(a.id) || 0;
+              const tVisitsB = teacherRoomDeploymentCount.get(itemTeacher.id)?.get(b.id) || 0;
+              if (tVisitsA !== tVisitsB) return tVisitsA - tVisitsB;
+            }
+
+            const countA = pastHistoricalRoutines.reduce(
+              (sum, h) =>
+                sum +
+                h.slots.filter(
+                  (s) => s.roomId === a.id && (s.paperId === 'P13' || paperMap.get(s.paperId)?.theoryOrPractical === 'PRACTICAL')
+                ).length,
+              0
+            );
+            const countB = pastHistoricalRoutines.reduce(
+              (sum, h) =>
+                sum +
+                h.slots.filter(
+                  (s) => s.roomId === b.id && (s.paperId === 'P13' || paperMap.get(s.paperId)?.theoryOrPractical === 'PRACTICAL')
+                ).length,
+              0
+            );
+            if (countA !== countB) return countA - countB;
+
+            const poolIdxA = effectivePool.findIndex((r) => r.id === a.id);
+            const poolIdxB = effectivePool.findIndex((r) => r.id === b.id);
+            const dayOffset = (targetDayNumber + i * 2) % effectivePool.length;
+            const distA = (poolIdxA - dayOffset + effectivePool.length) % effectivePool.length;
+            const distB = (poolIdxB - dayOffset + effectivePool.length) % effectivePool.length;
+            return distA - distB;
+          });
+          itemRoom = sortedRooms[0];
+        }
+
+        if (itemRoom) {
+          roomPracticalSessionsCount.set(itemRoom.id, (roomPracticalSessionsCount.get(itemRoom.id) || 0) + 1);
+          const curSubs = roomPracticalSubjects.get(itemRoom.id) || new Set<string>();
+          curSubs.add(itemPracticalKey);
+          roomPracticalSubjects.set(itemRoom.id, curSubs);
+
+          chosenPeriods.forEach((p) => usedRoomPeriodKeys.add(`${itemRoom!.id}-P${p}`));
+
+          scheduledPracticals.push({
+            id: item.id || `prac-${i + 1}`,
+            name: item.name || options.practicalConfig?.name || 'Practical',
+            practicalSubjectId: item.practicalSubjectId,
+            teacher: itemTeacher,
+            room: itemRoom,
+            periods: chosenPeriods,
+          });
+        }
+      }
+    } else {
+      // SINGLE PRACTICAL / LEGACY MODE (1 instructor details 2 or 4 periods)
+      let designatedTeacher: Teacher | undefined;
+      if (options.practicalConfig?.teacherIds && options.practicalConfig.teacherIds.length > 0) {
+        designatedTeacher = availableTeachers.find((t) => t.id === options.practicalConfig!.teacherIds![0]);
+      }
+      if (!designatedTeacher) {
+        const sortedByWorkload = [...availableTeachers].sort((a, b) => {
+          const offA = getTeacherOffPeriods(a.id).length;
+          const offB = getTeacherOffPeriods(b.id).length;
+          const canDoA = (5 - offA) >= 4 ? 0 : 1;
+          const canDoB = (5 - offB) >= 4 ? 0 : 1;
+          if (canDoA !== canDoB) return canDoA - canDoB;
+          const loadA = teacherHistoricalSessions.get(a.id) || 0;
+          const loadB = teacherHistoricalSessions.get(b.id) || 0;
+          return loadA - loadB;
+        });
+        designatedTeacher = sortedByWorkload[0];
+      }
+
+      if (designatedTeacher) {
+        const tHistLoad = teacherHistoricalSessions.get(designatedTeacher.id) || 0;
+        const isHighDeployment =
+          isTeacherEqualizationActive &&
+          maxTeacherHistLoad > minTeacherHistLoad &&
+          tHistLoad > avgTeacherLoad;
+
+        if (isHighDeployment) {
+          highDeploymentPracticalTeacherIds.add(designatedTeacher.id);
+        }
+
+        const roomCount = isHighDeployment || classrooms.length < 2 ? 1 : 2;
+
+        const eligibleRooms = classrooms.filter((r) => {
+          if (activeRules.enableStrictBuildingBinding && designatedTeacher!.assignedBuilding !== 'FLOATING') {
+            if (designatedTeacher!.assignedBuilding !== r.building) return false;
+          }
+          if (activeRules.enableRoomQuotaCompletionLock && isPaperRoomQuotaCompleted(r.id, practicalPaper.id)) {
+            return false;
+          }
+          return true;
+        });
+        const pool = eligibleRooms.length >= roomCount ? eligibleRooms : classrooms;
+        const sortedRooms = [...pool].sort((a, b) => {
+          // 1. Avoid room if designated teacher taught in it yesterday
+          const yestA = teacherYesterdayRooms.get(designatedTeacher!.id)?.has(a.id) ? 1 : 0;
+          const yestB = teacherYesterdayRooms.get(designatedTeacher!.id)?.has(b.id) ? 1 : 0;
+          if (yestA !== yestB) return yestA - yestB;
+
+          // 2. Prioritize room where designated teacher has lowest cumulative visits across all subjects
+          const tVisitsA = teacherRoomDeploymentCount.get(designatedTeacher!.id)?.get(a.id) || 0;
+          const tVisitsB = teacherRoomDeploymentCount.get(designatedTeacher!.id)?.get(b.id) || 0;
+          if (tVisitsA !== tVisitsB) return tVisitsA - tVisitsB;
+
+          const countA = pastHistoricalRoutines.reduce(
+            (sum, h) =>
+              sum +
+              h.slots.filter(
+                (s) => s.roomId === a.id && (s.paperId === 'P13' || paperMap.get(s.paperId)?.theoryOrPractical === 'PRACTICAL')
+              ).length,
+            0
+          );
+          const countB = pastHistoricalRoutines.reduce(
+            (sum, h) =>
+              sum +
+              h.slots.filter(
+                (s) => s.roomId === b.id && (s.paperId === 'P13' || paperMap.get(s.paperId)?.theoryOrPractical === 'PRACTICAL')
+              ).length,
+            0
+          );
+          if (countA !== countB) return countA - countB;
+
+          const poolIdxA = pool.findIndex((r) => r.id === a.id);
+          const poolIdxB = pool.findIndex((r) => r.id === b.id);
+          const dayOffset = targetDayNumber % pool.length;
+          const distA = (poolIdxA - dayOffset + pool.length) % pool.length;
+          const distB = (poolIdxB - dayOffset + pool.length) % pool.length;
+          return distA - distB;
+        });
+
+        const pOff = getTeacherOffPeriods(designatedTeacher.id);
+        const pName = options.practicalConfig?.name || 'Practical';
+
+        if (roomCount === 1 || isExamActive) {
+          let pair: [number, number] = [2, 3];
+          const singleCandidatePairs: [number, number][] = isExamActive ? [[2, 3]] : [[2, 3], [4, 5]];
+          for (const cand of singleCandidatePairs) {
+            if (!cand.some((p) => pOff.includes(p))) {
+              pair = cand;
+              break;
+            }
+          }
+          scheduledPracticals.push({
+            id: 'prac-1',
+            name: pName,
+            teacher: designatedTeacher,
+            room: sortedRooms[0],
+            periods: pair,
+          });
+        } else {
+          let pair1: [number, number] = [2, 3];
+          let pair2: [number, number] = [4, 5];
+          const dualCandidatePairs: [[number, number], [number, number]][] = [
+            [[2, 3], [4, 5]],
+          ];
+          for (const [c1, c2] of dualCandidatePairs) {
+            if (!c1.some((p) => pOff.includes(p)) && !c2.some((p) => pOff.includes(p))) {
+              pair1 = c1;
+              pair2 = c2;
+              break;
+            }
+          }
+          const room1 = sortedRooms[0];
+          const room2 = sortedRooms.find((r) => r.id !== room1.id) || classrooms.find((c) => c.id !== room1.id) || room1;
+          scheduledPracticals.push({
+            id: 'prac-1',
+            name: pName,
+            teacher: designatedTeacher,
+            room: room1,
+            periods: pair1,
+          });
+          scheduledPracticals.push({
+            id: 'prac-2',
+            name: pName,
+            teacher: designatedTeacher,
+            room: room2,
+            periods: pair2,
+          });
+        }
+      }
+    }
+  }
+
+  // Tracking maps for practical assignments
+  const scheduledPracticalRoomIds = new Set(scheduledPracticals.map((p) => p.room.id));
+  const totalPracticalSlotsCount = scheduledPracticals.length * 2;
+  const teacherPracticalPeriodsMap = new Map<string, number[]>();
+  const teacherPracticalCounts = new Map<string, number>();
+  const practicalTeachersList: Teacher[] = [];
+  const scheduledPracticalSlots = new Set<string>();
+
+  for (const sp of scheduledPracticals) {
+    if (!practicalTeachersList.some((t) => t.id === sp.teacher.id)) {
+      practicalTeachersList.push(sp.teacher);
+    }
+    const curPeriods = teacherPracticalPeriodsMap.get(sp.teacher.id) || [];
+    teacherPracticalPeriodsMap.set(sp.teacher.id, [...curPeriods, ...sp.periods]);
+    teacherPracticalCounts.set(sp.teacher.id, (teacherPracticalCounts.get(sp.teacher.id) || 0) + 2);
+
+    for (const p of sp.periods) {
+      scheduledPracticalSlots.add(`${sp.room.id}-P${p}-${sp.teacher.id}`);
+    }
+  }
+
+  const designatedPracticalTeacher: Teacher | undefined = practicalTeachersList[0];
+  const practicalRoomsCount = scheduledPracticals.length;
+  const practicalPeriodsQuota = totalPracticalSlotsCount;
+  const practicalRoom1 = scheduledPracticals[0]?.room || classrooms[0];
+  const practicalRoom2 = scheduledPracticals[1]?.room || practicalRoom1;
+  const practicalPeriodsRoom1 = scheduledPracticals[0]?.periods || [2, 3];
+  const practicalPeriodsRoom2 = scheduledPracticals[1]?.periods || [4, 5];
+
   // 3. Part E: Subject Distribution Across Classrooms Starting From Paper 1
   // Classroom assigned paper buckets: roomId -> Paper[]
   const roomAssignedPapers = new Map<string, Paper[]>();
@@ -646,7 +1193,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return subjectPriorityTiers[pid] === 'HIGH' || priorityPaperIds.includes(pid);
   };
 
-  // Helper to check if paper can fit in room based on Rules 5, 6, 6A
+  // Helper to check if paper can fit in room based on Rules 5, 6, 6A, 9
   const canAddPaperToRoom = (paperId: string, roomId: string): boolean => {
     if (combinedExcludedSet.has(paperId)) return false;
     const currentInRoom = roomAssignedPapers.get(roomId) || [];
@@ -655,6 +1202,16 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       return false;
     }
     const countInRoom = currentInRoom.filter((p) => p.id === paperId).length;
+
+    // Rule 9 (Tier 1 Constraint): Practical Double-Period Limit
+    const isPracticalPaper = paperId === 'P13' || paperMap.get(paperId)?.theoryOrPractical === 'PRACTICAL';
+    if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive) {
+      if (isPracticalPaper) {
+        if (!scheduledPracticalRoomIds.has(roomId)) return false;
+        if (countInRoom >= 2) return false;
+        return true;
+      }
+    }
 
     // Rule 6: Max 1 period per subject per room daily
     if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && countInRoom >= 1) return false;
@@ -695,10 +1252,38 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
   // 3. Subject Room Distribution: Round-robin by paper (Paper 1 -> Paper 2 -> ... -> Paper 13 -> repeat)
   // "perhle paper 1 ka koi v. ek count filling hoga.. fir paper 2 ka ek count fir paper 3 so on.. aur firse paper 13 k baad repeat hoga.. jab tak distribution alloted subjects complete na ho.. and rooms are ranked b remaining demand percentage.. for indivusual subject"
+  
+  // Rule 9 (Tier 1 Constraint): Pre-seed practical slots in each scheduled practical room
+  if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive && classrooms.length >= practicalRoomsCount) {
+    for (const sp of scheduledPracticals) {
+      for (const _p of sp.periods) {
+        roomAssignedPapers.get(sp.room.id)!.push(practicalPaper);
+      }
+    }
+    const totalPracticalPeriods = scheduledPracticals.reduce((sum, sp) => sum + sp.periods.length, 0);
+    paperAllocatedCount.set(practicalPaper.id, totalPracticalPeriods);
+  }
+
+  // Pre-seed Exam session (Period 5) across ALL classrooms when Exam is active
+  if (isExamActive) {
+    for (const r of classrooms) {
+      roomAssignedPapers.get(r.id)!.push(examPaper);
+    }
+    paperAllocatedCount.set(examPaper.id, classrooms.length);
+  }
+
   let addedInRound = true;
   while (addedInRound) {
     addedInRound = false;
     for (const paper of schedulingPapers) {
+      // Under Rule 9, practical is pre-allocated with exactly 4 slots across 2 rooms
+      if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive && (paper.id === practicalPaper.id || paper.theoryOrPractical === 'PRACTICAL')) {
+        continue;
+      }
+      // Exam is pre-allocated to Period 5 across all classrooms
+      if (isExamActive && (paper.id === examPaper.id || paper.theoryOrPractical === 'EXAM')) {
+        continue;
+      }
       const alloc = curriculumPlan.allocations.get(paper.id);
       let targetSessions = alloc ? alloc.integerTarget : 0;
 
@@ -734,6 +1319,18 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           const remB = Math.max(0, (paper.totalTargetSessions || 30) - (roomPaperCompletedMap.get(b.id)?.get(paper.id) || 0));
           if (remA !== remB) return remB - remA;
 
+          // Classrooms where candidate primary teachers have fewer visits in this room
+          const pPrimaries = (paper.primaryTeacherIds || []).map((tid) => teacherMap.get(tid)).filter(Boolean) as Teacher[];
+          if (pPrimaries.length > 0) {
+            const anyExcessA = pPrimaries.some((t) => !isTeacherRoomVisitBalanced(t, a.id)) ? 1 : 0;
+            const anyExcessB = pPrimaries.some((t) => !isTeacherRoomVisitBalanced(t, b.id)) ? 1 : 0;
+            if (anyExcessA !== anyExcessB) return anyExcessA - anyExcessB;
+
+            const minTVa = Math.min(...pPrimaries.map((t) => teacherRoomDeploymentCount.get(t.id)?.get(a.id) || 0));
+            const minTVb = Math.min(...pPrimaries.map((t) => teacherRoomDeploymentCount.get(t.id)?.get(b.id) || 0));
+            if (minTVa !== minTVb) return minTVa - minTVb;
+          }
+
           // Rotational campus offset so subjects with smaller daily counts (e.g. Paper-12)
           // rotate evenly across both Old Building and New Building instead of clustering in low-index rooms
           const idxA = classroomIndexMap.get(a.id) || 1;
@@ -762,13 +1359,25 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     while (assigned.length < 5) {
       // Find candidate subjects with remaining curriculum demand that satisfy room constraints
       const candidatePapers = schedulingPapers
-        .filter((p) => canAddPaperToRoom(p.id, room.id))
+        .filter((p) => {
+          if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive && (p.id === practicalPaper.id || p.theoryOrPractical === 'PRACTICAL')) {
+            return false;
+          }
+          return canAddPaperToRoom(p.id, room.id);
+        })
         .sort((a, b) => {
           const allocA = curriculumPlan.allocations.get(a.id);
           const allocB = curriculumPlan.allocations.get(b.id);
           const deficitA = (allocA ? allocA.integerTarget : 0) - (paperAllocatedCount.get(a.id) || 0);
           const deficitB = (allocB ? allocB.integerTarget : 0) - (paperAllocatedCount.get(b.id) || 0);
           if (deficitA !== deficitB) return deficitB - deficitA; // Under-allocated papers first!
+
+          const pPrimA = (a.primaryTeacherIds || []).map((tid) => teacherMap.get(tid)).filter(Boolean) as Teacher[];
+          const pPrimB = (b.primaryTeacherIds || []).map((tid) => teacherMap.get(tid)).filter(Boolean) as Teacher[];
+          const excessA = pPrimA.some((t) => !isTeacherRoomVisitBalanced(t, room.id)) ? 1 : 0;
+          const excessB = pPrimB.some((t) => !isTeacherRoomVisitBalanced(t, room.id)) ? 1 : 0;
+          if (excessA !== excessB) return excessA - excessB;
+
           const pctA = getClassRemainingPercentage(a.id, room.id);
           const pctB = getClassRemainingPercentage(b.id, room.id);
           return pctB - pctA;
@@ -815,8 +1424,179 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       // Fallback in rare constraint lockout: fill with any non-completed papers
       for (const p of schedulingPapers) {
         if (assigned.length >= 5) break;
-        if (!assigned.includes(p)) assigned.push(p);
+        if (
+          activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false &&
+          isPracticalActive &&
+          (p.id === practicalPaper.id || p.theoryOrPractical === 'PRACTICAL')
+        ) {
+          continue;
+        }
+        if (!assigned.includes(p) && !isPaperRoomQuotaCompleted(room.id, p.id)) {
+          assigned.push(p);
+        }
       }
+    }
+
+    // Rule 9 (Tier 1 Constraint): Lock practical in designated consecutive periods for practical rooms
+    const scheduledPracsForRoom = scheduledPracticals.filter((sp) => sp.room.id === room.id);
+
+    // When Exam is active, Period 5 (index 4) is ALWAYS examPaper across all classrooms!
+    if (isExamActive) {
+      if (
+        activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false &&
+        isPracticalActive &&
+        scheduledPracsForRoom.length > 0
+      ) {
+        const practicalIndices = new Set<number>();
+        for (const sp of scheduledPracsForRoom) {
+          for (const p of sp.periods) {
+            if (p < 5) practicalIndices.add(p - 1);
+          }
+        }
+        const theoryCountNeeded = 4 - practicalIndices.size;
+        const theoryList = assigned.filter(
+          (p) => p.id !== practicalPaper.id && p.id !== examPaper.id && p.theoryOrPractical !== 'PRACTICAL' && p.theoryOrPractical !== 'EXAM'
+        );
+        while (theoryList.length < theoryCountNeeded) {
+          for (const p of schedulingPapers) {
+            if (
+              p.id !== practicalPaper.id &&
+              p.id !== examPaper.id &&
+              p.theoryOrPractical !== 'PRACTICAL' &&
+              p.theoryOrPractical !== 'EXAM' &&
+              !theoryList.includes(p)
+            ) {
+              theoryList.push(p);
+              if (theoryList.length >= theoryCountNeeded) break;
+            }
+          }
+        }
+        const fullPerm: Paper[] = new Array(5).fill(null);
+        fullPerm[4] = examPaper;
+        for (const idx of practicalIndices) {
+          fullPerm[idx] = practicalPaper;
+        }
+        let tIdx = 0;
+        for (let i = 0; i < 4; i++) {
+          if (!practicalIndices.has(i)) {
+            fullPerm[i] = theoryList[tIdx++] || schedulingPapers[0];
+          }
+        }
+        roomDailyPlans.set(room.id, fullPerm);
+        continue;
+      } else {
+        // Room without practical: 4 theory papers + examPaper in Period 5 (index 4)
+        const theoryList = assigned.filter(
+          (p) => p.id !== practicalPaper.id && p.id !== examPaper.id && p.theoryOrPractical !== 'PRACTICAL' && p.theoryOrPractical !== 'EXAM'
+        );
+        while (theoryList.length < 4) {
+          for (const p of schedulingPapers) {
+            if (
+              p.id !== practicalPaper.id &&
+              p.id !== examPaper.id &&
+              p.theoryOrPractical !== 'PRACTICAL' &&
+              p.theoryOrPractical !== 'EXAM' &&
+              !theoryList.includes(p)
+            ) {
+              theoryList.push(p);
+              if (theoryList.length >= 4) break;
+            }
+          }
+        }
+        const perms4 = permute5(theoryList.slice(0, 4));
+        let best4 = theoryList.slice(0, 4);
+        let minWaveDistance = Infinity;
+        for (const p4 of perms4) {
+          let dist = 0;
+          for (let i = 0; i < 4; i++) {
+            const paper = p4[i];
+            if (!paper) continue;
+            const phase = paperWavePhase.get(paper.id) || 0;
+            const idealPeriod = (rIdx - phase + 50) % 5;
+            const diff = Math.min(Math.abs(i - idealPeriod), 5 - Math.abs(i - idealPeriod));
+            dist += diff;
+          }
+          if (dist < minWaveDistance) {
+            minWaveDistance = dist;
+            best4 = p4;
+            if (dist === 0) break;
+          }
+        }
+        const fullPerm: Paper[] = [...best4, examPaper];
+        roomDailyPlans.set(room.id, fullPerm);
+        continue;
+      }
+    }
+
+    if (
+      activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false &&
+      isPracticalActive &&
+      scheduledPracsForRoom.length > 0
+    ) {
+      const practicalPeriodIndices = new Set<number>();
+      for (const sp of scheduledPracsForRoom) {
+        for (const p of sp.periods) {
+          practicalPeriodIndices.add(p - 1); // 0-based
+        }
+      }
+
+      const theoryCountNeeded = 5 - practicalPeriodIndices.size;
+      const theoryList = assigned.filter((p) => p.id !== practicalPaper.id && p.theoryOrPractical !== 'PRACTICAL');
+
+      while (theoryList.length < theoryCountNeeded) {
+        let added = false;
+        for (const p of schedulingPapers) {
+          if (
+            p.id !== practicalPaper.id &&
+            p.theoryOrPractical !== 'PRACTICAL' &&
+            !theoryList.includes(p) &&
+            !isPaperRoomQuotaCompleted(room.id, p.id)
+          ) {
+            theoryList.push(p);
+            added = true;
+            if (theoryList.length >= theoryCountNeeded) break;
+          }
+        }
+        if (!added) break;
+      }
+
+      const theoryPerms = theoryCountNeeded <= 3 ? permute5(theoryList.slice(0, theoryCountNeeded)) : [theoryList.slice(0, theoryCountNeeded)];
+      let bestRoomPerm: Paper[] = [];
+      let minWaveDist = Infinity;
+
+      for (const tPerm of theoryPerms) {
+        const fullPerm: Paper[] = new Array(5);
+        for (const pIdx of practicalPeriodIndices) {
+          fullPerm[pIdx] = practicalPaper;
+        }
+        let tIdx = 0;
+        for (let i = 0; i < 5; i++) {
+          if (!practicalPeriodIndices.has(i)) {
+            fullPerm[i] = tPerm[tIdx++];
+          }
+        }
+
+        // Wave distance for theory slots
+        let dist = 0;
+        for (let i = 0; i < 5; i++) {
+          if (practicalPeriodIndices.has(i)) continue;
+          const paper = fullPerm[i];
+          if (!paper) continue;
+          const phase = paperWavePhase.get(paper.id) || 0;
+          const idealPeriod = (rIdx - phase + 50) % 5;
+          const diff = Math.min(Math.abs(i - idealPeriod), 5 - Math.abs(i - idealPeriod));
+          dist += diff;
+        }
+
+        if (dist < minWaveDist) {
+          minWaveDist = dist;
+          bestRoomPerm = fullPerm;
+          if (dist === 0) break;
+        }
+      }
+
+      roomDailyPlans.set(room.id, bestRoomPerm.length === 5 ? bestRoomPerm : assigned);
+      continue;
     }
 
     const perms = permute5(assigned);
@@ -829,8 +1609,12 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       if (!activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily && activeRules.enableMaxRoomDailyLimit && activeRules.enableNonConsecutiveGapForSameSubject) {
         for (let pIdx = 0; pIdx < perm.length - 1; pIdx++) {
           if (perm[pIdx].id === perm[pIdx + 1].id) {
-            violates6B = true;
-            break;
+            if (perm[pIdx].id === practicalPaper.id || perm[pIdx].theoryOrPractical === 'PRACTICAL') {
+              // Practical consecutive is allowed/required under Rule 9
+            } else {
+              violates6B = true;
+              break;
+            }
           }
         }
       }
@@ -857,42 +1641,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
   }
 
   // 6. Part H & I: Teacher Workload Calculation & Assignment
-  const normalizedAbsentSet = activeRules.enableStrictAbsenteeExclusion
-    ? new Set(absentTeacherIds.map(normalizeTeacherId))
-    : new Set<string>();
-
-  const availableTeachers = teachers.filter((t) => !normalizedAbsentSet.has(normalizeTeacherId(t.id)));
-  const availableTeacherIds = new Set(availableTeachers.map((t) => t.id));
-
-  // Teacher historical sessions across past routines (accounting scope)
-  const teacherHistoricalSessions = new Map<string, number>();
-  teachers.forEach((t) => teacherHistoricalSessions.set(t.id, 0));
-
-  // Teacher Classroom Deployment Tracker: teacherId -> roomId -> visits count
-  const teacherRoomDeploymentCount = new Map<string, Map<string, number>>();
-  teachers.forEach((t) => {
-    const rMap = new Map<string, number>();
-    classrooms.forEach((r) => rMap.set(r.id, 0));
-    teacherRoomDeploymentCount.set(t.id, rMap);
-  });
-
-  pastHistoricalRoutines.forEach((r) => {
-    r.slots.forEach((s) => {
-      if (s.teacherId) {
-        teacherHistoricalSessions.set(s.teacherId, (teacherHistoricalSessions.get(s.teacherId) || 0) + 1);
-        if (teacherRoomDeploymentCount.has(s.teacherId)) {
-          const rMap = teacherRoomDeploymentCount.get(s.teacherId)!;
-          if (rMap.has(s.roomId)) {
-            rMap.set(s.roomId, (rMap.get(s.roomId) || 0) + 1);
-          }
-        }
-      }
-    });
-  });
-
-  const teacherDailyLoad = new Map<string, number>();
-  teachers.forEach((t) => teacherDailyLoad.set(t.id, 0));
-
   const teacherLastSlot = new Map<
     string,
     { period: number; building: 'OLD' | 'NEW' | string; roomIndex: number }
@@ -900,10 +1648,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
   // Teacher room rotation target
   const teacherTargetRoomIndex = new Map<string, number>();
-  const previousRoutines = historicalRoutines
-    .filter((r) => r.dayNumber < targetDayNumber)
-    .sort((a, b) => b.dayNumber - a.dayNumber);
-  const previousDayRoutine = previousRoutines[0];
 
   teachers.forEach((t, i) => {
     let initialTarget: number;
@@ -963,13 +1707,6 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     return false;
   };
 
-  // Helper to check strict building binding (Rule 3)
-  const isTeacherAllowedInRoomBuilding = (t: Teacher, rBuilding: string): boolean => {
-    if (!activeRules.enableStrictBuildingBinding) return true;
-    if (t.assignedBuilding === 'FLOATING') return true;
-    return t.assignedBuilding === rBuilding;
-  };
-
   // Sort candidate teachers to minimize workload difference and prioritize unvisited classrooms (Part H & I, Rule 22)
   const sortCandidatesByFairWorkload = (
     candidates: Teacher[],
@@ -978,61 +1715,78 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     roomBuilding?: string
   ): Teacher[] => {
     return [...candidates].sort((a, b) => {
+      // 1. Same-Day Room Uniqueness: Avoid detailing the same instructor in the same room twice on the same day
+      const inRoomTodayA = generatedSlots.some((s) => s.roomId === roomId && s.teacherId === a.id) ? 1 : 0;
+      const inRoomTodayB = generatedSlots.some((s) => s.roomId === roomId && s.teacherId === b.id) ? 1 : 0;
+      if (inRoomTodayA !== inRoomTodayB) return inRoomTodayA - inRoomTodayB;
+
+      // 2. Anti-clustering: avoid candidate who taught in this room yesterday
+      const yestA = teacherYesterdayRooms.get(a.id)?.has(roomId) ? 1 : 0;
+      const yestB = teacherYesterdayRooms.get(b.id)?.has(roomId) ? 1 : 0;
+      if (yestA !== yestB) return yestA - yestB;
+
+      // 3. Room Exposure Balance Gap (Difference <= 2 Cap)
+      // Strictly penalize instructors whose visits in this room already exceed their minimum eligible room visits by >= 2
+      const excessA = isTeacherRoomVisitBalanced(a, roomId) ? 0 : 1;
+      const excessB = isTeacherRoomVisitBalanced(b, roomId) ? 0 : 1;
+      if (excessA !== excessB) return excessA - excessB;
+
+      // 4. Soft daily cap: instructors with < 3 periods today prioritized
       const loadA = teacherDailyLoad.get(a.id) || 0;
       const loadB = teacherDailyLoad.get(b.id) || 0;
-
-      // Soft daily cap: instructors with < 3 periods today prioritized
       if (activeRules.enableDailyWorkloadSoftCap) {
         const cappedA = loadA >= 3 ? 1 : 0;
         const cappedB = loadB >= 3 ? 1 : 0;
         if (cappedA !== cappedB) return cappedA - cappedB;
       }
 
-      // 1. Equalize Daily Workload: Always prefer teacher with fewer periods today
+      // 5. Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
+      // Strongly prioritize instructors who have NEVER visited this room (0 visits)
+      const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
+      const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
+
+      const isUnvisitedA = visitsA === 0;
+      const isUnvisitedB = visitsB === 0;
+
+      // Highest priority to instructor who has NEVER taught in this room (0 visits)
+      if (isUnvisitedA !== isUnvisitedB) {
+        return isUnvisitedA ? -1 : 1;
+      }
+
+      // If both are unvisited (0 visits), check building-specific affinity
+      if (isUnvisitedA && isUnvisitedB && roomBuilding) {
+        const matchA = a.assignedBuilding === roomBuilding ? 1 : 0;
+        const matchB = b.assignedBuilding === roomBuilding ? 1 : 0;
+        if (matchA !== matchB) {
+          // Prioritize building-specific instructor over floating to ensure home-building coverage
+          return matchB - matchA;
+        }
+      }
+
+      // 6. Lowest previous visits to this room first (fair room share, prevents repetitive dumping in same room)
+      if (visitsA !== visitsB) return visitsA - visitsB;
+
+      // 7. Equalize Daily Workload: Always prefer teacher with fewer periods today
       if (loadA !== loadB) {
         return loadA - loadB;
       }
 
-      // 2. Rule 22: Unvisited Classroom Instructor Prioritization (Building-Wise Exposure)
-      // Strongly prioritize instructors who have NEVER visited this room (0 visits)
-      if (activeRules.enableUnvisitedRoomTeacherPrioritization) {
-        const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
-        const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
-
-        const isUnvisitedA = visitsA === 0;
-        const isUnvisitedB = visitsB === 0;
-
-        // Highest priority to instructor who has NEVER taught in this room (0 visits)
-        if (isUnvisitedA !== isUnvisitedB) {
-          return isUnvisitedA ? -1 : 1;
-        }
-
-        // If both are unvisited (0 visits), check building-specific affinity
-        if (isUnvisitedA && isUnvisitedB && roomBuilding) {
-          const matchA = a.assignedBuilding === roomBuilding ? 1 : 0;
-          const matchB = b.assignedBuilding === roomBuilding ? 1 : 0;
-          if (matchA !== matchB) {
-            // Prioritize building-specific instructor over floating to ensure home-building coverage
-            return matchB - matchA;
-          }
-        }
-
-        // Lowest previous visits to this room first
-        if (visitsA !== visitsB) return visitsA - visitsB;
-      } else {
-        const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(roomId) || 0;
-        const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(roomId) || 0;
-        if (visitsA !== visitsB) return visitsA - visitsB;
-      }
-
-      // 3. Cumulative Workload Balancing: prefer teacher with fewer total historical sessions
+      // 8. Cumulative Workload Balancing: prefer teacher with fewer total historical sessions
       const totalA = getTeacherTotalLoad(a.id);
       const totalB = getTeacherTotalLoad(b.id);
       if (activeRules.enableWorkloadEqualization && totalA !== totalB) {
         return totalA - totalB;
       }
 
-      // Room carousel circular distance
+      // 9. Floating Faculty Building Exposure Balance:
+      // For FLOATING teachers, prefer the instructor who has fewer visits in this building
+      if (a.assignedBuilding === 'FLOATING' && b.assignedBuilding === 'FLOATING' && roomBuilding) {
+        const bVisitsA = teacherBuildingDeploymentCount.get(a.id)?.get(roomBuilding) || 0;
+        const bVisitsB = teacherBuildingDeploymentCount.get(b.id)?.get(roomBuilding) || 0;
+        if (bVisitsA !== bVisitsB) return bVisitsA - bVisitsB;
+      }
+
+      // 10. Room carousel circular distance
       const targetA = teacherTargetRoomIndex.get(a.id) || 1;
       const targetB = teacherTargetRoomIndex.get(b.id) || 1;
       const distA = (roomIndex - targetA + classrooms.length) % classrooms.length;
@@ -1040,7 +1794,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       if (distA !== distB) return distA - distB;
 
       if (totalA !== totalB) return totalA - totalB;
-      return loadA - loadB;
+      return compareTeacherCodes(a, b);
     });
   };
 
@@ -1048,17 +1802,48 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     tid: string,
     period: number,
     room: Classroom,
-    busyInPeriod: Set<string>
+    busyInPeriod: Set<string>,
+    currentPaperId?: string
   ): boolean => {
     if (!availableTeacherIds.has(tid)) return false;
     if (activeRules.enableZeroDoubleBooking && busyInPeriod.has(tid)) return false;
     const t = teacherMap.get(tid);
     if (!t) return false;
+    // Rule 9 (Tier 1 Constraint): Practical & Theory eligibility
+    const isCurrentPractical = isPracticalActive && (currentPaperId === practicalPaper.id || (currentPaperId && paperMap.get(currentPaperId)?.theoryOrPractical === 'PRACTICAL'));
+    const practicalCount = teacherPracticalCounts.get(tid) || 0;
+
+    if (isCurrentPractical) {
+      if (!scheduledPracticalSlots.has(`${room.id}-P${period}-${tid}`)) {
+        return false;
+      }
+    } else {
+      if (practicalCount > 0) {
+        const pracPeriods = teacherPracticalPeriodsMap.get(tid) || [];
+        if (pracPeriods.includes(period)) {
+          return false;
+        }
+        if (highDeploymentPracticalTeacherIds.has(tid)) {
+          return false;
+        }
+      }
+    }
+    // Rule 25: Strict Instructor Designated Off-Period Protection (Excuse Rule)
+    if (activeRules.enableInstructorDesignatedOffPeriods !== false) {
+      const offPeriods = getTeacherOffPeriods(tid);
+      if (offPeriods.includes(period)) return false;
+    }
     if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
     if (hasBuildingChangeConflict(tid, period, room.building)) return false;
     const currentDaily = teacherDailyLoad.get(tid) || 0;
-    const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
-    if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
+    const instructorMappingCap = t.maxDailyPeriods !== undefined ? t.maxDailyPeriods : 4;
+    const maxAllowed = highDeploymentPracticalTeacherIds.has(tid)
+      ? 2
+      : instructorMappingCap;
+    const futurePracCount = isCurrentPractical
+      ? 0
+      : (teacherPracticalPeriodsMap.get(tid) || []).filter((p) => p >= period).length;
+    if (activeRules.enableDailyWorkloadMaxCap && (currentDaily + futurePracCount) >= maxAllowed) return false;
     return true;
   };
 
@@ -1102,39 +1887,90 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       return p.code || p.id;
     };
 
-    const getAvailablePaperForTeacherInRoom = (t: Teacher, roomId: string): Paper => {
-      const assigned = roomAssignedPaperIds.get(roomId)!;
-      // 1. Primary paper
-      for (const pid of t.primaryPaperIds || []) {
-        if (!assigned.has(pid)) {
-          const p = paperMap.get(pid);
-          if (p) return p;
-        }
-      }
-      // 2. Backup paper
-      for (const pid of t.backupPaperIds || []) {
-        if (!assigned.has(pid)) {
-          const p = paperMap.get(pid);
-          if (p) return p;
-        }
-      }
-      // 3. Secondary paper
-      for (const pid of t.secondaryPaperIds || []) {
-        if (!assigned.has(pid)) {
-          const p = paperMap.get(pid);
-          if (p) return p;
-        }
-      }
-      // 4. Any paper of this teacher's primary category not yet in room
-      const primaryP = getTeacherPrimaryPaper(t);
-      const categoryPapers = papers.filter((p) => p.category === primaryP.category && !assigned.has(p.id));
-      if (categoryPapers.length > 0) return categoryPapers[0];
+    const isSubjectCompletedInRoom = (roomId: string, paperId: string): boolean => {
+      if (isPaperRoomQuotaCompleted(roomId, paperId)) return true;
+      const completed = roomPaperCompletedMap.get(roomId)?.get(paperId) || 0;
+      const p = paperMap.get(paperId);
+      const target = p && p.totalTargetSessions > 0 ? p.totalTargetSessions : 30;
+      return target > 0 && completed >= target;
+    };
 
-      // 5. Any paper not yet in room
-      const anyFreePaper = papers.filter((p) => !assigned.has(p.id));
-      if (anyFreePaper.length > 0) return anyFreePaper[0];
+    const isSubjectAllowedTodayInRoom = (roomId: string, paperId: string): boolean => {
+      if (activeRules.enableMaxOnePeriodPerSubjectPerRoomDaily) {
+        return !roomAssignedPaperIds.get(roomId)!.has(paperId);
+      }
+      if (activeRules.enableMaxRoomDailyLimit) {
+        const count = [...slotMatrix.get(roomId)!.values()].filter((s) => s && s.paper.id === paperId).length;
+        return count < 2;
+      }
+      return true;
+    };
 
-      return primaryP;
+    interface TeacherSubjectMatch {
+      paper: Paper;
+      isOptionSubject: boolean;
+    }
+
+    /**
+     * Determines the paper for a teacher in a given classroom under Teacher-First Detailment:
+     * 1. Main subject (primaryPaperIds):
+     *    If main subject is NOT complete in the classroom AND allowed today:
+     *    -> Returns main subject ({ paper, isOptionSubject: false }).
+     * 2. If main subject IS complete in the classroom (or already taught today):
+     *    -> Checks option subjects (backupPaperIds, then secondaryPaperIds).
+     *    -> Returns first option subject that is NOT complete in the classroom AND allowed today ({ paper, isOptionSubject: true }).
+     * 3. If teacher has no option subject, or all option subjects are also completed in this classroom (or already taught today):
+     *    -> Returns null. (Teacher cannot teach this classroom; classroom must be filled by another eligible teacher).
+     */
+    const determinePaperForTeacherInRoom = (
+      teacher: Teacher,
+      roomId: string,
+      allowDailyDuplicate: boolean = false
+    ): TeacherSubjectMatch | null => {
+      // 1. Try Main Subject (primaryPaperIds)
+      for (const pid of teacher.primaryPaperIds || []) {
+        if (combinedExcludedSet.has(pid)) continue;
+        const p = paperMap.get(pid);
+        if (!p) continue;
+        const isQuotaDone = isSubjectCompletedInRoom(roomId, pid);
+        const isAllowedToday = allowDailyDuplicate || isSubjectAllowedTodayInRoom(roomId, pid);
+        if (!isQuotaDone && isAllowedToday) {
+          return { paper: p, isOptionSubject: false };
+        }
+      }
+
+      // If primaryPaperIds was empty, check primary mapping from papers
+      if (!teacher.primaryPaperIds || teacher.primaryPaperIds.length === 0) {
+        const mapped = papers.find((p) => (p.primaryTeacherIds || []).includes(teacher.id));
+        if (mapped && !combinedExcludedSet.has(mapped.id)) {
+          const isQuotaDone = isSubjectCompletedInRoom(roomId, mapped.id);
+          const isAllowedToday = allowDailyDuplicate || isSubjectAllowedTodayInRoom(roomId, mapped.id);
+          if (!isQuotaDone && isAllowedToday) {
+            return { paper: mapped, isOptionSubject: false };
+          }
+        }
+      }
+
+      // 2. Main subject is complete in this classroom (or not allowed today).
+      // Check Option Subjects (backupPaperIds, then secondaryPaperIds)
+      const optionPaperIds = [
+        ...(teacher.backupPaperIds || []),
+        ...(teacher.secondaryPaperIds || []),
+      ];
+
+      for (const pid of optionPaperIds) {
+        if (combinedExcludedSet.has(pid)) continue;
+        const p = paperMap.get(pid);
+        if (!p) continue;
+        const isQuotaDone = isSubjectCompletedInRoom(roomId, pid);
+        const isAllowedToday = allowDailyDuplicate || isSubjectAllowedTodayInRoom(roomId, pid);
+        if (!isQuotaDone && isAllowedToday) {
+          return { paper: p, isOptionSubject: true };
+        }
+      }
+
+      // 3. No option subject available or all option subjects are complete in this classroom
+      return null;
     };
 
     const roomAssignedTeacherIds = new Map<string, Set<string>>();
@@ -1146,134 +1982,557 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       roomAssignedCategories.set(r.id, new Set());
     }
 
-    for (let period = 1; period <= 5; period++) {
-      const busyTeachersInPeriod = new Set<string>();
+    // =========================================================================
+    // TIER 1: TEACHER-FIRST DETAILMENT EQUALIZATION ENGINE (RULE 8)
+    // =========================================================================
+    // 1. Practical classes (if active) are scheduled as 2 consecutive periods.
+    // 2. Candidates with deployment < maxDeployment are lagging teachers, detailed first
+    //    for their main subject. Iterated teacher-by-teacher.
+    // 3. When an instructor reaches top count (or round completes), cycle restarts from lowest.
+    // 4. Once equalized, continue round-robin 1 session per teacher until all 75 slots are complete.
+    // 5. Room assignment: Place teacher in the classroom where they have the lowest historical
+    //    detailment count (least visits), respecting building binding and Tier 1 rules.
+    // =========================================================================
 
-      // Period classrooms: sort by building, and room with more assigned papers first
-      const periodRooms = [...orderedRooms].sort((a, b) => {
-        // Home building grouping
-        if (a.building !== b.building) {
-          return a.building === 'OLD' ? -1 : 1;
-        }
-        const assignedA = roomAssignedPaperIds.get(a.id)!.size;
-        const assignedB = roomAssignedPaperIds.get(b.id)!.size;
-        if (assignedA !== assignedB) return assignedB - assignedA;
-        return (classroomIndexMap.get(a.id) || 0) - (classroomIndexMap.get(b.id) || 0);
-      });
+    interface PlannedSlot {
+      teacher: Teacher;
+      paper: Paper;
+      practicalName?: string;
+      practicalSubjectId?: string;
+      isSubstitute?: boolean;
+      substituteReason?: string;
+    }
 
-      const periodSlotMap = new Map<string, { teacher: Teacher; paper: Paper }>();
-      const assignedThisPeriod = new Set<string>();
+    const slotMatrix = new Map<string, Map<number, PlannedSlot | null>>();
+    for (const r of orderedRooms) {
+      const pMap = new Map<number, PlannedSlot | null>();
+      for (let p = 1; p <= 5; p++) {
+        pMap.set(p, null);
+      }
+      slotMatrix.set(r.id, pMap);
+    }
+    let filledSlotsCount = 0;
 
-      for (const room of periodRooms) {
-        // Find candidate teachers for this room in this period
-        const candidates = availableTeachers.filter((t) => {
-          if (assignedThisPeriod.has(t.id)) return false;
-          const currentDaily = teacherDailyLoad.get(t.id) || 0;
-          const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
-          if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
-          if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
-          if (hasBuildingChangeConflict(t.id, period, room.building)) return false;
-          if (roomAssignedTeacherIds.get(room.id)!.has(t.id)) return false;
-          // Teacher must have a paper that is not yet assigned in this room today
-          const assignedPapers = roomAssignedPaperIds.get(room.id)!;
-          const hasEligiblePaper = (t.primaryPaperIds || []).some((pid) => !assignedPapers.has(pid)) ||
-            (t.backupPaperIds || []).some((pid) => !assignedPapers.has(pid)) ||
-            (t.secondaryPaperIds || []).some((pid) => !assignedPapers.has(pid));
-          if (!hasEligiblePaper && assignedPapers.size < papers.length) return false;
-          return true;
-        });
+    // Helper: is teacher busy at period p in any room?
+    const isTeacherBusyInPeriod = (teacherId: string, period: number): boolean => {
+      for (const r of orderedRooms) {
+        const slot = slotMatrix.get(r.id)?.get(period);
+        if (slot && slot.teacher.id === teacherId) return true;
+      }
+      return false;
+    };
 
-        // Fallback pool if strict room repeat is exhausted
-        const pool = candidates.length > 0 ? candidates : availableTeachers.filter((t) => {
-          if (assignedThisPeriod.has(t.id)) return false;
-          const currentDaily = teacherDailyLoad.get(t.id) || 0;
-          const maxAllowed = Math.min(4, t.maxDailyPeriods || 4);
-          if (activeRules.enableDailyWorkloadMaxCap && currentDaily >= maxAllowed) return false;
-          if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
-          if (hasBuildingChangeConflict(t.id, period, room.building)) return false;
-          return true;
-        });
+    // Helper: get current building of teacher at period p if assigned
+    const getTeacherBuildingAtPeriod = (teacherId: string, period: number): string | null => {
+      for (const r of orderedRooms) {
+        const slot = slotMatrix.get(r.id)?.get(period);
+        if (slot && slot.teacher.id === teacherId) return r.building;
+      }
+      return null;
+    };
 
-        if (pool.length > 0) {
-          // Sort candidates:
-          // 1. Same paper category in this room avoided (teachers of same paper category will not appear in same class)
-          // 2. Lowest cumulative workload across history + today (lagging teachers get more classes)
-          // 3. Lowest deployment in this room (teacher historical visits count)
-          // 4. Daily load balance
-          // 5. Home-building preference
-          pool.sort((a, b) => {
-            const paperA = getAvailablePaperForTeacherInRoom(a, room.id);
-            const paperB = getAvailablePaperForTeacherInRoom(b, room.id);
-            const catA = getTeacherPaperCategory(a, paperA);
-            const catB = getTeacherPaperCategory(b, paperB);
-
-            // Category uniqueness in this room
-            const hasCatA = roomAssignedCategories.get(room.id)!.has(catA) ? 1 : 0;
-            const hasCatB = roomAssignedCategories.get(room.id)!.has(catB) ? 1 : 0;
-            if (hasCatA !== hasCatB) return hasCatA - hasCatB;
-
-            // Lowest visits / prior deployments in this room (unvisited rooms prioritized)
-            const visitsA = teacherRoomDeploymentCount.get(a.id)?.get(room.id) || 0;
-            const visitsB = teacherRoomDeploymentCount.get(b.id)?.get(room.id) || 0;
-            const isUnvisitedA = visitsA === 0;
-            const isUnvisitedB = visitsB === 0;
-            if (isUnvisitedA !== isUnvisitedB) {
-              return isUnvisitedA ? -1 : 1;
-            }
-            if (visitsA !== visitsB) return visitsA - visitsB;
-
-            // Cumulative workload balancing
-            const totalLoadA = (teacherHistoricalSessions.get(a.id) || 0) + (teacherDailyLoad.get(a.id) || 0);
-            const totalLoadB = (teacherHistoricalSessions.get(b.id) || 0) + (teacherDailyLoad.get(b.id) || 0);
-            if (totalLoadA !== totalLoadB) return totalLoadA - totalLoadB;
-
-            const dailyA = teacherDailyLoad.get(a.id) || 0;
-            const dailyB = teacherDailyLoad.get(b.id) || 0;
-            if (dailyA !== dailyB) return dailyA - dailyB;
-
-            const isHomeA = a.assignedBuilding === room.building ? 1 : 0;
-            const isHomeB = b.assignedBuilding === room.building ? 1 : 0;
-            if (isHomeA !== isHomeB) return isHomeB - isHomeA;
-
-            return a.id.localeCompare(b.id);
-          });
-
-          const chosen = pool[0];
-          assignedThisPeriod.add(chosen.id);
-          const paper = getAvailablePaperForTeacherInRoom(chosen, room.id);
-          const cat = getTeacherPaperCategory(chosen, paper);
-
-          roomAssignedTeacherIds.get(room.id)!.add(chosen.id);
-          roomAssignedPaperIds.get(room.id)!.add(paper.id);
-          roomAssignedCategories.get(room.id)!.add(cat);
-          periodSlotMap.set(room.id, { teacher: chosen, paper });
+    // Helper: transit conflict check across period p-1 and p+1
+    const hasTransitConflict = (teacherId: string, period: number, targetBuilding: string): boolean => {
+      if (!activeRules.enableBuildingChangeGap) return false;
+      if (period > 1) {
+        const prevBuilding = getTeacherBuildingAtPeriod(teacherId, period - 1);
+        if (prevBuilding && prevBuilding !== targetBuilding) {
+          if (!(activeRules.enableBuildingChangeGapPeriod3To4Exemption && period === 4)) {
+            return true;
+          }
         }
       }
+      if (period < 5) {
+        const nextBuilding = getTeacherBuildingAtPeriod(teacherId, period + 1);
+        if (nextBuilding && nextBuilding !== targetBuilding) {
+          if (!(activeRules.enableBuildingChangeGapPeriod3To4Exemption && period === 3)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
 
-      // Commit all 15 assignments for this period
+    // Helper: teacher total deployment count
+    const getTeacherTotalDeployment = (t: Teacher): number => {
+      return (teacherHistoricalSessions.get(t.id) || 0) + (teacherDailyLoad.get(t.id) || 0);
+    };
+
+    // Pre-assigned practical slots under Rule 8 & Rule 9
+    if (
+      activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false &&
+      isPracticalActive
+    ) {
+      for (const sp of scheduledPracticals) {
+        for (const p of sp.periods) {
+          slotMatrix.get(sp.room.id)!.set(p, {
+            teacher: sp.teacher,
+            paper: practicalPaper,
+            practicalName: sp.name,
+            practicalSubjectId: sp.practicalSubjectId,
+            isSubstitute: false,
+          });
+          roomAssignedTeacherIds.get(sp.room.id)!.add(sp.teacher.id);
+          roomAssignedPaperIds.get(sp.room.id)!.add(practicalPaper.id);
+          roomAssignedCategories.get(sp.room.id)!.add(getTeacherPaperCategory(sp.teacher, practicalPaper));
+          teacherDailyLoad.set(sp.teacher.id, (teacherDailyLoad.get(sp.teacher.id) || 0) + 1);
+
+          if (teacherRoomDeploymentCount.has(sp.teacher.id)) {
+            const rMap = teacherRoomDeploymentCount.get(sp.teacher.id)!;
+            rMap.set(sp.room.id, (rMap.get(sp.room.id) || 0) + 1);
+          }
+          if (teacherBuildingDeploymentCount.has(sp.teacher.id)) {
+            const bMap = teacherBuildingDeploymentCount.get(sp.teacher.id)!;
+            bMap.set(sp.room.building, (bMap.get(sp.room.building) || 0) + 1);
+          }
+          filledSlotsCount++;
+        }
+      }
+    }
+
+    // Pre-assigned exam slots under Rule 8 in Period 5 across all classrooms
+    if (isExamActive) {
+      const busyTeachersInP5 = new Set<string>();
+      for (const r of orderedRooms) {
+        const slot = slotMatrix.get(r.id)?.get(5);
+        if (slot) busyTeachersInP5.add(slot.teacher.id);
+      }
+
+      const candidateInvigilators = availableTeachers.filter((t) => {
+        const tOff = getTeacherOffPeriods(t.id);
+        if (tOff.includes(5)) return false;
+        const currentDaily = teacherDailyLoad.get(t.id) || 0;
+        const maxDaily = t.maxDailyPeriods !== undefined ? t.maxDailyPeriods : 4;
+        return currentDaily < maxDaily;
+      });
+
+      const sortedCandidates = [...candidateInvigilators].sort((a, b) => {
+        const loadA = teacherDailyLoad.get(a.id) || 0;
+        const loadB = teacherDailyLoad.get(b.id) || 0;
+        if (loadA !== loadB) return loadA - loadB;
+        const histA = teacherHistoricalSessions.get(a.id) || 0;
+        const histB = teacherHistoricalSessions.get(b.id) || 0;
+        if (histA !== histB) return histA - histB;
+        return compareTeacherCodes(a, b);
+      });
+
       for (const room of orderedRooms) {
-        const assignment = periodSlotMap.get(room.id);
+        if (slotMatrix.get(room.id)!.get(5) !== null) continue;
+
+        let chosenTeacher: Teacher | undefined;
+        for (const t of sortedCandidates) {
+          if (busyTeachersInP5.has(t.id)) continue;
+          if (!isTeacherAllowedInRoomBuilding(t, room.building)) continue;
+          if (hasTransitConflict(t.id, 5, room.building)) continue;
+          chosenTeacher = t;
+          break;
+        }
+        if (!chosenTeacher) {
+          chosenTeacher = sortedCandidates.find((t) => !busyTeachersInP5.has(t.id));
+        }
+
+        if (chosenTeacher) {
+          busyTeachersInP5.add(chosenTeacher.id);
+          slotMatrix.get(room.id)!.set(5, {
+            teacher: chosenTeacher,
+            paper: examPaper,
+            isSubstitute: false,
+            practicalName: options.examConfig?.name || 'Examination / Assessment',
+          });
+          roomAssignedTeacherIds.get(room.id)!.add(chosenTeacher.id);
+          roomAssignedPaperIds.get(room.id)!.add(examPaper.id);
+          teacherDailyLoad.set(chosenTeacher.id, (teacherDailyLoad.get(chosenTeacher.id) || 0) + 1);
+
+          if (teacherRoomDeploymentCount.has(chosenTeacher.id)) {
+            const rMap = teacherRoomDeploymentCount.get(chosenTeacher.id)!;
+            rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
+          }
+          if (teacherBuildingDeploymentCount.has(chosenTeacher.id)) {
+            const bMap = teacherBuildingDeploymentCount.get(chosenTeacher.id)!;
+            bMap.set(room.building, (bMap.get(room.building) || 0) + 1);
+          }
+          filledSlotsCount++;
+        }
+      }
+    }
+
+    // Helper to assign a teacher with their valid subject (main subject if incomplete, option subject if complete)
+    // into their least-visited classroom.
+    const tryAssignTeacher = (
+      teacher: Teacher,
+      strictCategory: boolean = true,
+      strictRoomRepeat: boolean = true,
+      allowExcessDiff: boolean = false
+    ): boolean => {
+      const currentDaily = teacherDailyLoad.get(teacher.id) || 0;
+      const maxDaily = teacher.maxDailyPeriods !== undefined ? teacher.maxDailyPeriods : 4;
+      if (currentDaily >= maxDaily) return false;
+
+      // Find eligible classrooms for this teacher
+      interface RoomPaperMatch {
+        room: Classroom;
+        paper: Paper;
+        isOptionSubject: boolean;
+      }
+      const eligibleMatches: RoomPaperMatch[] = [];
+
+      for (const r of orderedRooms) {
+        if (!isTeacherAllowedInRoomBuilding(teacher, r.building)) continue;
+        const hasOpenPeriod = [1, 2, 3, 4, 5].some((p) => slotMatrix.get(r.id)!.get(p) === null);
+        if (!hasOpenPeriod) continue;
+        if (!allowExcessDiff && !isTeacherRoomVisitBalanced(teacher, r.id)) continue;
+        if (strictRoomRepeat && roomAssignedTeacherIds.get(r.id)!.has(teacher.id)) continue;
+
+        // Determine subject:
+        // - Main subject if not complete in this classroom and not duplicate today.
+        // - If main subject is complete (or duplicate today), use option subject.
+        // - If no option subject is available or all are complete, match is null (classroom not eligible for this teacher).
+        const match = determinePaperForTeacherInRoom(teacher, r.id);
+        if (!match) continue; // Teacher cannot teach here; another eligible teacher will be assigned instead.
+
+        if (strictCategory && roomAssignedCategories.get(r.id)!.has(getTeacherPaperCategory(teacher, match.paper))) {
+          continue;
+        }
+
+        eligibleMatches.push({ room: r, paper: match.paper, isOptionSubject: match.isOptionSubject });
+      }
+
+      if (eligibleMatches.length === 0) return false;
+
+      // Sort eligible rooms by lowest visits by this teacher first (Rule 22 / broad building exposure)
+      eligibleMatches.sort((a, b) => {
+        const excessA = isTeacherRoomVisitBalanced(teacher, a.room.id) ? 0 : 1;
+        const excessB = isTeacherRoomVisitBalanced(teacher, b.room.id) ? 0 : 1;
+        if (excessA !== excessB) return excessA - excessB;
+
+        const visitsA = teacherRoomDeploymentCount.get(teacher.id)?.get(a.room.id) || 0;
+        const visitsB = teacherRoomDeploymentCount.get(teacher.id)?.get(b.room.id) || 0;
+        if (visitsA !== visitsB) return visitsA - visitsB;
+
+        const openA = [1, 2, 3, 4, 5].filter((p) => slotMatrix.get(a.room.id)!.get(p) === null).length;
+        const openB = [1, 2, 3, 4, 5].filter((p) => slotMatrix.get(b.room.id)!.get(p) === null).length;
+        if (openA !== openB) return openB - openA;
+
+        return (classroomIndexMap.get(a.room.id) || 1) - (classroomIndexMap.get(b.room.id) || 1);
+      });
+
+      for (const { room, paper, isOptionSubject } of eligibleMatches) {
+        const openPeriods = [1, 2, 3, 4, 5].filter((p) => slotMatrix.get(room.id)!.get(p) === null);
+
+        for (const period of openPeriods) {
+          if (isTeacherBusyInPeriod(teacher.id, period)) continue;
+          if (activeRules.enableInstructorDesignatedOffPeriods !== false) {
+            const off = getTeacherOffPeriods(teacher.id);
+            if (off.includes(period)) continue;
+          }
+          if (hasTransitConflict(teacher.id, period, room.building)) continue;
+          if (activeRules.enableNonConsecutiveGapForSameSubject) {
+            if (period > 1) {
+              const prev = slotMatrix.get(room.id)!.get(period - 1);
+              if (prev && prev.paper.id === paper.id) continue;
+            }
+            if (period < 5) {
+              const next = slotMatrix.get(room.id)!.get(period + 1);
+              if (next && next.paper.id === paper.id) continue;
+            }
+          }
+
+          // Valid placement found!
+          slotMatrix.get(room.id)!.set(period, {
+            teacher,
+            paper,
+            isSubstitute: isOptionSubject,
+            substituteReason: isOptionSubject
+              ? 'Main subject completed in classroom - assigned option subject'
+              : undefined,
+          });
+          roomAssignedTeacherIds.get(room.id)!.add(teacher.id);
+          roomAssignedPaperIds.get(room.id)!.add(paper.id);
+          roomAssignedCategories.get(room.id)!.add(getTeacherPaperCategory(teacher, paper));
+          teacherDailyLoad.set(teacher.id, (teacherDailyLoad.get(teacher.id) || 0) + 1);
+
+          if (teacherRoomDeploymentCount.has(teacher.id)) {
+            const rMap = teacherRoomDeploymentCount.get(teacher.id)!;
+            rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
+          }
+          if (teacherBuildingDeploymentCount.has(teacher.id)) {
+            const bMap = teacherBuildingDeploymentCount.get(teacher.id)!;
+            bMap.set(room.building, (bMap.get(room.building) || 0) + 1);
+          }
+          filledSlotsCount++;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Main Teacher Equalization Loop
+    const totalSlotsTarget = orderedRooms.length * 5; // 75 slots
+    let maxCycles = 150; // Safety guard
+
+    while (filledSlotsCount < totalSlotsTarget && maxCycles > 0) {
+      maxCycles--;
+
+      const candidates = availableTeachers.filter((t) => {
+        const curDaily = teacherDailyLoad.get(t.id) || 0;
+        const maxDaily = t.maxDailyPeriods !== undefined ? t.maxDailyPeriods : 4;
+        return curDaily < maxDaily;
+      });
+
+      if (candidates.length === 0) break;
+
+      const maxDeployment = Math.max(...candidates.map((t) => getTeacherTotalDeployment(t)));
+
+      const laggingTeachers = candidates
+        .filter((t) => getTeacherTotalDeployment(t) < maxDeployment)
+        .sort((a, b) => getTeacherTotalDeployment(a) - getTeacherTotalDeployment(b) || compareTeacherCodes(a, b));
+
+      if (laggingTeachers.length > 0) {
+        let roundMadeAssignment = false;
+
+        for (const t of laggingTeachers) {
+          if (getTeacherTotalDeployment(t) >= maxDeployment) {
+            break;
+          }
+
+          let assigned = tryAssignTeacher(t, true, true, false);
+          if (!assigned) {
+            assigned = tryAssignTeacher(t, false, true, false);
+          }
+          if (assigned) {
+            roundMadeAssignment = true;
+            if (getTeacherTotalDeployment(t) >= maxDeployment) {
+              break;
+            }
+          }
+        }
+
+        if (!roundMadeAssignment) {
+          let fallbackPlaced = false;
+          for (const t of laggingTeachers) {
+            if (tryAssignTeacher(t, false, false, false)) {
+              fallbackPlaced = true;
+              break;
+            }
+          }
+          if (!fallbackPlaced) {
+            for (const t of laggingTeachers) {
+              if (tryAssignTeacher(t, false, false, true)) {
+                fallbackPlaced = true;
+                break;
+              }
+            }
+          }
+          if (!fallbackPlaced) break;
+        }
+      } else {
+        // All active candidates equalized!
+        candidates.sort((a, b) => {
+          const dailyA = teacherDailyLoad.get(a.id) || 0;
+          const dailyB = teacherDailyLoad.get(b.id) || 0;
+          if (dailyA !== dailyB) return dailyA - dailyB;
+          return compareTeacherCodes(a, b);
+        });
+
+        let roundRobinMadeAssignment = false;
+        for (const t of candidates) {
+          if (filledSlotsCount >= totalSlotsTarget) break;
+          let assigned = tryAssignTeacher(t, true, true, false);
+          if (!assigned) {
+            assigned = tryAssignTeacher(t, false, true, false);
+          }
+          if (assigned) {
+            roundRobinMadeAssignment = true;
+          }
+        }
+
+        if (!roundRobinMadeAssignment) {
+          let fallbackPlaced = false;
+          for (const t of candidates) {
+            if (filledSlotsCount >= totalSlotsTarget) break;
+            if (tryAssignTeacher(t, false, false, false)) {
+              fallbackPlaced = true;
+              break;
+            }
+          }
+          if (!fallbackPlaced) {
+            for (const t of candidates) {
+              if (filledSlotsCount >= totalSlotsTarget) break;
+              if (tryAssignTeacher(t, false, false, true)) {
+                fallbackPlaced = true;
+                break;
+              }
+            }
+          }
+          if (!fallbackPlaced) break;
+        }
+      }
+    }
+
+    // Final Completion Pass (ensures 100% of 75 slots are filled while respecting Tier 1 rules)
+    if (filledSlotsCount < totalSlotsTarget) {
+      for (const room of orderedRooms) {
+        for (let period = 1; period <= 5; period++) {
+          if (slotMatrix.get(room.id)!.get(period) !== null) continue;
+
+          // 1. Search for another eligible teacher who has an uncompleted subject for this room
+          // (either main subject, or option subject)
+          const candidateMatches: { teacher: Teacher; paper: Paper; isOptionSubject: boolean }[] = [];
+
+          for (const t of availableTeachers) {
+            const curDaily = teacherDailyLoad.get(t.id) || 0;
+            const maxDaily = t.maxDailyPeriods !== undefined ? t.maxDailyPeriods : 4;
+            if (curDaily >= maxDaily) continue;
+            if (isTeacherBusyInPeriod(t.id, period)) continue;
+            if (activeRules.enableInstructorDesignatedOffPeriods !== false) {
+              if (getTeacherOffPeriods(t.id).includes(period)) continue;
+            }
+            if (!isTeacherAllowedInRoomBuilding(t, room.building)) continue;
+            if (hasTransitConflict(t.id, period, room.building)) continue;
+
+            const match = determinePaperForTeacherInRoom(t, room.id);
+            if (match) {
+              candidateMatches.push({ teacher: t, paper: match.paper, isOptionSubject: match.isOptionSubject });
+            }
+          }
+
+          if (candidateMatches.length > 0) {
+            candidateMatches.sort((a, b) => {
+              const excessA = isTeacherRoomVisitBalanced(a.teacher, room.id) ? 0 : 1;
+              const excessB = isTeacherRoomVisitBalanced(b.teacher, room.id) ? 0 : 1;
+              if (excessA !== excessB) return excessA - excessB;
+
+              const visitsA = teacherRoomDeploymentCount.get(a.teacher.id)?.get(room.id) || 0;
+              const visitsB = teacherRoomDeploymentCount.get(b.teacher.id)?.get(room.id) || 0;
+              if (visitsA !== visitsB) return visitsA - visitsB;
+
+              const dailyA = teacherDailyLoad.get(a.teacher.id) || 0;
+              const dailyB = teacherDailyLoad.get(b.teacher.id) || 0;
+              if (dailyA !== dailyB) return dailyA - dailyB;
+
+              const depA = getTeacherTotalDeployment(a.teacher);
+              const depB = getTeacherTotalDeployment(b.teacher);
+              if (depA !== depB) return depA - depB;
+
+              return compareTeacherCodes(a.teacher, b.teacher);
+            });
+
+            const chosenMatch = candidateMatches[0];
+            slotMatrix.get(room.id)!.set(period, {
+              teacher: chosenMatch.teacher,
+              paper: chosenMatch.paper,
+              isSubstitute: chosenMatch.isOptionSubject,
+              substituteReason: chosenMatch.isOptionSubject
+                ? 'Main subject completed in room - assigned option subject'
+                : undefined,
+            });
+            roomAssignedTeacherIds.get(room.id)!.add(chosenMatch.teacher.id);
+            roomAssignedPaperIds.get(room.id)!.add(chosenMatch.paper.id);
+            roomAssignedCategories.get(room.id)!.add(getTeacherPaperCategory(chosenMatch.teacher, chosenMatch.paper));
+            teacherDailyLoad.set(chosenMatch.teacher.id, (teacherDailyLoad.get(chosenMatch.teacher.id) || 0) + 1);
+            if (teacherRoomDeploymentCount.has(chosenMatch.teacher.id)) {
+              const rMap = teacherRoomDeploymentCount.get(chosenMatch.teacher.id)!;
+              rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
+            }
+            if (teacherBuildingDeploymentCount.has(chosenMatch.teacher.id)) {
+              const bMap = teacherBuildingDeploymentCount.get(chosenMatch.teacher.id)!;
+              bMap.set(room.building, (bMap.get(room.building) || 0) + 1);
+            }
+            filledSlotsCount++;
+            continue;
+          }
+
+          // 2. Fallback: If no candidate has an uncompleted subject in this room,
+          // find any available teacher with any paper not yet in room today
+          const fallbackPool = availableTeachers.filter((t) => {
+            const curDaily = teacherDailyLoad.get(t.id) || 0;
+            const maxDaily = t.maxDailyPeriods !== undefined ? t.maxDailyPeriods : 4;
+            if (curDaily >= maxDaily) return false;
+            if (isTeacherBusyInPeriod(t.id, period)) return false;
+            if (activeRules.enableInstructorDesignatedOffPeriods !== false) {
+              if (getTeacherOffPeriods(t.id).includes(period)) return false;
+            }
+            if (!isTeacherAllowedInRoomBuilding(t, room.building)) return false;
+            if (hasTransitConflict(t.id, period, room.building)) return false;
+            return true;
+          });
+
+          if (fallbackPool.length > 0) {
+            fallbackPool.sort((a, b) => {
+              const dailyA = teacherDailyLoad.get(a.id) || 0;
+              const dailyB = teacherDailyLoad.get(b.id) || 0;
+              if (dailyA !== dailyB) return dailyA - dailyB;
+              const depA = getTeacherTotalDeployment(a);
+              const depB = getTeacherTotalDeployment(b);
+              if (depA !== depB) return depA - depB;
+              return compareTeacherCodes(a, b);
+            });
+
+            const chosen = fallbackPool[0];
+            let paper = getTeacherPrimaryPaper(chosen);
+            for (const pid of chosen.primaryPaperIds || []) {
+              if (!roomAssignedPaperIds.get(room.id)!.has(pid)) {
+                const p = paperMap.get(pid);
+                if (p) { paper = p; break; }
+              }
+            }
+            if (roomAssignedPaperIds.get(room.id)!.has(paper.id)) {
+              for (const pid of chosen.backupPaperIds || []) {
+                if (!roomAssignedPaperIds.get(room.id)!.has(pid)) {
+                  const p = paperMap.get(pid);
+                  if (p) { paper = p; break; }
+                }
+              }
+            }
+            if (roomAssignedPaperIds.get(room.id)!.has(paper.id)) {
+              for (const pid of chosen.secondaryPaperIds || []) {
+                if (!roomAssignedPaperIds.get(room.id)!.has(pid)) {
+                  const p = paperMap.get(pid);
+                  if (p) { paper = p; break; }
+                }
+              }
+            }
+
+            slotMatrix.get(room.id)!.set(period, {
+              teacher: chosen,
+              paper,
+              isSubstitute: false,
+            });
+            roomAssignedTeacherIds.get(room.id)!.add(chosen.id);
+            roomAssignedPaperIds.get(room.id)!.add(paper.id);
+            roomAssignedCategories.get(room.id)!.add(getTeacherPaperCategory(chosen, paper));
+            teacherDailyLoad.set(chosen.id, (teacherDailyLoad.get(chosen.id) || 0) + 1);
+            if (teacherRoomDeploymentCount.has(chosen.id)) {
+              const rMap = teacherRoomDeploymentCount.get(chosen.id)!;
+              rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
+            }
+            if (teacherBuildingDeploymentCount.has(chosen.id)) {
+              const bMap = teacherBuildingDeploymentCount.get(chosen.id)!;
+              bMap.set(room.building, (bMap.get(room.building) || 0) + 1);
+            }
+            filledSlotsCount++;
+          }
+        }
+      }
+    }
+
+    // Commit all slots from slotMatrix into generatedSlots
+    for (let period = 1; period <= 5; period++) {
+      for (const room of orderedRooms) {
+        const assignment = slotMatrix.get(room.id)?.get(period);
         const roomIndex = classroomIndexMap.get(room.id) || 1;
 
         if (assignment) {
-          const { teacher: chosen, paper } = assignment;
-          busyTeachersInPeriod.add(chosen.id);
-
-          const currentDaily = teacherDailyLoad.get(chosen.id) || 0;
-          teacherDailyLoad.set(chosen.id, currentDaily + 1);
-
+          const { teacher: chosen, paper, practicalName, practicalSubjectId, isSubstitute, substituteReason } = assignment;
           teacherLastSlot.set(chosen.id, {
             period,
             building: room.building,
             roomIndex,
           });
-
           teacherTargetRoomIndex.set(chosen.id, (roomIndex % classrooms.length) + 1);
 
-          if (teacherRoomDeploymentCount.has(chosen.id)) {
-            const rMap = teacherRoomDeploymentCount.get(chosen.id)!;
-            rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
-          }
+          const isExamSlot = isExamActive && period === 5;
+          const slotExamName = isExamSlot ? (options.examConfig?.name || 'Examination / Assessment') : undefined;
 
           generatedSlots.push({
             id: `slot-${targetDayNumber}-${room.id}-P${period}`,
@@ -1281,11 +2540,16 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             period,
             paperId: paper.id,
             teacherId: chosen.id,
-            isSubstitute: false,
+            isSubstitute: Boolean(isSubstitute),
+            substituteReason,
             isPriority: priorityPaperIds.includes(paper.id) || (subjectPriorityTiers[paper.id] === 'HIGH'),
+            practicalName,
+            practicalSubjectId,
+            isExam: isExamSlot,
+            examName: slotExamName,
+            theoryOrPractical: isExamSlot ? 'EXAM' : (paper.id === 'P13' || Boolean(practicalName) ? 'PRACTICAL' : 'THEORY'),
           });
         } else {
-          // Empty slot fallback if no teacher could legally be assigned under hard constraints
           generatedSlots.push({
             id: `slot-${targetDayNumber}-${room.id}-P${period}`,
             roomId: room.id,
@@ -1347,6 +2611,15 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       });
     }
 
+    // Pre-reserve practical slots for this period under Rule 9 so practical teachers are never preempted
+    if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive) {
+      for (const sp of scheduledPracticals) {
+        if (sp.periods.includes(period)) {
+          busyTeachersInPeriod.add(sp.teacher.id);
+        }
+      }
+    }
+
     for (const room of periodRooms) {
       const roomIndex = classroomIndexMap.get(room.id) || 1;
       const roomPlan = roomDailyPlans.get(room.id) || [];
@@ -1357,22 +2630,82 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
       let originalTeacherId: string | undefined;
       let substituteReason: string | undefined;
 
-      // Practical (P13) flexible staffing
-      if (activeRules.enablePracticalFlexible && paper.id === 'P13') {
-        const freeForPractical = availableTeachers.filter((t) =>
-          isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
+      // Practical (P13 or PRACTICAL) staffing
+      const isPractical = paper.id === 'P13' || paper.theoryOrPractical === 'PRACTICAL';
+      const scheduledForRoom = scheduledPracticals.find(
+        (sp) => sp.room.id === room.id && sp.periods.includes(period)
+      );
+
+      if (scheduledForRoom) {
+        paper = practicalPaper;
+        selectedTeacherId = scheduledForRoom.teacher.id;
+        isSubstitute = false;
+      } else if (isPractical) {
+        if (activeRules.enablePracticalConsecutiveDoublePeriodLimit !== false && isPracticalActive) {
+          // Rule 9: Practical is strictly restricted to scheduled practical rooms and periods.
+          // In unscheduled slots, replace with a valid theory paper so practical never spills over.
+          const nonPracCandidates = schedulingPapers.filter(
+            (p) => p.id !== practicalPaper.id && p.theoryOrPractical !== 'PRACTICAL'
+          );
+          const theoryFallback =
+            nonPracCandidates.find((p) => !isPaperRoomQuotaCompleted(room.id, p.id)) ||
+            nonPracCandidates[0] ||
+            papers[0];
+          paper = theoryFallback;
+        } else {
+          // Flexible practical staffing without Rule 9 double-period limit
+          let candidateTeachers = availableTeachers;
+          if (options.practicalConfig?.teacherIds && options.practicalConfig.teacherIds.length > 0) {
+            const specified = availableTeachers.filter((t) => options.practicalConfig!.teacherIds!.includes(t.id));
+            if (specified.length > 0) {
+              candidateTeachers = specified;
+            }
+          }
+          const freeForPractical = candidateTeachers.filter((t) =>
+            isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod, paper.id)
+          );
+          if (freeForPractical.length > 0) {
+            const sorted = sortCandidatesByFairWorkload(freeForPractical, room.id, roomIndex, room.building);
+            selectedTeacherId = sorted[0].id;
+            isSubstitute = false;
+          }
+        }
+      }
+
+      // Exam (Period 5) staffing
+      const isExamSlot = isExamActive && period === 5;
+      if (isExamSlot) {
+        paper = examPaper;
+        let candidateTeachers = availableTeachers;
+        if (options.examConfig?.teacherIds && options.examConfig.teacherIds.length > 0) {
+          const specified = availableTeachers.filter((t) => options.examConfig!.teacherIds!.includes(t.id));
+          if (specified.length > 0) {
+            candidateTeachers = specified;
+          }
+        }
+        const freeForExam = candidateTeachers.filter((t) =>
+          isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod, paper.id)
         );
-        if (freeForPractical.length > 0) {
-          const sorted = sortCandidatesByFairWorkload(freeForPractical, room.id, roomIndex, room.building);
+        if (freeForExam.length > 0) {
+          const sorted = sortCandidatesByFairWorkload(freeForExam, room.id, roomIndex, room.building);
           selectedTeacherId = sorted[0].id;
           isSubstitute = false;
+        } else {
+          const anyFree = candidateTeachers.filter(
+            (t) => !busyTeachersInPeriod.has(t.id) && !getTeacherOffPeriods(t.id).includes(5)
+          );
+          if (anyFree.length > 0) {
+            const sorted = sortCandidatesByFairWorkload(anyFree, room.id, roomIndex, room.building);
+            selectedTeacherId = sorted[0].id;
+            isSubstitute = false;
+          }
         }
       }
 
       // Step 1: Check primary teachers of this paper
       if (!selectedTeacherId) {
         const freePrimaries = paper.primaryTeacherIds
-          .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod))
+          .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod, paper.id))
           .map((tid) => teacherMap.get(tid)!)
           .filter(Boolean);
 
@@ -1407,7 +2740,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
               }
               // Check if altPaper has an available primary teacher
               return altPaper.primaryTeacherIds.some((tid) =>
-                isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)
+                isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod, altPaper.id)
               );
             });
 
@@ -1421,7 +2754,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
 
               const replacementPaper = candidateReplacements[0];
               const eligiblePrimaries = replacementPaper.primaryTeacherIds
-                .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod))
+                .filter((tid) => isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod, replacementPaper.id))
                 .map((tid) => teacherMap.get(tid)!)
                 .filter(Boolean);
 
@@ -1453,7 +2786,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
               const isBackup =
                 (t.backupPaperIds && t.backupPaperIds.includes(paper.id)) ||
                 (t.secondaryPaperIds && t.secondaryPaperIds.includes(paper.id));
-              return isBackup && isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod);
+              return isBackup && isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod, paper.id);
             });
 
             if (freeBackups.length > 0) {
@@ -1472,7 +2805,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
               const nPaper = paperMap.get(nid);
               if (!nPaper) continue;
               for (const tid of nPaper.primaryTeacherIds) {
-                if (isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod)) {
+                if (isTeacherEligibleInPeriod(tid, period, room, busyTeachersInPeriod, paper.id)) {
                   const t = teacherMap.get(tid);
                   if (t && !nearestTeachers.some((nt) => nt.id === t.id)) nearestTeachers.push(t);
                 }
@@ -1492,7 +2825,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
             const secondaryTeachers = availableTeachers.filter(
               (t) =>
                 t.secondaryPaperIds.includes(paper.id) &&
-                isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
+                isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod, paper.id)
             );
             if (secondaryTeachers.length > 0) {
               const sorted = sortCandidatesByFairWorkload(secondaryTeachers, room.id, roomIndex, room.building);
@@ -1506,7 +2839,7 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           // D. Emergency Reserve: Any free instructor in this building under cap & with transit gap
           if (!selectedTeacherId) {
             const emergencyFree = availableTeachers.filter((t) =>
-              isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod)
+              isTeacherEligibleInPeriod(t.id, period, room, busyTeachersInPeriod, paper.id)
             );
             if (emergencyFree.length > 0) {
               const sorted = sortCandidatesByFairWorkload(emergencyFree, room.id, roomIndex, room.building);
@@ -1544,7 +2877,23 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
           const rMap = teacherRoomDeploymentCount.get(selectedTeacherId)!;
           rMap.set(room.id, (rMap.get(room.id) || 0) + 1);
         }
+
+        if (teacherBuildingDeploymentCount.has(selectedTeacherId)) {
+          const bMap = teacherBuildingDeploymentCount.get(selectedTeacherId)!;
+          bMap.set(room.building, (bMap.get(room.building) || 0) + 1);
+        }
       }
+
+      const isPracticalSlot = isPracticalActive && (paper.id === 'P13' || paper.theoryOrPractical === 'PRACTICAL');
+      let slotPracticalName: string | undefined;
+      let slotPracticalSubjectId: string | undefined;
+      if (isPracticalSlot) {
+        const sp = scheduledPracticals.find((p) => p.room.id === room.id && p.periods.includes(period));
+        slotPracticalName = sp ? sp.name : (options.practicalConfig?.name || 'Practical');
+        slotPracticalSubjectId = sp?.practicalSubjectId;
+      }
+
+      const slotExamName = isExamSlot ? (options.examConfig?.name || 'Examination / Assessment') : undefined;
 
       const slot: ClassSlot = {
         id: `slot-${targetDayNumber}-${room.id}-P${period}`,
@@ -1552,10 +2901,15 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
         period,
         paperId: paper.id,
         teacherId: selectedTeacherId,
-        isSubstitute,
+        isSubstitute: Boolean(selectedTeacherId && paper.id && isSubstitute),
         originalTeacherId,
         substituteReason,
         isPriority: priorityPaperIds.includes(paper.id) || (subjectPriorityTiers[paper.id] === 'HIGH'),
+        practicalName: slotPracticalName,
+        practicalSubjectId: slotPracticalSubjectId,
+        isExam: isExamSlot,
+        examName: slotExamName,
+        theoryOrPractical: isExamSlot ? 'EXAM' : (isPracticalSlot ? 'PRACTICAL' : 'THEORY'),
       };
 
       generatedSlots.push(slot);
@@ -1570,7 +2924,10 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     classrooms,
     absentTeacherIds,
     activeRules,
-    papers
+    papers,
+    totalDailySlots,
+    options.practicalConfig,
+    options.examConfig
   );
 
   const teacherWorkloadList = teachers.map((t) => ({
@@ -1616,6 +2973,9 @@ export function generateDailyRoutine(options: SchedulerOptions): DailyRoutine {
     subjectPriorityTiers,
     prioritySubjectMinPeriods,
     excludedPaperIds: Array.from(combinedExcludedSet),
+    teacherOffPeriods: options.teacherOffPeriods,
+    practicalConfig: options.practicalConfig,
+    examConfig: options.examConfig,
     slots: generatedSlots,
     createdAt: now,
     updatedAt: now,
@@ -1661,4 +3021,125 @@ export function generateMultipleDaysRoutines(
   }
 
   return generated;
+}
+
+/**
+ * Calculates the sequential session number for a specific instructor teaching a specific paper in a specific classroom.
+ * Formula:
+ * 1. Count past routines (dayNumber < currentRoutine.dayNumber or date < currentRoutine.date, excluding currentRoutine):
+ *    slots where normalizeTeacherId(s.teacherId) === normalizeTeacherId(slot.teacherId)
+ *           && s.roomId === slot.roomId
+ *           && s.paperId === slot.paperId
+ * 2. In currentRoutine.slots:
+ *    slots where normalizeTeacherId(s.teacherId) === normalizeTeacherId(slot.teacherId)
+ *           && s.roomId === slot.roomId
+ *           && s.paperId === slot.paperId
+ *           && s.period <= slot.period
+ * Returns the 1-based session number (e.g. 1, 2, 3...) or 0 if unassigned.
+ */
+export function getTeacherClassPaperSessionNumber(
+  slot: ClassSlot,
+  currentRoutine: DailyRoutine,
+  allRoutines: DailyRoutine[] = []
+): number {
+  if (!slot || !slot.teacherId || !slot.paperId || !slot.roomId) return 0;
+  const tNorm = normalizeTeacherId(slot.teacherId);
+  const currentDay = currentRoutine.dayNumber;
+  const currentDate = currentRoutine.date;
+
+  const pastRoutines = allRoutines.filter((r) => {
+    if (r.id === currentRoutine.id) return false;
+    if (r.dayNumber !== undefined && currentDay !== undefined) {
+      return r.dayNumber < currentDay;
+    }
+    if (r.date && currentDate) {
+      return r.date < currentDate;
+    }
+    return false;
+  });
+
+  let count = 0;
+  for (const r of pastRoutines) {
+    if (!r.slots) continue;
+    for (const s of r.slots) {
+      if (
+        s.roomId === slot.roomId &&
+        s.paperId === slot.paperId &&
+        normalizeTeacherId(s.teacherId) === tNorm
+      ) {
+        count++;
+      }
+    }
+  }
+
+  const todaySlots = currentRoutine.slots || [];
+  for (const s of todaySlots) {
+    if (
+      s.roomId === slot.roomId &&
+      s.paperId === slot.paperId &&
+      normalizeTeacherId(s.teacherId) === tNorm &&
+      s.period <= slot.period
+    ) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Builds an efficient Map of session numbers for all slots in a routine.
+ * Keys stored:
+ * - `slot.id` -> session number
+ * - `${slot.roomId}_${slot.period}` -> session number (for reliable lookup)
+ */
+export function buildRoutineSessionNumbersMap(
+  currentRoutine: DailyRoutine | null | undefined,
+  allRoutines: DailyRoutine[] = []
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!currentRoutine || !currentRoutine.slots) return map;
+
+  const currentDay = currentRoutine.dayNumber;
+  const currentDate = currentRoutine.date;
+
+  const pastRoutines = allRoutines.filter((r) => {
+    if (r.id === currentRoutine.id) return false;
+    if (r.dayNumber !== undefined && currentDay !== undefined) {
+      return r.dayNumber < currentDay;
+    }
+    if (r.date && currentDate) {
+      return r.date < currentDate;
+    }
+    return false;
+  });
+
+  // Accumulate past counts: key = `${norm(teacherId)}_${roomId}_${paperId}`
+  const counts = new Map<string, number>();
+  for (const r of pastRoutines) {
+    if (!r.slots) continue;
+    for (const s of r.slots) {
+      if (!s.teacherId || !s.paperId || !s.roomId) continue;
+      const key = `${normalizeTeacherId(s.teacherId)}_${s.roomId}_${s.paperId}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+
+  // Process today's slots sorted by period 1..5 so consecutive slots get sequential numbers
+  const sortedSlots = [...currentRoutine.slots].sort((a, b) => a.period - b.period);
+  for (const s of sortedSlots) {
+    if (!s.teacherId || !s.paperId || !s.roomId) {
+      if (s.id) map.set(s.id, 0);
+      map.set(`${s.roomId}_${s.period}`, 0);
+      continue;
+    }
+    const key = `${normalizeTeacherId(s.teacherId)}_${s.roomId}_${s.paperId}`;
+    const nextCount = (counts.get(key) || 0) + 1;
+    counts.set(key, nextCount);
+
+    if (s.id) map.set(s.id, nextCount);
+    map.set(`${s.roomId}_${s.period}`, nextCount);
+  }
+
+  return map;
 }

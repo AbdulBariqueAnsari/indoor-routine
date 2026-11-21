@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, Lock, ShieldCheck, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   currentAdminPassword = 'admin123',
   onSavePassword,
 }) => {
+  const { shouldRender, backdropAnimationClass, modalAnimationClass } = useModalAnimation(isOpen);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +31,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [success, setSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const handleReset = () => {
     setCurrentPassword('');
@@ -84,8 +86,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs ${backdropAnimationClass}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden ${modalAnimationClass}`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">

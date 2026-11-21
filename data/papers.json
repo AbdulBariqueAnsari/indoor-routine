@@ -6,6 +6,12 @@
     "category": "Legal Studies",
     "totalTargetSessions": 46,
     "originalTargetSessions": 55,
+    "color": "#3B82F6",
+    "description": "Arrest procedures, custody, summons, charge sheet, trial procedures under BNSS 2023",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T1",
       "T2",
@@ -15,9 +21,7 @@
       "P02",
       "P04",
       "P03"
-    ],
-    "color": "#3B82F6",
-    "description": "Arrest procedures, custody, summons, charge sheet, trial procedures under BNSS 2023"
+    ]
   },
   {
     "id": "P02",
@@ -26,6 +30,12 @@
     "category": "Legal Studies",
     "totalTargetSessions": 56,
     "originalTargetSessions": 67,
+    "color": "#19c502",
+    "description": "Offences against body, property, state, public tranquility under BNS 2023",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T4",
       "T5",
@@ -36,9 +46,7 @@
       "P01",
       "P04",
       "P03"
-    ],
-    "color": "#19c502",
-    "description": "Offences against body, property, state, public tranquility under BNS 2023"
+    ]
   },
   {
     "id": "P03",
@@ -47,6 +55,12 @@
     "category": "Legal Studies",
     "totalTargetSessions": 50,
     "originalTargetSessions": 60,
+    "color": "#e164f2",
+    "description": "NDPS Act, POCSO Act, Arms Act, Motor Vehicles Act, Excise & Local Acts",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T8",
       "T9",
@@ -56,9 +70,7 @@
       "P01",
       "P02",
       "P04"
-    ],
-    "color": "#e164f2",
-    "description": "NDPS Act, POCSO Act, Arms Act, Motor Vehicles Act, Excise & Local Acts"
+    ]
   },
   {
     "id": "P04",
@@ -67,6 +79,12 @@
     "category": "Legal Studies",
     "totalTargetSessions": 23,
     "originalTargetSessions": 28,
+    "color": "#8B5CF6",
+    "description": "Admissibility, electronic evidence, burden of proof, expert witness under BSA 2023",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T11"
     ],
@@ -74,9 +92,7 @@
       "P01",
       "P02",
       "P03"
-    ],
-    "color": "#8B5CF6",
-    "description": "Admissibility, electronic evidence, burden of proof, expert witness under BSA 2023"
+    ]
   },
   {
     "id": "P05",
@@ -85,6 +101,12 @@
     "category": "Forensics & Investigation",
     "totalTargetSessions": 34,
     "originalTargetSessions": 41,
+    "color": "#ec4646",
+    "description": "Crime scene examination, ballistics, biology, DNA, fingerprint science, toxicology",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T12",
       "T13"
@@ -93,9 +115,7 @@
       "P06",
       "P13",
       "P07"
-    ],
-    "color": "#ec4646",
-    "description": "Crime scene examination, ballistics, biology, DNA, fingerprint science, toxicology"
+    ]
   },
   {
     "id": "P06",
@@ -104,6 +124,12 @@
     "category": "Cyber & Technical",
     "totalTargetSessions": 39,
     "originalTargetSessions": 47,
+    "color": "#06B6D4",
+    "description": "Cyber forensics, CDR/IPDR analysis, financial fraud, social media investigation",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T14",
       "T15"
@@ -111,9 +137,7 @@
     "nearestPaperIds": [
       "P05",
       "P13"
-    ],
-    "color": "#06B6D4",
-    "description": "Cyber forensics, CDR/IPDR analysis, financial fraud, social media investigation"
+    ]
   },
   {
     "id": "P07",
@@ -122,6 +146,12 @@
     "category": "Criminology & Security",
     "totalTargetSessions": 17,
     "originalTargetSessions": 20,
+    "color": "#F97316",
+    "description": "Theories of crime, criminal psychology, juvenile delinquency, surveillance, preventive policing",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T16"
     ],
@@ -129,9 +159,7 @@
       "P08",
       "P09",
       "P05"
-    ],
-    "color": "#F97316",
-    "description": "Theories of crime, criminal psychology, juvenile delinquency, surveillance, preventive policing"
+    ]
   },
   {
     "id": "P08",
@@ -140,6 +168,12 @@
     "category": "Police Administration",
     "totalTargetSessions": 8,
     "originalTargetSessions": 10,
+    "color": "#809806",
+    "description": "Organizational hierarchy, command structure, police manuals, disciplinary regulations",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T17"
     ],
@@ -147,9 +181,7 @@
       "P07",
       "P09",
       "P10"
-    ],
-    "color": "#809806",
-    "description": "Organizational hierarchy, command structure, police manuals, disciplinary regulations"
+    ]
   },
   {
     "id": "P09",
@@ -158,6 +190,12 @@
     "category": "Police Administration",
     "totalTargetSessions": 30,
     "originalTargetSessions": 36,
+    "color": "#10B981",
+    "description": "GD entries, FIR registration, malkhana management, lockup rules, station records",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T18",
       "T19"
@@ -166,9 +204,7 @@
       "P08",
       "P07",
       "P10"
-    ],
-    "color": "#10B981",
-    "description": "GD entries, FIR registration, malkhana management, lockup rules, station records"
+    ]
   },
   {
     "id": "P10",
@@ -177,6 +213,12 @@
     "category": "Behavioral & Leadership",
     "totalTargetSessions": 40,
     "originalTargetSessions": 48,
+    "color": "#11646a",
+    "description": "Leadership, stress management, public speaking, conflict resolution, mental fitness",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T20",
       "T21"
@@ -185,9 +227,7 @@
       "P12",
       "P11",
       "P08"
-    ],
-    "color": "#11646a",
-    "description": "Leadership, stress management, public speaking, conflict resolution, mental fitness"
+    ]
   },
   {
     "id": "P11",
@@ -196,17 +236,20 @@
     "category": "Field & Public Order",
     "totalTargetSessions": 38,
     "originalTargetSessions": 45,
+    "color": "#471372",
+    "description": "Riot control tactics, mob dispersal, VIP security, intelligence collection, counter-insurgency",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
-      "T22",
       "T23"
     ],
     "nearestPaperIds": [
       "P09",
       "P13",
       "P07"
-    ],
-    "color": "#471372",
-    "description": "Riot control tactics, mob dispersal, VIP security, intelligence collection, counter-insurgency"
+    ]
   },
   {
     "id": "P12",
@@ -215,6 +258,12 @@
     "category": "Behavioral & Ethics",
     "totalTargetSessions": 54,
     "originalTargetSessions": 65,
+    "color": "#64748B",
+    "description": "Police integrity, anti-corruption norms, human rights, custodial ethics, constitutional values",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [
       "T24",
       "T25",
@@ -224,24 +273,46 @@
     "nearestPaperIds": [
       "P10",
       "P08"
-    ],
-    "color": "#64748B",
-    "description": "Police integrity, anti-corruption norms, human rights, custodial ethics, constitutional values"
+    ]
   },
   {
     "id": "P13",
     "code": "Paper-13",
     "title": "Practical (Hands on)",
     "category": "Practical & Applied",
-    "totalTargetSessions": 188,
+    "totalTargetSessions": 203,
     "originalTargetSessions": 226,
+    "color": "#570531",
+    "description": "Moot courts, crime scene simulations, CCTNS live entry, mob control drills, case diary drafting",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 2,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "FLOATING",
     "primaryTeacherIds": [],
     "nearestPaperIds": [
       "P05",
       "P06",
       "P11"
+    ]
+  },
+  {
+    "id": "P14",
+    "code": "Optional",
+    "title": "State Specific Inputs",
+    "category": "Practical & Applied",
+    "totalTargetSessions": 40,
+    "originalTargetSessions": 55,
+    "color": "#3B82F6",
+    "description": "Police Administration, Police Conduct and Service Matters, Mobile Applications, Human values and Police Behaviour, Law & Order, Role as Supporting Officers",
+    "theoryOrPractical": "THEORY",
+    "maxDailyPerRoom": 1,
+    "priorityTier": "NORMAL",
+    "preferredBuilding": "ALL",
+    "primaryTeacherIds": [
+      "T18",
+      "T19",
+      "T22"
     ],
-    "color": "#570531",
-    "description": "Moot courts, crime scene simulations, CCTNS live entry, mob control drills, case diary drafting"
+    "nearestPaperIds": []
   }
 ]

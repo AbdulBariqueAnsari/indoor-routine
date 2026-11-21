@@ -291,6 +291,23 @@ export const api = {
   },
 
   /**
+   * Manually sync database from edited JSON storage files on disk
+   */
+  async syncFromJson(): Promise<FullServerData> {
+    try {
+      const res = await fetch(`${API_BASE}/sync-from-json`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`Failed to sync from JSON: ${res.statusText}`);
+      const data = await res.json();
+      return data.store;
+    } catch (err) {
+      console.error('[API] Error syncing from JSON:', err);
+      throw err;
+    }
+  },
+
+  /**
    * Reset all server data to factory defaults
    */
   async resetAllData(): Promise<FullServerData> {
@@ -304,6 +321,30 @@ export const api = {
     } catch (err) {
       console.error('[API] Error resetting data:', err);
       throw err;
+    }
+  },
+
+  /**
+   * Save an exported file directly to the server's exports directory
+   */
+  async saveExportFile(
+    fileName: string,
+    content: string,
+    isBase64 = false
+  ): Promise<{ success: boolean; fileName: string; path: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, content, isBase64 }),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to save export to server: ${res.statusText}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] Could not save export to server exports folder:', err);
+      return { success: false, fileName, path: '' };
     }
   },
 };

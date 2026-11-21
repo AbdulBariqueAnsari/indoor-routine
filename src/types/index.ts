@@ -24,6 +24,14 @@ export interface UnavailableInstructor {
   date?: string;
 }
 
+export interface UnavailabilityConfigItem {
+  id: string;
+  teacherId: string;
+  targetDayOrDate: string; // 'ALL' or specific date string 'YYYY-MM-DD'
+  type: UnavailabilityType; // 'LEAVE' | 'DUTY' | 'SICK' | 'REST' | 'ABSENT'
+  remark?: string;
+}
+
 export interface RoutineRuleConfig {
   // === TIER 1: Inviolable Operational Constraints (Hard Rules: Priority Tier 1: Rules 1, 2, 3, 4, 5, 6, 6A, 6B, 7) ===
   enableZeroDoubleBooking: boolean; // Rule 1: Zero Double-Booking: Instructor cannot teach in 2 rooms at the same time
@@ -37,6 +45,9 @@ export interface RoutineRuleConfig {
   enableNonConsecutiveGapForSameSubject: boolean; // Rule 6B: Prevent Consecutive Periods of the Same Subject (available when Rule 6A is ON)
   enableDailyWorkloadMaxCap: boolean; // Rule 7: Strict Hard-Cap: Max 4 Periods/Day per Instructor (formerly Rule 9)
   enableTeacherLoadEqualizationPriority: boolean; // Rule 8: Teacher Load Equalization Priority (Teacher-First Detailment)
+  enablePracticalConsecutiveDoublePeriodLimit: boolean; // Rule 9: Practical Consecutive Double-Period & Daily Quota Rule (Tier 1 Constraint)
+  enableSinglePeriodPractical?: boolean; // Rule 9A: Single-Period (1 Period) Practical Option & Flexibility
+  enableInstructorDesignatedOffPeriods?: boolean; // Rule 25: Strict Instructor Designated Off-Period Protection (Excuse Rule)
 
   // === TIER 2: Curriculum Progression & Subject Placement (Moto I & IV: Priority Tier 2) ===
   enableClassroomSubjectEqualization: boolean; // Rule 10: Moto I: Equalize subject completion % across all rooms (lowest % first)
@@ -70,6 +81,48 @@ export interface Classroom {
   capacity: number;
 }
 
+/**
+ * Universal Natural Numeric Extractor for Classroom Room Numbers (Room No. 1 .. Room No. 15).
+ */
+export function extractRoomNumber(
+  c: { roomNumber?: number; name?: string; code?: string } | string | null | undefined
+): number {
+  if (!c) return 999;
+  if (typeof c === 'string') {
+    const match = c.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 999;
+  }
+  if (typeof c.roomNumber === 'number' && !isNaN(c.roomNumber) && c.roomNumber > 0) {
+    return c.roomNumber;
+  }
+  const match = (c.name || c.code || '').match(/\d+/);
+  if (match) {
+    return parseInt(match[0], 10);
+  }
+  return 999;
+}
+
+/**
+ * Universal Natural Numeric Comparator for Classrooms (Room No. 1 to Room No. 15).
+ * Ensures classroom dropdowns, lists, option selects, matrix tables, and exports are sorted
+ * strictly in serial numeric sequence starting from 1 to 15.
+ */
+export function compareClassrooms(
+  a: { roomNumber?: number; name?: string; code?: string; id?: string },
+  b: { roomNumber?: number; name?: string; code?: string; id?: string }
+): number {
+  const numA = extractRoomNumber(a);
+  const numB = extractRoomNumber(b);
+  if (numA !== numB) {
+    return numA - numB;
+  }
+  return (a?.name || a?.code || a?.id || '').localeCompare(
+    b?.name || b?.code || b?.id || '',
+    undefined,
+    { numeric: true, sensitivity: 'base' }
+  );
+}
+
 export interface Paper {
   id: string; // 'P01' .. 'P13'
   code: string; // 'PAP-01'
@@ -83,7 +136,7 @@ export interface Paper {
   nearestPaperIds: string[]; // Related papers for nearest substitute
   color: string;
   description?: string;
-  theoryOrPractical?: 'THEORY' | 'PRACTICAL';
+  theoryOrPractical?: 'THEORY' | 'PRACTICAL' | 'EXAM';
   maxDailyPerRoom?: number; // Default 2 periods/room/day
   priorityTier?: SubjectPriorityTier; // Default NORMAL
   preferredBuilding?: string; // e.g. 'FLOATING', 'OLD', 'NEW', 'ALL'
@@ -109,6 +162,21 @@ export interface Teacher {
   status?: 'ACTIVE' | 'ABSENT' | 'LEAVE' | 'DUTY' | 'SICK' | 'REST';
   qualification?: string;
   remarks?: string;
+  offPeriods?: number[]; // Excused periods (e.g. [1, 4] means off in Period 1 and Period 4)
+  dayOffPeriods?: Record<string, number[]>; // Day-specific excused periods (e.g. { '1': [1, 2], '2': [4] })
+}
+
+/**
+ * Universal Natural Numeric Comparator for Instructor Codes (T1, T2, ..., T9, T10, T11, ...).
+ * Ensures instructor lists, tables, dropdowns, and exports are sorted strictly in natural numeric sequence.
+ */
+export function compareTeacherCodes(
+  a: { code?: string; id?: string },
+  b: { code?: string; id?: string }
+): number {
+  const codeA = a?.code || a?.id || '';
+  const codeB = b?.code || b?.id || '';
+  return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 export interface ClassSlot {
@@ -121,6 +189,47 @@ export interface ClassSlot {
   originalTeacherId?: string;
   substituteReason?: string;
   isPriority?: boolean;
+  practicalName?: string; // Optional custom practical name / venue (e.g. 'Computer Lab')
+  practicalSubjectId?: string; // Optional reference to Master Setup PracticalSubject id (e.g. 'PRAC-01')
+  isExam?: boolean; // Indicates this slot is an Examination / Assessment session
+  examName?: string; // Optional custom examination name (e.g. 'Weekly Assessment')
+  theoryOrPractical?: 'THEORY' | 'PRACTICAL' | 'EXAM';
+}
+
+export interface PracticalSubject {
+  id: string; // e.g. 'prac-sub-1'
+  code: string; // e.g. 'PRAC-01'
+  name: string; // e.g. 'Computer Lab & CCTNS Live Entry'
+  targetSessions: number; // e.g. 48
+  description?: string;
+  color?: string;
+  defaultTeacherId?: string;
+  defaultDuration?: 1 | 2; // Default duration in periods (1 or 2, default 2)
+}
+
+export interface PracticalClassConfig {
+  id: string; // e.g. 'prac-1', 'prac-2'
+  name: string; // e.g. 'Computer Lab', 'Forensics Lab'
+  teacherId?: string; // Designated instructor ID
+  roomId?: string; // Designated room ID (optional)
+  periods?: number[]; // Designated periods: [2, 3] or [4, 5] (2 periods), or [1], [2], [3], [4], [5] (1 period)
+  duration?: 1 | 2; // Duration in periods: 1 for single period, 2 for double period (default 2)
+  practicalSubjectId?: string; // ID of the linked master practical subject
+}
+
+export interface PracticalConfig {
+  enabled: boolean;
+  name?: string; // Backwards compatibility: primary practical name
+  teacherIds?: string[]; // Backwards compatibility: primary practical teacher IDs
+  items?: PracticalClassConfig[]; // Multiple practical class configurations
+}
+
+export interface ExamConfig {
+  enabled: boolean;
+  name?: string; // e.g. 'Examination / Assessment'
+  targetSessions?: number; // default 30 exam sessions
+  period?: number; // default 5 (always last period)
+  teacherIds?: string[]; // Optional designated/preferred invigilator teacher IDs
 }
 
 export interface DailyRoutine {
@@ -134,6 +243,9 @@ export interface DailyRoutine {
   subjectPriorityTiers?: Record<string, SubjectPriorityTier>; // paperId -> HIGH | MEDIUM | LOW | NORMAL | EXCLUDE
   prioritySubjectMinPeriods?: Record<string, number>; // paperId -> guaranteed minimum periods
   excludedPaperIds?: string[]; // Subject papers explicitly excluded/removed from this routine
+  teacherOffPeriods?: Record<string, number[]>; // teacherId -> off periods designated for this routine
+  practicalConfig?: PracticalConfig;
+  examConfig?: ExamConfig;
   slots: ClassSlot[]; // 15 classrooms * 5 periods = 75 slots
   createdAt: string;
   updatedAt: string;
@@ -212,6 +324,49 @@ export interface TeacherDailyDuty {
   totalPeriods: number;
 }
 
+export interface ColumnConfig {
+  key: string;
+  defaultLabel: string;
+  customLabel: string;
+  enabled: boolean;
+}
+
+export interface ReportPageSetupConfig {
+  id: string;
+  name: string;
+  enabled: boolean;
+  customTitle?: string;
+  customSubtitle?: string;
+  orientation: 'landscape' | 'portrait';
+  paperSize: 'a4' | 'legal' | 'letter';
+  includeHeader: boolean;
+  includeSignatures: boolean;
+  columns?: ColumnConfig[];
+}
+
+export interface BrowserPrintConfig {
+  orientation: 'landscape' | 'portrait';
+  paperSize: 'a4' | 'legal' | 'letter';
+  showTimings: boolean;
+  showCapacities: boolean;
+  showTeacherCodes: boolean;
+  showSubjectCodes: boolean;
+  showPriorityBadge: boolean;
+  showSubstituteBadge: boolean;
+  showSessionCount?: boolean;
+  showHeader: boolean;
+  showSignatures: boolean;
+  showReserveTable: boolean;
+  showLeaveTable: boolean;
+  customTitle?: string;
+  customSubtitle?: string;
+}
+
+export interface DownloadsPageSetup {
+  reports: Record<string, ReportPageSetupConfig>;
+  browserPrint?: BrowserPrintConfig;
+}
+
 export interface AppSettings {
   institutionName: string;
   battalionUnit?: string;
@@ -224,5 +379,7 @@ export interface AppSettings {
   activeRoutineId: string;
   language?: string;
   adminPassword?: string;
+  downloadsConfig?: DownloadsPageSetup;
+  practicalSubjects?: PracticalSubject[];
 }
 
