@@ -343,47 +343,5 @@
       "customTitle": "Subsidiary Training Centre",
       "customSubtitle": "Daily Indoor Class Routine & Instructor Assignment"
     }
-  },
-  "practicalSubjects": [
-    {
-      "id": "PRAC-01",
-      "code": "PRAC-01",
-      "name": "Computer Lab & CCTNS Live Data Entry",
-      "targetSessions": 48,
-      "color": "#0284c7",
-      "description": "CCTNS portal training, online FIR registration, digital GD entry, ICJS integration & case tracking"
-    },
-    {
-      "id": "PRAC-02",
-      "code": "PRAC-02",
-      "name": "Crime Scene Management & Forensics Lab",
-      "targetSessions": 46,
-      "color": "#16a34a",
-      "description": "Crime scene cordon, physical evidence collection, fingerprint lifting, ballistics & forensic kit handling"
-    },
-    {
-      "id": "PRAC-03",
-      "code": "PRAC-03",
-      "name": "Moot Court, Legal Procedures & Case Diary Drafting",
-      "targetSessions": 46,
-      "color": "#d97706",
-      "description": "Mock court examination, cross-examination, case diary (CD) drafting, seizure list & inquest preparation"
-    },
-    {
-      "id": "PRAC-04",
-      "code": "PRAC-04",
-      "name": "Cyber Crime, Digital Evidence & IT",
-      "targetSessions": 48,
-      "color": "#7c3aed",
-      "description": "Digital evidence seizure (65B certification), mobile extraction, CDR/IPDR analysis & cyber fraud investigation"
-    },
-    {
-      "id": "PRAC-05",
-      "code": "PRAC-05",
-      "name": "Module - A01",
-      "targetSessions": 15,
-      "color": "#0284c7",
-      "description": ""
-    }
-  ]
+  }
 }

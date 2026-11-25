@@ -2,6 +2,9 @@
   "id": "routine-day-17",
   "dayNumber": 17,
   "date": "2026-11-23",
+  "status": "published",
+  "isLocked": true,
+  "notes": "STC, SAP 4th Bn Day 17 Routine (2026-11-23) - 3 instructors unavailable, 0 subjects excluded",
   "absentTeacherIds": [
     "T6",
     "T23"
@@ -26,6 +29,7 @@
   },
   "prioritySubjectMinPeriods": {},
   "excludedPaperIds": [],
+  "teacherOffPeriods": {},
   "practicalConfig": {
     "enabled": true,
     "items": [
@@ -122,12 +126,6 @@
         "practicalSubjectId": "PRAC-01"
       }
     ]
-  },
-  "examConfig": {
-    "enabled": false,
-    "name": "Examination / Assessment",
-    "targetSessions": 30,
-    "period": 5
   },
   "slots": [
     {
@@ -314,12 +312,13 @@
       "period": 2,
       "paperId": "P13",
       "teacherId": "T15",
-      "isSubstitute": false,
+      "isSubstitute": true,
       "isPriority": false,
-      "practicalName": "Computer Lab & CCTNS Live Data Entry",
+      "practicalName": "Computer Lab",
       "practicalSubjectId": "PRAC-01",
       "isExam": false,
-      "theoryOrPractical": "PRACTICAL"
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Nearest Related Subject Substitute Instructor"
     },
     {
       "id": "slot-17-OB-3-P2",
@@ -483,12 +482,13 @@
       "period": 3,
       "paperId": "P13",
       "teacherId": "T15",
-      "isSubstitute": false,
+      "isSubstitute": true,
       "isPriority": false,
-      "practicalName": "Computer Lab & CCTNS Live Data Entry",
+      "practicalName": "Computer Lab",
       "practicalSubjectId": "PRAC-01",
       "isExam": false,
-      "theoryOrPractical": "PRACTICAL"
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Nearest Related Subject Substitute Instructor"
     },
     {
       "id": "slot-17-OB-3-P3",
@@ -689,12 +689,13 @@
       "period": 4,
       "paperId": "P13",
       "teacherId": "T15",
-      "isSubstitute": false,
+      "isSubstitute": true,
       "isPriority": false,
-      "practicalName": "Computer Lab & CCTNS Live Data Entry",
+      "practicalName": "Computer Lab",
       "practicalSubjectId": "PRAC-01",
       "isExam": false,
-      "theoryOrPractical": "PRACTICAL"
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Nearest Related Subject Substitute Instructor"
     },
     {
       "id": "slot-17-OB-6-P4",
@@ -858,12 +859,13 @@
       "period": 5,
       "paperId": "P13",
       "teacherId": "T15",
-      "isSubstitute": false,
+      "isSubstitute": true,
       "isPriority": false,
-      "practicalName": "Computer Lab & CCTNS Live Data Entry",
+      "practicalName": "Computer Lab",
       "practicalSubjectId": "PRAC-01",
       "isExam": false,
-      "theoryOrPractical": "PRACTICAL"
+      "theoryOrPractical": "PRACTICAL",
+      "substituteReason": "Nearest Related Subject Substitute Instructor"
     },
     {
       "id": "slot-17-OB-6-P5",
@@ -977,449 +979,18 @@
     }
   ],
   "createdAt": "2026-11-21T08:21:40.114Z",
-  "updatedAt": "2026-11-21T11:49:48.065Z",
-  "isLocked": true,
-  "status": "published",
-  "notes": "STC, SAP 4th Bn Day 17 Routine (2026-11-23) - 3 instructors unavailable, 0 subjects excluded",
-  "generationAudit": {
-    "totalCapacity": 75,
-    "totalRemainingDemand": 9015,
-    "totalAdjustedDemand": 9015,
-    "allocations": [
-      {
-        "paperId": "P01",
-        "paperCode": "Paper-1",
-        "title": "Bharatiya Nagarik Suraksha Sanhita 2023 (BNSS)",
-        "remainingSessions": 558,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 558,
-        "allocationPercentage": 6.189683860232945,
-        "idealSessions": 4.642262895174709,
-        "integerTarget": 6,
-        "assignedCount": 6
-      },
-      {
-        "paperId": "P02",
-        "paperCode": "Paper-2",
-        "title": "Bharatiya Nyaya Sanhita 2023 (BNS)",
-        "remainingSessions": 667,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 667,
-        "allocationPercentage": 7.398779811425402,
-        "idealSessions": 5.549084858569051,
-        "integerTarget": 7,
-        "assignedCount": 7
-      },
-      {
-        "paperId": "P03",
-        "paperCode": "Paper-3",
-        "title": "Central Minor Acts and Special Laws",
-        "remainingSessions": 619,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 619,
-        "allocationPercentage": 6.866333887964505,
-        "idealSessions": 5.1497504159733785,
-        "integerTarget": 6,
-        "assignedCount": 6
-      },
-      {
-        "paperId": "P04",
-        "paperCode": "Paper-4",
-        "title": "Bharatiya Sakshya Adhiniyam 2023 (BSA)",
-        "remainingSessions": 297,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 297,
-        "allocationPercentage": 3.2945091514143092,
-        "idealSessions": 2.4708818635607317,
-        "integerTarget": 3,
-        "assignedCount": 4
-      },
-      {
-        "paperId": "P05",
-        "paperCode": "Paper-5",
-        "title": "Forensics",
-        "remainingSessions": 428,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 428,
-        "allocationPercentage": 4.747642817526345,
-        "idealSessions": 3.5607321131447587,
-        "integerTarget": 5,
-        "assignedCount": 6
-      },
-      {
-        "paperId": "P06",
-        "paperCode": "Paper-6",
-        "title": "ICT and Cyber Investigation",
-        "remainingSessions": 496,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 496,
-        "allocationPercentage": 5.501941209095952,
-        "idealSessions": 4.126455906821963,
-        "integerTarget": 5,
-        "assignedCount": 5
-      },
-      {
-        "paperId": "P07",
-        "paperCode": "Paper-7",
-        "title": "Criminology and Crime Prevention",
-        "remainingSessions": 210,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 210,
-        "allocationPercentage": 2.329450915141431,
-        "idealSessions": 1.7470881863560734,
-        "integerTarget": 3,
-        "assignedCount": 3
-      },
-      {
-        "paperId": "P08",
-        "paperCode": "Paper-8",
-        "title": "Police Organization and Administration",
-        "remainingSessions": 76,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 76,
-        "allocationPercentage": 0.8430393788130893,
-        "idealSessions": 0.632279534109817,
-        "integerTarget": 2,
-        "assignedCount": 2
-      },
-      {
-        "paperId": "P09",
-        "paperCode": "Paper-9",
-        "title": "Police Station Management",
-        "remainingSessions": 361,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 361,
-        "allocationPercentage": 4.004437049362174,
-        "idealSessions": 3.0033277870216306,
-        "integerTarget": 4,
-        "assignedCount": 4
-      },
-      {
-        "paperId": "P10",
-        "paperCode": "Paper-10",
-        "title": "Personal Development",
-        "remainingSessions": 511,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 511,
-        "allocationPercentage": 5.668330560177482,
-        "idealSessions": 4.251247920133111,
-        "integerTarget": 5,
-        "assignedCount": 6
-      },
-      {
-        "paperId": "P11",
-        "paperCode": "Paper-11",
-        "title": "Internal Security and Public Order",
-        "remainingSessions": 487,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 487,
-        "allocationPercentage": 5.402107598447032,
-        "idealSessions": 4.0515806988352745,
-        "integerTarget": 4,
-        "assignedCount": 4
-      },
-      {
-        "paperId": "P12",
-        "paperCode": "Paper-12",
-        "title": "Ethics and Accountability",
-        "remainingSessions": 660,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 660,
-        "allocationPercentage": 7.321131447587355,
-        "idealSessions": 5.490848585690517,
-        "integerTarget": 5,
-        "assignedCount": 5
-      },
-      {
-        "paperId": "P13",
-        "paperCode": "Paper-13",
-        "title": "Practical (Hands on)",
-        "remainingSessions": 3045,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 3045,
-        "allocationPercentage": 33.777038269550744,
-        "idealSessions": 25.332778702163058,
-        "integerTarget": 15,
-        "assignedCount": 11
-      },
-      {
-        "paperId": "P14",
-        "paperCode": "Optional",
-        "title": "State Specific Inputs",
-        "remainingSessions": 600,
-        "priorityTier": "NORMAL",
-        "priorityMultiplier": 1,
-        "adjustedDemand": 600,
-        "allocationPercentage": 6.655574043261231,
-        "idealSessions": 4.9916805324459235,
-        "integerTarget": 5,
-        "assignedCount": 6
-      }
-    ],
-    "teacherWorkloads": [
-      {
-        "teacherId": "T1",
-        "teacherName": "SI(UB) Md Jalaluddin",
-        "initialLoad": 45,
-        "todayLoad": 2,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T2",
-        "teacherName": "SI(AB) Hazrat Belal",
-        "initialLoad": 46,
-        "todayLoad": 2,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T3",
-        "teacherName": "ASI(UB) Surojit Kr. Das",
-        "initialLoad": 40,
-        "todayLoad": 4,
-        "totalLoad": 44
-      },
-      {
-        "teacherId": "T4",
-        "teacherName": "ASI(AB) Prabir Sarkar",
-        "initialLoad": 44,
-        "todayLoad": 4,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T5",
-        "teacherName": "SI(UB) Kaushik Sarkar",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T6",
-        "teacherName": "SI(UB) Biswajit Saha",
-        "initialLoad": 44,
-        "todayLoad": 0,
-        "totalLoad": 44
-      },
-      {
-        "teacherId": "T7",
-        "teacherName": "SI(UB) Sadhan Kr Roy",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T8",
-        "teacherName": "SI(UB) Ebadul Ali Mondal",
-        "initialLoad": 43,
-        "todayLoad": 3,
-        "totalLoad": 46
-      },
-      {
-        "teacherId": "T9",
-        "teacherName": "SI(UB) Tika Kr. Damai",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T10",
-        "teacherName": "SI(UB) Bhudeb Ch. Ghosh",
-        "initialLoad": 44,
-        "todayLoad": 4,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T11",
-        "teacherName": "SI(UB) Ratan Sarkar",
-        "initialLoad": 46,
-        "todayLoad": 2,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T12",
-        "teacherName": "SI(UB) Abdul Samad",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T13",
-        "teacherName": "SI(UB) Rassel Hossain",
-        "initialLoad": 38,
-        "todayLoad": 3,
-        "totalLoad": 41
-      },
-      {
-        "teacherId": "T14",
-        "teacherName": "ASI(W) Noor Alam",
-        "initialLoad": 45,
-        "todayLoad": 2,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T15",
-        "teacherName": "ASI(UB) Nripen Ch Roy",
-        "initialLoad": 44,
-        "todayLoad": 4,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T16",
-        "teacherName": "SI(UB) Ghanashyam Mahato",
-        "initialLoad": 45,
-        "todayLoad": 3,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T17",
-        "teacherName": "SI(AB) Avijit Bala",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T18",
-        "teacherName": "SI(UB) Parimal Saha",
-        "initialLoad": 45,
-        "todayLoad": 2,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T19",
-        "teacherName": "ASI(UB) Bisu Benjamin Mardi",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T20",
-        "teacherName": "SI(UB) Sankar Bhowmick",
-        "initialLoad": 45,
-        "todayLoad": 3,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T21",
-        "teacherName": "SI(UB) Sanjay Majumdar",
-        "initialLoad": 44,
-        "todayLoad": 4,
-        "totalLoad": 48
-      },
-      {
-        "teacherId": "T22",
-        "teacherName": "SI(UB) Biman Ghosh",
-        "initialLoad": 44,
-        "todayLoad": 3,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T23",
-        "teacherName": "SI(AB) Debashis Ray",
-        "initialLoad": 38,
-        "todayLoad": 0,
-        "totalLoad": 38
-      },
-      {
-        "teacherId": "T24",
-        "teacherName": "SI(UB) Krishnapada Barman",
-        "initialLoad": 30,
-        "todayLoad": 3,
-        "totalLoad": 33
-      },
-      {
-        "teacherId": "T25",
-        "teacherName": "SI(UB) Chandan Kr. Siddhanta",
-        "initialLoad": 41,
-        "todayLoad": 3,
-        "totalLoad": 44
-      },
-      {
-        "teacherId": "T26",
-        "teacherName": "ASI(UB) Shiben Hansda",
-        "initialLoad": 45,
-        "todayLoad": 2,
-        "totalLoad": 47
-      },
-      {
-        "teacherId": "T27",
-        "teacherName": "SI(AB) Biswajit Deb",
-        "initialLoad": 35,
-        "todayLoad": 3,
-        "totalLoad": 38
-      }
-    ],
-    "maxTeacherLoad": 48,
-    "minTeacherLoad": 33,
-    "workloadDifference": 15,
-    "vacanciesFilledCount": 4,
-    "replacementsCount": 0,
-    "noInstructorCount": 1,
-    "tier1Validation": {
-      "isValid": false,
-      "tier1Passed": false,
-      "conflicts": [],
-      "buildingConflicts": [
-        {
-          "period": 2,
-          "teacherId": "T21",
-          "teacherName": "SI(UB) Sanjay Majumdar",
-          "fromPeriod": 1,
-          "fromRoomId": "NB-2",
-          "fromRoomName": "Room No. 10",
-          "fromBuilding": "NEW",
-          "toPeriod": 2,
-          "toRoomId": "OB-6",
-          "toRoomName": "Room No. 6",
-          "toBuilding": "OLD"
-        },
-        {
-          "period": 3,
-          "teacherId": "T21",
-          "teacherName": "SI(UB) Sanjay Majumdar",
-          "fromPeriod": 2,
-          "fromRoomId": "OB-6",
-          "fromRoomName": "Room No. 6",
-          "fromBuilding": "OLD",
-          "toPeriod": 3,
-          "toRoomId": "NB-3",
-          "toRoomName": "Room No. 11",
-          "toBuilding": "NEW"
-        }
-      ],
-      "absentViolations": [],
-      "buildingBindingViolations": [],
-      "roomSubjectViolations": [],
-      "teacherMaxLoadViolations": [],
-      "missingSlotsCount": 0,
-      "totalSlots": 75,
-      "errorMessages": [
-        "Rule 4 Violation: 2 building transit gap conflict(s) detected."
-      ]
-    }
-  },
+  "updatedAt": "2026-11-22T11:50:34.689Z",
   "unavailableTeachers": [
     {
       "teacherId": "T6",
       "type": "DUTY",
-      "remark": "Court Evidence",
+      "remark": "Summons",
       "date": "2026-11-23"
     },
     {
       "teacherId": "T23",
       "type": "REST",
-      "remark": "Rest Standby",
+      "remark": "Sick",
       "date": "2026-11-23"
     }
   ]

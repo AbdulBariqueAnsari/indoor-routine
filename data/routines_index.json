@@ -4,7 +4,7 @@
     "dayNumber": 20,
     "date": "2026-11-27",
     "status": "published",
-    "isLocked": false,
+    "isLocked": true,
     "filePath": "routines/routine_routine-day-20.json",
     "notes": "STC, SAP 4th Bn Day 20 Routine (2026-11-27) - 2 instructors unavailable, 0 subjects excluded",
     "totalSlots": 75,
@@ -41,7 +41,7 @@
     "filePath": "routines/routine_routine-day-17.json",
     "notes": "STC, SAP 4th Bn Day 17 Routine (2026-11-23) - 3 instructors unavailable, 0 subjects excluded",
     "totalSlots": 75,
-    "updatedAt": "2026-11-21T11:49:48.065Z"
+    "updatedAt": "2026-11-22T11:50:34.689Z"
   },
   {
     "id": "routine-day-16",
